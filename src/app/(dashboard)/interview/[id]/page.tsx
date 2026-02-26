@@ -239,6 +239,31 @@ export default function InterviewSessionPage() {
     }
   };
 
+  // Text-to-speech for AI responses in voice mode
+  const speakText = useCallback((text: string) => {
+    if (!sessionInfo?.voiceMode) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(
+      (v) => v.name.includes("Google") && v.lang.startsWith("en")
+    );
+    if (preferred) utterance.voice = preferred;
+    window.speechSynthesis.speak(utterance);
+  }, [sessionInfo?.voiceMode]);
+
+  // Auto-speak AI messages when voice mode is on
+  useEffect(() => {
+    if (!sessionInfo?.voiceMode || messages.length === 0) return;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.role === "assistant") {
+      speakText(lastMsg.content);
+    }
+  }, [messages, sessionInfo?.voiceMode, speakText]);
+
   // Voice recording
   const toggleRecording = () => {
     if (isRecording) {
@@ -254,20 +279,28 @@ export default function InterviewSessionPage() {
         }
       ).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Speech recognition not supported in your browser");
+      alert("Speech recognition not supported in your browser. Please use Chrome.");
       return;
     }
+    // Stop TTS if it's speaking
+    window.speechSynthesis.cancel();
+
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let transcript = "";
+      let finalTranscript = "";
+      let interimTranscript = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
       }
-      setInput(transcript);
+      setInput(finalTranscript || interimTranscript);
     };
 
     recognition.onerror = () => {
