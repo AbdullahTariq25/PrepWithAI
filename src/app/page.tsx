@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -30,12 +30,8 @@ import {
   Clock,
   Target,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { PRICING_PLANS } from "@/lib/constants";
 
-/* ---- animation presets ---- */
 const fadeUp = {
   initial: { opacity: 0, y: 30 },
   whileInView: { opacity: 1, y: 0 },
@@ -43,60 +39,42 @@ const fadeUp = {
   transition: { duration: 0.6 },
 };
 
-const stagger = {
-  initial: {},
-  whileInView: { transition: { staggerChildren: 0.08 } },
-  viewport: { once: true },
-};
-
-const childFade = {
-  initial: { opacity: 0, y: 24 },
-  whileInView: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-};
-
-/* ---- data ---- */
 const features = [
   {
     icon: Brain,
     title: "AI Interviewer",
-    description:
-      "A professional interviewer that asks follow-ups, pushes back on weak answers, and gives hints — just like a real senior engineer.",
-    gradient: "from-violet-500 to-purple-600",
+    desc: "Asks follow-ups, pushes back on weak answers, gives hints — just like a real senior engineer.",
+    color: "#7c3aed",
   },
   {
     icon: Mic,
     title: "Voice Mode",
-    description:
-      "Speak your answers naturally. Real-time transcription and waveform so you practice actual interview speaking skills.",
-    gradient: "from-blue-500 to-cyan-500",
+    desc: "Speak your answers naturally. Real-time transcription so you practice actual speaking skills.",
+    color: "#3b82f6",
   },
   {
     icon: BarChart3,
     title: "Progress Analytics",
-    description:
-      "Skill radar charts, streak tracking, score trends, and weak area identification to focus your prep where it matters.",
-    gradient: "from-green-500 to-emerald-500",
+    desc: "Skill radar charts, streak tracking, score trends, and weak area identification.",
+    color: "#10b981",
   },
   {
     icon: Building2,
     title: "Company Prep Packs",
-    description:
-      "Curated preparation paths for Google, Meta, Amazon, Stripe and more — with company-specific interview styles.",
-    gradient: "from-orange-500 to-amber-500",
+    desc: "Curated paths for Google, Meta, Amazon, Stripe and more with company-specific styles.",
+    color: "#f59e0b",
   },
   {
     icon: FileText,
     title: "Resume Personalization",
-    description:
-      "Upload your resume and get questions tailored to YOUR experience, projects, and tech stack.",
-    gradient: "from-pink-500 to-rose-500",
+    desc: "Upload your resume and get questions tailored to YOUR experience and tech stack.",
+    color: "#ec4899",
   },
   {
     icon: Zap,
     title: "Instant Feedback",
-    description:
-      "Scored feedback after every answer — strengths, weaknesses, senior tips, and sample strong answers.",
-    gradient: "from-indigo-500 to-violet-500",
+    desc: "Scored feedback after every answer — strengths, weaknesses, senior tips, sample answers.",
+    color: "#6366f1",
   },
 ];
 
@@ -105,56 +83,47 @@ const interviewTypes = [
     icon: Code2,
     name: "DSA",
     desc: "Arrays, Trees, Graphs, DP, Sorting",
-    color: "bg-blue-500",
+    color: "#3b82f6",
     tag: "Free",
   },
   {
     icon: Network,
     name: "System Design",
     desc: "Design Twitter, Uber, Rate Limiter",
-    color: "bg-purple-500",
+    color: "#8b5cf6",
     tag: "Pro",
   },
   {
     icon: MessageSquare,
     name: "Behavioral",
     desc: "STAR method, leadership, conflicts",
-    color: "bg-green-500",
+    color: "#10b981",
     tag: "Pro",
   },
   {
     icon: Layout,
     name: "Frontend",
     desc: "React, CSS, JS, performance",
-    color: "bg-orange-500",
+    color: "#f59e0b",
     tag: "Pro",
   },
   {
     icon: Server,
     name: "Backend",
     desc: "APIs, databases, architecture",
-    color: "bg-red-500",
+    color: "#ef4444",
     tag: "Pro",
   },
   {
     icon: Trophy,
     name: "Full Loop",
     desc: "Complete on-site simulation",
-    color: "bg-indigo-500",
+    color: "#6366f1",
     tag: "Pro",
   },
 ];
 
-const companyLogos = [
-  { name: "Google", color: "#4285F4" },
-  { name: "Meta", color: "#0668E1" },
-  { name: "Amazon", color: "#FF9900" },
-  { name: "Apple", color: "#A2AAAD" },
-  { name: "Microsoft", color: "#00A4EF" },
-  { name: "Stripe", color: "#635BFF" },
-];
-
-const platformStats = [
+const stats = [
   { label: "Questions", value: "500+", icon: Target },
   { label: "Interview Types", value: "6", icon: Code2 },
   { label: "Companies", value: "10+", icon: Building2 },
@@ -194,346 +163,797 @@ const comparisons = [
   },
 ];
 
+const companies = ["Google", "Meta", "Amazon", "Apple", "Microsoft", "Stripe"];
+
+const gradientBtn: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "14px 32px",
+  borderRadius: 14,
+  fontSize: 16,
+  fontWeight: 700,
+  color: "white",
+  textDecoration: "none",
+  background: "linear-gradient(135deg,#7c3aed,#4f46e5)",
+  boxShadow: "0 0 28px rgba(124,58,237,0.5)",
+};
+
+const outlineBtn: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "14px 32px",
+  borderRadius: 14,
+  fontSize: 16,
+  fontWeight: 600,
+  color: "#e4e4e7",
+  textDecoration: "none",
+  border: "1px solid #3f3f46",
+  background: "rgba(255,255,255,0.02)",
+};
+
+const badgeStyle: React.CSSProperties = {
+  display: "inline-block",
+  padding: "5px 16px",
+  borderRadius: 999,
+  background: "rgba(124,58,237,0.12)",
+  border: "1px solid rgba(124,58,237,0.25)",
+  color: "#a78bfa",
+  fontSize: 12,
+  fontWeight: 600,
+  marginBottom: 18,
+};
+
 export default function LandingPage() {
   const [mobileNav, setMobileNav] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background noise-bg overflow-x-hidden">
-      {/* ======== NAVBAR ======== */}
-      <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/25 group-hover:shadow-violet-500/40 transition-shadow">
-                <Brain className="w-5 h-5 text-white" />
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#050505",
+        color: "#fafafa",
+        fontFamily: "system-ui,sans-serif",
+        overflowX: "hidden",
+      }}
+    >
+      {/* ── NAVBAR ── */}
+      <nav
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 50,
+          background: "rgba(5,5,5,0.88)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          borderBottom: "1px solid #1e1e24",
+        }}
+      >
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              height: 64,
+            }}
+          >
+            <Link
+              href="/"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                textDecoration: "none",
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: "linear-gradient(135deg,#7c3aed,#4f46e5)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Brain size={18} color="white" />
               </div>
-              <span className="text-xl font-bold tracking-tight">
-                Prep<span className="gradient-text">WithAI</span>
+              <span style={{ fontSize: 18, fontWeight: 700, color: "#fafafa" }}>
+                Prep
+                <span
+                  style={{
+                    background: "linear-gradient(135deg,#8b5cf6,#a78bfa)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }}
+                >
+                  WithAI
+                </span>
               </span>
             </Link>
 
-            <div className="hidden md:flex items-center gap-8">
-              {[
-                { label: "Features", href: "#features" },
-                { label: "How it Works", href: "#how-it-works" },
-                { label: "Pricing", href: "#pricing" },
-                { label: "Questions", href: "/questions" },
-              ].map((link) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
+            <div className="nav-desktop">
+              <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+                {(
+                  [
+                    ["Features", "#features"],
+                    ["How it Works", "#how-it-works"],
+                    ["Pricing", "#pricing"],
+                    ["Questions", "/questions"],
+                  ] as [string, string][]
+                ).map(([l, h]) => (
+                  <Link
+                    key={l}
+                    href={h}
+                    style={{
+                      fontSize: 14,
+                      color: "#a1a1aa",
+                      textDecoration: "none",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.color = "#fafafa")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.color = "#a1a1aa")
+                    }
+                  >
+                    {l}
+                  </Link>
+                ))}
+              </div>
             </div>
 
-            <div className="hidden md:flex items-center gap-3">
-              <Link href="/login">
-                <Button variant="ghost" size="sm">
+            <div className="nav-desktop">
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <Link
+                  href="/login"
+                  style={{
+                    fontSize: 14,
+                    color: "#a1a1aa",
+                    textDecoration: "none",
+                    padding: "8px 16px",
+                  }}
+                >
                   Log In
-                </Button>
-              </Link>
-              <Link href="/signup">
-                <Button size="sm" variant="glow" className="gap-1.5">
-                  Start Free <ArrowRight className="w-3.5 h-3.5" />
-                </Button>
-              </Link>
+                </Link>
+                <Link
+                  href="/signup"
+                  style={{
+                    ...gradientBtn,
+                    padding: "9px 20px",
+                    fontSize: 14,
+                    borderRadius: 10,
+                  }}
+                >
+                  Start Free <ArrowRight size={14} />
+                </Link>
+              </div>
             </div>
 
             <button
-              className="md:hidden p-2"
+              className="nav-mobile"
               onClick={() => setMobileNav(!mobileNav)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#fafafa",
+                cursor: "pointer",
+                padding: 8,
+              }}
             >
-              {mobileNav ? (
-                <X className="w-5 h-5" />
-              ) : (
-                <Menu className="w-5 h-5" />
-              )}
+              {mobileNav ? <X size={22} /> : <Menu size={22} />}
             </button>
           </div>
 
           {mobileNav && (
-            <motion.div
-              className="md:hidden pb-4 space-y-2"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
+            <div
+              style={{ borderTop: "1px solid #1e1e24", padding: "16px 0 20px" }}
             >
-              {["Features", "How it Works", "Pricing"].map((l) => (
+              {(
+                [
+                  ["Features", "#features"],
+                  ["How it Works", "#how-it-works"],
+                  ["Pricing", "#pricing"],
+                  ["Questions", "/questions"],
+                ] as [string, string][]
+              ).map(([l, h]) => (
                 <Link
                   key={l}
-                  href={`#${l.toLowerCase().replace(/ /g, "-")}`}
-                  className="block py-2 text-sm text-muted-foreground"
+                  href={h}
                   onClick={() => setMobileNav(false)}
+                  style={{
+                    display: "block",
+                    padding: "10px 0",
+                    fontSize: 15,
+                    color: "#a1a1aa",
+                    textDecoration: "none",
+                  }}
                 >
                   {l}
                 </Link>
               ))}
-              <div className="flex gap-2 pt-2">
-                <Link href="/login" className="flex-1">
-                  <Button variant="outline" size="sm" className="w-full">
-                    Log In
-                  </Button>
+              <div style={{ display: "flex", gap: 12, paddingTop: 16 }}>
+                <Link
+                  href="/login"
+                  style={{
+                    flex: 1,
+                    textAlign: "center",
+                    padding: "11px",
+                    borderRadius: 10,
+                    border: "1px solid #3f3f46",
+                    color: "#fafafa",
+                    textDecoration: "none",
+                    fontSize: 14,
+                  }}
+                >
+                  Log In
                 </Link>
-                <Link href="/signup" className="flex-1">
-                  <Button size="sm" className="w-full">
-                    Start Free
-                  </Button>
+                <Link
+                  href="/signup"
+                  style={{
+                    flex: 1,
+                    textAlign: "center",
+                    padding: "11px",
+                    borderRadius: 10,
+                    background: "linear-gradient(135deg,#7c3aed,#4f46e5)",
+                    color: "white",
+                    textDecoration: "none",
+                    fontSize: 14,
+                    fontWeight: 700,
+                  }}
+                >
+                  Start Free
                 </Link>
               </div>
-            </motion.div>
+            </div>
           )}
         </div>
       </nav>
 
-      {/* ======== HERO ======== */}
-      <section className="relative pt-28 pb-24 sm:pt-36 sm:pb-32 px-4 hero-grid">
-        <div className="absolute top-20 left-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-indigo-500/8 rounded-full blur-[100px] pointer-events-none" />
+      {/* ── HERO ── */}
+      <section
+        style={{
+          paddingTop: 128,
+          paddingBottom: 80,
+          textAlign: "center",
+          position: "relative",
+          backgroundImage:
+            "linear-gradient(rgba(124,58,237,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(124,58,237,0.06) 1px,transparent 1px)",
+          backgroundSize: "64px 64px",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: 80,
+            left: "20%",
+            width: 400,
+            height: 400,
+            background: "rgba(124,58,237,0.09)",
+            borderRadius: "50%",
+            filter: "blur(120px)",
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            right: "15%",
+            width: 320,
+            height: 320,
+            background: "rgba(79,70,229,0.07)",
+            borderRadius: "50%",
+            filter: "blur(100px)",
+            pointerEvents: "none",
+          }}
+        />
 
-        <div className="max-w-5xl mx-auto text-center relative z-10">
+        <div
+          style={{
+            maxWidth: 860,
+            margin: "0 auto",
+            padding: "0 24px",
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Badge className="mb-8 px-4 py-1.5 text-sm bg-violet-500/10 border border-violet-500/20 text-violet-400 backdrop-blur-sm">
-              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-              AI-Powered Mock Interviews — Free to Start
-            </Badge>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 18px",
+                borderRadius: 999,
+                background: "rgba(124,58,237,0.12)",
+                border: "1px solid rgba(124,58,237,0.25)",
+                color: "#a78bfa",
+                fontSize: 13,
+                fontWeight: 500,
+                marginBottom: 32,
+              }}
+            >
+              <Sparkles size={13} /> AI-Powered Mock Interviews — Free to Start
+            </span>
           </motion.div>
 
           <motion.h1
-            className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.1] mb-6"
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
+            style={{
+              fontSize: "clamp(42px,9vw,88px)",
+              fontWeight: 800,
+              lineHeight: 1.08,
+              marginBottom: 24,
+              letterSpacing: "-2px",
+            }}
           >
             Ace Your Next
             <br />
-            <span className="gradient-text">Tech Interview</span>
+            <span
+              style={{
+                background: "linear-gradient(135deg,#7c3aed,#a78bfa,#6366f1)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              Tech Interview
+            </span>
           </motion.h1>
 
           <motion.p
-            className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
+            style={{
+              fontSize: 18,
+              color: "#a1a1aa",
+              maxWidth: 580,
+              margin: "0 auto 40px",
+              lineHeight: 1.75,
+            }}
           >
             Practice with an AI interviewer that simulates real technical
             interviews from{" "}
-            <span className="text-foreground font-medium">
-              Google, Meta, Amazon
-            </span>{" "}
+            <strong style={{ color: "#fafafa" }}>Google, Meta, Amazon</strong>{" "}
             and more. Get instant scored feedback. Land your dream job.
           </motion.p>
 
           <motion.div
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 16,
+              justifyContent: "center",
+              marginBottom: 40,
+            }}
           >
-            <Link href="/signup">
-              <Button
-                size="xl"
-                variant="glow"
-                className="gap-2 text-base px-8 py-4"
-              >
-                <Play className="w-5 h-5" />
-                Start Free Interview
-                <ArrowRight className="w-4 h-4" />
-              </Button>
+            <Link href="/signup" style={gradientBtn}>
+              <Play size={18} /> Start Free Interview <ArrowRight size={16} />
             </Link>
-            <Link href="#demo">
-              <Button
-                size="xl"
-                variant="outline"
-                className="gap-2 text-base px-8 py-4"
-              >
-                <Globe className="w-4 h-4" />
-                Watch Demo
-              </Button>
+            <Link href="#demo" style={outlineBtn}>
+              <Globe size={16} /> Watch Demo
             </Link>
           </motion.div>
 
           <motion.div
-            className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.5 }}
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              gap: 24,
+              color: "#71717a",
+              fontSize: 13,
+            }}
           >
-            <div className="flex items-center gap-1.5">
-              <Shield className="w-4 h-4 text-green-500" />
-              <span>No credit card required</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-blue-500" />
-              <span>Set up in 30 seconds</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Zap className="w-4 h-4 text-yellow-500" />
-              <span>Powered by Groq AI (sub-second)</span>
-            </div>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <Shield size={14} color="#22c55e" /> No credit card required
+            </span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <Clock size={14} color="#3b82f6" /> Set up in 30 seconds
+            </span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <Zap size={14} color="#eab308" /> Powered by Groq AI
+            </span>
           </motion.div>
         </div>
       </section>
 
-      {/* ======== DEMO PREVIEW ======== */}
-      <section id="demo" className="py-4 px-4 -mt-8 relative z-10">
-        <div className="max-w-4xl mx-auto">
+      {/* ── DEMO PREVIEW ── */}
+      <section id="demo" style={{ padding: "48px 24px" }}>
+        <div style={{ maxWidth: 800, margin: "0 auto" }}>
           <motion.div
-            className="rounded-2xl border border-border/50 overflow-hidden shadow-2xl shadow-violet-500/5"
-            initial={{ opacity: 0, y: 50, scale: 0.97 }}
+            initial={{ opacity: 0, y: 40, scale: 0.97 }}
             whileInView={{ opacity: 1, y: 0, scale: 1 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.7 }}
+            style={{
+              borderRadius: 20,
+              overflow: "hidden",
+              border: "1px solid #1e1e24",
+              boxShadow: "0 40px 80px rgba(0,0,0,0.6)",
+            }}
           >
-            <div className="bg-zinc-900/95 backdrop-blur-xl border-b border-white/5 px-4 py-3 flex items-center">
-              <div className="flex gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                <div className="w-3 h-3 rounded-full bg-green-500" />
-              </div>
-              <span className="ml-4 text-xs text-zinc-500 font-mono">
+            <div
+              style={{
+                background: "#111113",
+                borderBottom: "1px solid #1e1e24",
+                padding: "12px 16px",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <div
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  background: "#ef4444",
+                }}
+              />
+              <div
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  background: "#eab308",
+                }}
+              />
+              <div
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  background: "#22c55e",
+                }}
+              />
+              <span
+                style={{
+                  marginLeft: 12,
+                  fontSize: 12,
+                  color: "#52525b",
+                  fontFamily: "monospace",
+                }}
+              >
                 PrepWithAI — Google Senior Interview
               </span>
             </div>
-
-            <div className="bg-zinc-950 p-6 sm:p-8 space-y-5">
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-linear-to-br from-violet-600 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-violet-500/20">
-                  <Brain className="w-4 h-4 text-white" />
+            <div
+              style={{
+                background: "#09090b",
+                padding: 28,
+                display: "flex",
+                flexDirection: "column",
+                gap: 20,
+              }}
+            >
+              <div
+                style={{ display: "flex", gap: 12, alignItems: "flex-start" }}
+              >
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg,#7c3aed,#4f46e5)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Brain size={15} color="white" />
                 </div>
-                <div className="bg-zinc-800/80 border border-white/5 rounded-2xl rounded-tl-md p-4 max-w-lg">
-                  <p className="text-sm text-zinc-200 leading-relaxed">
+                <div
+                  style={{
+                    background: "#18181b",
+                    border: "1px solid #27272a",
+                    borderRadius: "0 16px 16px 16px",
+                    padding: "12px 16px",
+                    maxWidth: 520,
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: 14,
+                      color: "#e4e4e7",
+                      lineHeight: 1.65,
+                      margin: 0,
+                    }}
+                  >
                     Hi! I&apos;m your interviewer today. Given an array of
                     integers and a target sum, find two numbers that add up to
                     the target. Walk me through your approach.
                   </p>
                 </div>
               </div>
-
-              <div className="flex gap-3 justify-end">
-                <div className="bg-violet-600/90 border border-violet-500/30 rounded-2xl rounded-tr-md p-4 max-w-lg">
-                  <p className="text-sm text-white leading-relaxed">
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "flex-start",
+                  justifyContent: "flex-end",
+                }}
+              >
+                <div
+                  style={{
+                    background: "rgba(124,58,237,0.85)",
+                    border: "1px solid rgba(124,58,237,0.3)",
+                    borderRadius: "16px 0 16px 16px",
+                    padding: "12px 16px",
+                    maxWidth: 520,
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: 14,
+                      color: "white",
+                      lineHeight: 1.65,
+                      margin: 0,
+                    }}
+                  >
                     I&apos;d use a HashMap. For each element, check if
                     complement exists. Time: O(n), Space: O(n). Edge cases:
                     empty array, no solution, duplicates.
                   </p>
                 </div>
-                <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center shrink-0 text-xs font-bold text-white">
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: "#3f3f46",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    fontSize: 12,
+                    fontWeight: 700,
+                  }}
+                >
                   AT
                 </div>
               </div>
-
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-linear-to-br from-violet-600 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-violet-500/20">
-                  <Brain className="w-4 h-4 text-white" />
+              <div
+                style={{ display: "flex", gap: 12, alignItems: "flex-start" }}
+              >
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg,#7c3aed,#4f46e5)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Brain size={15} color="white" />
                 </div>
-                <div className="bg-zinc-800/80 border border-white/5 rounded-2xl rounded-tl-md p-4 max-w-lg">
-                  <p className="text-sm text-zinc-200 leading-relaxed">
-                    Solid! Great that you mentioned edge cases proactively. What
-                    about the two-pointer approach if the array is sorted? What
-                    are the trade-offs?
+                <div
+                  style={{
+                    background: "#18181b",
+                    border: "1px solid #27272a",
+                    borderRadius: "0 16px 16px 16px",
+                    padding: "12px 16px",
+                    maxWidth: 520,
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: 14,
+                      color: "#e4e4e7",
+                      lineHeight: 1.65,
+                      margin: 0,
+                    }}
+                  >
+                    Solid approach! What about the two-pointer method if the
+                    array is sorted? What are the trade-offs between the two
+                    approaches?
                   </p>
                 </div>
               </div>
-
-              <div className="flex justify-center pt-2">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-medium">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Score: 85/100 — Strong approach with good edge case handling
-                </div>
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "8px 20px",
+                    borderRadius: 999,
+                    background: "rgba(34,197,94,0.1)",
+                    border: "1px solid rgba(34,197,94,0.2)",
+                    color: "#4ade80",
+                    fontSize: 13,
+                    fontWeight: 500,
+                  }}
+                >
+                  <CheckCircle2 size={14} /> Score: 85/100 — Strong approach
+                  with good edge case handling
+                </span>
               </div>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* ======== STATS BAR ======== */}
-      <section className="py-16 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {platformStats.map((stat, i) => (
+      {/* ── STATS ── */}
+      <section style={{ padding: "60px 24px" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))",
+              gap: 32,
+            }}
+          >
+            {stats.map((s, i) => (
               <motion.div
-                key={stat.label}
-                className="text-center"
+                key={s.label}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
+                style={{ textAlign: "center" }}
               >
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-violet-500/10 mb-3">
-                  <stat.icon className="w-6 h-6 text-violet-500" />
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 12,
+                    background: "rgba(124,58,237,0.1)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    margin: "0 auto 12px",
+                  }}
+                >
+                  <s.icon size={22} color="#8b5cf6" />
                 </div>
-                <div className="text-3xl font-bold mb-1">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">
-                  {stat.label}
+                <div style={{ fontSize: 34, fontWeight: 800, marginBottom: 4 }}>
+                  {s.value}
                 </div>
+                <div style={{ fontSize: 14, color: "#71717a" }}>{s.label}</div>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ======== FEATURES ======== */}
-      <section id="features" className="py-20 px-4 relative">
-        <div className="absolute inset-0 bg-linear-to-b from-transparent via-violet-500/[0.02] to-transparent pointer-events-none" />
-        <div className="max-w-7xl mx-auto relative z-10">
-          <motion.div className="text-center mb-16" {...fadeUp}>
-            <Badge className="mb-4 bg-violet-500/10 text-violet-400 border-violet-500/20">
-              Features
-            </Badge>
-            <h2 className="text-4xl sm:text-5xl font-bold mb-4">
+      {/* ── FEATURES ── */}
+      <section id="features" style={{ padding: "80px 24px" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <motion.div
+            style={{ textAlign: "center", marginBottom: 56 }}
+            {...fadeUp}
+          >
+            <span style={badgeStyle}>Features</span>
+            <h2
+              style={{
+                fontSize: "clamp(28px,5vw,44px)",
+                fontWeight: 800,
+                marginBottom: 14,
+              }}
+            >
               Everything You Need to Prepare
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p
+              style={{
+                fontSize: 17,
+                color: "#71717a",
+                maxWidth: 560,
+                margin: "0 auto",
+                lineHeight: 1.7,
+              }}
+            >
               From AI-powered interview simulation to detailed analytics —
               everything built to help you land your dream job.
             </p>
           </motion.div>
-
-          <motion.div
-            className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
-            {...stagger}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
+              gap: 20,
+            }}
           >
-            {features.map((f) => (
-              <motion.div key={f.title} variants={childFade}>
-                <Card className="h-full group hover:shadow-xl hover:shadow-violet-500/5 transition-all duration-300 hover:-translate-y-1 border-border/50 hover:border-violet-500/20">
-                  <CardContent className="p-7">
-                    <div
-                      className={`w-12 h-12 rounded-xl bg-linear-to-br ${f.gradient} flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform duration-300`}
-                    >
-                      <f.icon className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2">{f.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {f.description}
-                    </p>
-                  </CardContent>
-                </Card>
+            {features.map((f, i) => (
+              <motion.div
+                key={f.title}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08 }}
+                whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                style={{
+                  background: "#0c0c0f",
+                  border: "1px solid #1e1e24",
+                  borderRadius: 18,
+                  padding: 28,
+                }}
+              >
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 12,
+                    background: f.color,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 20,
+                  }}
+                >
+                  <f.icon size={22} color="white" />
+                </div>
+                <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 10 }}>
+                  {f.title}
+                </h3>
+                <p
+                  style={{
+                    fontSize: 14,
+                    color: "#71717a",
+                    lineHeight: 1.7,
+                    margin: 0,
+                  }}
+                >
+                  {f.desc}
+                </p>
               </motion.div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* ======== INTERVIEW TYPES ======== */}
-      <section className="py-20 px-4">
-        <div className="max-w-5xl mx-auto">
-          <motion.div className="text-center mb-12" {...fadeUp}>
-            <h2 className="text-4xl sm:text-5xl font-bold mb-4">
+      {/* ── INTERVIEW TYPES ── */}
+      <section style={{ padding: "80px 24px" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <motion.div
+            style={{ textAlign: "center", marginBottom: 48 }}
+            {...fadeUp}
+          >
+            <h2
+              style={{
+                fontSize: "clamp(28px,5vw,44px)",
+                fontWeight: 800,
+                marginBottom: 12,
+              }}
+            >
               Practice Every Interview Format
             </h2>
-            <p className="text-muted-foreground text-lg">
+            <p style={{ fontSize: 17, color: "#71717a" }}>
               6 different interview types covering every aspect of the technical
               hiring process.
             </p>
           </motion.div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
+              gap: 14,
+            }}
+          >
             {interviewTypes.map((t, i) => (
               <motion.div
                 key={t.name}
@@ -543,28 +963,90 @@ export default function LandingPage() {
                 transition={{ delay: i * 0.07 }}
               >
                 <Link
-                  href={`/signup?type=${t.name.toLowerCase().replace(/ /g, "-")}`}
+                  href={`/signup?type=${t.name.toLowerCase()}`}
+                  style={{ textDecoration: "none" }}
                 >
-                  <div className="flex items-center gap-4 p-5 rounded-xl border border-border/50 hover:border-violet-500/20 hover:bg-violet-500/[0.02] transition-all cursor-pointer group">
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 16,
+                      padding: 18,
+                      borderRadius: 14,
+                      border: "1px solid #1e1e24",
+                      background: "#0c0c0f",
+                      cursor: "pointer",
+                      transition: "border-color 0.2s",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.borderColor =
+                        "rgba(124,58,237,0.35)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.borderColor = "#1e1e24")
+                    }
+                  >
                     <div
-                      className={`w-11 h-11 rounded-lg ${t.color} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 10,
+                        background: t.color,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
                     >
-                      <t.icon className="w-5 h-5 text-white" />
+                      <t.icon size={20} color="white" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold">{t.name}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          marginBottom: 4,
+                        }}
+                      >
                         <span
-                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${t.tag === "Free" ? "bg-green-500/10 text-green-500" : "bg-violet-500/10 text-violet-400"}`}
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 15,
+                            color: "#fafafa",
+                          }}
+                        >
+                          {t.name}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: "2px 7px",
+                            borderRadius: 4,
+                            background:
+                              t.tag === "Free"
+                                ? "rgba(34,197,94,0.12)"
+                                : "rgba(124,58,237,0.12)",
+                            color: t.tag === "Free" ? "#22c55e" : "#a78bfa",
+                          }}
                         >
                           {t.tag}
                         </span>
                       </div>
-                      <div className="text-sm text-muted-foreground truncate">
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: "#71717a",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {t.desc}
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ChevronRight size={16} color="#52525b" />
                   </div>
                 </Link>
               </motion.div>
@@ -573,58 +1055,116 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ======== HOW IT WORKS ======== */}
-      <section id="how-it-works" className="py-20 px-4 relative">
-        <div className="absolute inset-0 bg-linear-to-b from-transparent via-violet-500/[0.02] to-transparent pointer-events-none" />
-        <div className="max-w-5xl mx-auto relative z-10">
-          <motion.div className="text-center mb-16" {...fadeUp}>
-            <Badge className="mb-4 bg-violet-500/10 text-violet-400 border-violet-500/20">
-              How It Works
-            </Badge>
-            <h2 className="text-4xl sm:text-5xl font-bold mb-4">
+      {/* ── HOW IT WORKS ── */}
+      <section
+        id="how-it-works"
+        style={{ padding: "80px 24px", background: "rgba(124,58,237,0.025)" }}
+      >
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <motion.div
+            style={{ textAlign: "center", marginBottom: 56 }}
+            {...fadeUp}
+          >
+            <span style={badgeStyle}>How It Works</span>
+            <h2 style={{ fontSize: "clamp(28px,5vw,44px)", fontWeight: 800 }}>
               3 Steps to Interview Confidence
             </h2>
           </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                step: "01",
-                title: "Choose Your Format",
-                desc: "Pick interview type, target company, and difficulty level. From DSA to full on-site loops.",
-                icon: Target,
-              },
-              {
-                step: "02",
-                title: "Practice with AI",
-                desc: "The AI interviewer asks questions, follows up, gives hints — just like a real senior engineer.",
-                icon: Brain,
-              },
-              {
-                step: "03",
-                title: "Get Scored Feedback",
-                desc: "Detailed report with score, strengths, weaknesses, senior tips, and what to practice next.",
-                icon: BarChart3,
-              },
-            ].map((item, i) => (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))",
+              gap: 48,
+            }}
+          >
+            {(
+              [
+                {
+                  step: "01",
+                  title: "Choose Your Format",
+                  desc: "Pick interview type, target company, and difficulty level. From DSA to full on-site loops.",
+                  icon: Target,
+                },
+                {
+                  step: "02",
+                  title: "Practice with AI",
+                  desc: "The AI interviewer asks questions, follows up, gives hints — just like a real senior engineer.",
+                  icon: Brain,
+                },
+                {
+                  step: "03",
+                  title: "Get Scored Feedback",
+                  desc: "Detailed report with score, strengths, weaknesses, senior tips, and what to practice next.",
+                  icon: BarChart3,
+                },
+              ] as {
+                step: string;
+                title: string;
+                desc: string;
+                icon: React.ElementType;
+              }[]
+            ).map((item, i) => (
               <motion.div
                 key={item.step}
-                className="text-center"
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.15, duration: 0.5 }}
+                transition={{ delay: i * 0.15 }}
+                style={{ textAlign: "center" }}
               >
-                <div className="relative inline-flex mb-6">
-                  <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-xl shadow-violet-500/20">
-                    <item.icon className="w-7 h-7 text-white" />
+                <div
+                  style={{
+                    position: "relative",
+                    display: "inline-flex",
+                    marginBottom: 24,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: 18,
+                      background: "linear-gradient(135deg,#7c3aed,#4f46e5)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 8px 24px rgba(124,58,237,0.3)",
+                    }}
+                  >
+                    <item.icon size={28} color="white" />
                   </div>
-                  <span className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-background border-2 border-violet-500 flex items-center justify-center text-xs font-bold text-violet-500">
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: -8,
+                      right: -8,
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      background: "#050505",
+                      border: "2px solid #7c3aed",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: "#a78bfa",
+                    }}
+                  >
                     {item.step}
                   </span>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">
+                <h3 style={{ fontSize: 19, fontWeight: 700, marginBottom: 12 }}>
+                  {item.title}
+                </h3>
+                <p
+                  style={{
+                    fontSize: 14,
+                    color: "#71717a",
+                    lineHeight: 1.75,
+                    margin: 0,
+                  }}
+                >
                   {item.desc}
                 </p>
               </motion.div>
@@ -633,84 +1173,153 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ======== COMPANIES ======== */}
-      <section className="py-16 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.p className="text-sm text-muted-foreground mb-8" {...fadeUp}>
-            Practice for top tech companies
-          </motion.p>
-          <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12">
-            {companyLogos.map((c, i) => (
+      {/* ── COMPANIES ── */}
+      <section style={{ padding: "60px 24px", textAlign: "center" }}>
+        <p
+          style={{
+            fontSize: 12,
+            color: "#52525b",
+            marginBottom: 28,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+          }}
+        >
+          Practice for top tech companies
+        </p>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "center",
+            gap: 36,
+          }}
+        >
+          {companies.map((c) => (
+            <span
+              key={c}
+              style={{ fontSize: 18, fontWeight: 700, color: "#3f3f46" }}
+            >
+              {c}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {/* ── COMPARISON ── */}
+      <section style={{ padding: "80px 24px" }}>
+        <div style={{ maxWidth: 700, margin: "0 auto" }}>
+          <motion.div
+            style={{ textAlign: "center", marginBottom: 48 }}
+            {...fadeUp}
+          >
+            <h2
+              style={{
+                fontSize: "clamp(26px,5vw,40px)",
+                fontWeight: 800,
+                marginBottom: 12,
+              }}
+            >
+              How PrepWithAI Compares
+            </h2>
+            <p style={{ fontSize: 16, color: "#71717a" }}>
+              Every alternative, side by side.
+            </p>
+          </motion.div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 2fr auto",
+                gap: 16,
+                padding: "6px 18px",
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#52525b",
+                textTransform: "uppercase",
+                letterSpacing: 1,
+              }}
+            >
+              <span>Platform</span>
+              <span>What it does</span>
+              <span>Price</span>
+            </div>
+            {comparisons.map((c, i) => (
               <motion.div
                 key={c.name}
-                className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
+                initial={{ opacity: 0, x: -16 }}
+                whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
+                transition={{ delay: i * 0.07 }}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 2fr auto",
+                  gap: 16,
+                  padding: "16px 18px",
+                  borderRadius: 12,
+                  border: c.highlight
+                    ? "1px solid rgba(124,58,237,0.4)"
+                    : "1px solid #1e1e24",
+                  background: c.highlight ? "rgba(124,58,237,0.06)" : "#0c0c0f",
+                  alignItems: "center",
+                }}
               >
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: c.color }}
-                />
-                <span className="text-lg font-semibold">{c.name}</span>
+                <span
+                  style={{
+                    fontWeight: 700,
+                    fontSize: 15,
+                    color: c.highlight ? "#a78bfa" : "#fafafa",
+                  }}
+                >
+                  {c.name}
+                </span>
+                <span style={{ fontSize: 14, color: "#71717a" }}>{c.what}</span>
+                <span
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#fafafa",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {c.price}
+                </span>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ======== COMPARISON TABLE ======== */}
-      <section className="py-20 px-4">
-        <div className="max-w-3xl mx-auto">
-          <motion.div className="text-center mb-12" {...fadeUp}>
-            <h2 className="text-4xl font-bold mb-4">How PrepWithAI Compares</h2>
-            <p className="text-muted-foreground">
-              Every alternative, side by side. See why developers choose us.
-            </p>
-          </motion.div>
-
-          <motion.div className="space-y-3" {...stagger}>
-            {comparisons.map((c) => (
-              <motion.div
-                key={c.name}
-                variants={childFade}
-                className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${c.highlight ? "border-violet-500/30 bg-violet-500/5" : "border-border/50 hover:border-border"}`}
-              >
-                <div className="flex-1 min-w-0">
-                  <div
-                    className={`font-semibold ${c.highlight ? "gradient-text" : ""}`}
-                  >
-                    {c.name}
-                  </div>
-                  <div className="text-sm text-muted-foreground">{c.what}</div>
-                </div>
-                <div className="text-sm font-medium text-right ml-4">
-                  {c.price}
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ======== PRICING ======== */}
-      <section id="pricing" className="py-20 px-4 relative">
-        <div className="absolute inset-0 bg-linear-to-b from-transparent via-violet-500/[0.02] to-transparent pointer-events-none" />
-        <div className="max-w-6xl mx-auto relative z-10">
-          <motion.div className="text-center mb-12" {...fadeUp}>
-            <Badge className="mb-4 bg-violet-500/10 text-violet-400 border-violet-500/20">
-              Pricing
-            </Badge>
-            <h2 className="text-4xl sm:text-5xl font-bold mb-4">
+      {/* ── PRICING ── */}
+      <section
+        id="pricing"
+        style={{ padding: "80px 24px", background: "rgba(124,58,237,0.025)" }}
+      >
+        <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+          <motion.div
+            style={{ textAlign: "center", marginBottom: 56 }}
+            {...fadeUp}
+          >
+            <span style={badgeStyle}>Pricing</span>
+            <h2
+              style={{
+                fontSize: "clamp(28px,5vw,44px)",
+                fontWeight: 800,
+                marginBottom: 12,
+              }}
+            >
               Simple, Transparent Pricing
             </h2>
-            <p className="text-lg text-muted-foreground">
+            <p style={{ fontSize: 17, color: "#71717a" }}>
               Start free. Upgrade when you&apos;re ready. Cancel anytime.
             </p>
           </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
+              gap: 24,
+            }}
+          >
             {PRICING_PLANS.map((plan, i) => (
               <motion.div
                 key={plan.id}
@@ -718,134 +1327,260 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
+                style={{
+                  position: "relative",
+                  padding: 32,
+                  borderRadius: 20,
+                  border: plan.popular
+                    ? "1px solid rgba(124,58,237,0.5)"
+                    : "1px solid #1e1e24",
+                  background: plan.popular
+                    ? "rgba(124,58,237,0.06)"
+                    : "#0c0c0f",
+                  boxShadow: plan.popular
+                    ? "0 0 40px rgba(124,58,237,0.12)"
+                    : "none",
+                }}
               >
-                <Card
-                  className={`h-full relative ${plan.popular ? "border-violet-500/40 shadow-xl shadow-violet-500/10 scale-[1.03]" : "border-border/50"}`}
+                {plan.popular && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: -15,
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        padding: "5px 18px",
+                        borderRadius: 999,
+                        background: "linear-gradient(135deg,#7c3aed,#4f46e5)",
+                        color: "white",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        boxShadow: "0 4px 12px rgba(124,58,237,0.4)",
+                      }}
+                    >
+                      <Star size={11} /> Most Popular
+                    </span>
+                  </div>
+                )}
+                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>
+                  {plan.name}
+                </h3>
+                <p style={{ fontSize: 14, color: "#71717a", marginBottom: 24 }}>
+                  {plan.description}
+                </p>
+                <div style={{ marginBottom: 28 }}>
+                  <span style={{ fontSize: 52, fontWeight: 800 }}>
+                    ${plan.price}
+                  </span>
+                  <span
+                    style={{ fontSize: 15, color: "#71717a", marginLeft: 5 }}
+                  >
+                    {plan.period}
+                  </span>
+                </div>
+                <Link
+                  href="/signup"
+                  style={{
+                    display: "block",
+                    textAlign: "center",
+                    padding: "14px",
+                    borderRadius: 12,
+                    fontSize: 15,
+                    fontWeight: 700,
+                    textDecoration: "none",
+                    marginBottom: 28,
+                    background: plan.popular
+                      ? "linear-gradient(135deg,#7c3aed,#4f46e5)"
+                      : "transparent",
+                    color: "white",
+                    border: plan.popular ? "none" : "1px solid #3f3f46",
+                    boxShadow: plan.popular
+                      ? "0 0 20px rgba(124,58,237,0.3)"
+                      : "none",
+                  }}
                 >
-                  {plan.popular && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                      <Badge className="bg-violet-600 text-white px-4 py-1 shadow-lg shadow-violet-500/30">
-                        <Star className="w-3 h-3 mr-1.5" /> Most Popular
-                      </Badge>
-                    </div>
-                  )}
-                  <CardContent className="p-8">
-                    <h3 className="text-xl font-semibold mb-1">{plan.name}</h3>
-                    <p className="text-sm text-muted-foreground mb-5">
-                      {plan.description}
-                    </p>
-                    <div className="mb-6">
-                      <span className="text-5xl font-bold">${plan.price}</span>
-                      <span className="text-muted-foreground ml-1">
-                        {plan.period}
-                      </span>
-                    </div>
-                    <Link href="/signup">
-                      <Button
-                        className="w-full mb-6"
-                        variant={plan.popular ? "glow" : "outline"}
-                        size="lg"
-                      >
-                        {plan.cta}
-                      </Button>
-                    </Link>
-                    <ul className="space-y-3">
-                      {plan.features.map((feat) => (
-                        <li
-                          key={feat}
-                          className="flex items-start gap-2.5 text-sm"
-                        >
-                          <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-                          <span>{feat}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
+                  {plan.cta}
+                </Link>
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    margin: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                  }}
+                >
+                  {plan.features.map((feat: string) => (
+                    <li
+                      key={feat}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 10,
+                        fontSize: 14,
+                        color: "#a1a1aa",
+                      }}
+                    >
+                      <CheckCircle2
+                        size={16}
+                        color="#22c55e"
+                        style={{ flexShrink: 0, marginTop: 1 }}
+                      />
+                      {feat}
+                    </li>
+                  ))}
+                </ul>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ======== FINAL CTA ======== */}
-      <section className="py-24 px-4 relative">
-        <div className="absolute inset-0 bg-linear-to-br from-violet-500/5 via-transparent to-indigo-500/5 pointer-events-none" />
-        <div className="max-w-3xl mx-auto text-center relative z-10">
+      {/* ── FINAL CTA ── */}
+      <section style={{ padding: "100px 24px", textAlign: "center" }}>
+        <div style={{ maxWidth: 700, margin: "0 auto" }}>
           <motion.div {...fadeUp}>
-            <div className="w-20 h-20 rounded-2xl bg-linear-to-br from-violet-600 to-indigo-600 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-violet-500/25 animate-float-slow">
-              <Brain className="w-10 h-10 text-white" />
+            <div
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 22,
+                background: "linear-gradient(135deg,#7c3aed,#4f46e5)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 32px",
+                boxShadow: "0 0 48px rgba(124,58,237,0.35)",
+              }}
+            >
+              <Brain size={38} color="white" />
             </div>
-            <h2 className="text-4xl sm:text-5xl font-bold mb-4">
+            <h2
+              style={{
+                fontSize: "clamp(28px,5vw,48px)",
+                fontWeight: 800,
+                marginBottom: 16,
+              }}
+            >
               Ready to Ace Your Interview?
             </h2>
-            <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
+            <p
+              style={{
+                fontSize: 17,
+                color: "#71717a",
+                lineHeight: 1.75,
+                maxWidth: 500,
+                margin: "0 auto 36px",
+              }}
+            >
               Join developers using AI to prepare smarter, practice harder, and
               land offers at top tech companies.
             </p>
-            <Link href="/signup">
-              <Button
-                size="xl"
-                variant="glow"
-                className="gap-2 text-base px-10 py-5"
-              >
-                Start Free — No Credit Card
-                <ArrowRight className="w-5 h-5" />
-              </Button>
+            <Link
+              href="/signup"
+              style={{
+                ...gradientBtn,
+                padding: "16px 40px",
+                fontSize: 17,
+                borderRadius: 16,
+              }}
+            >
+              Start Free — No Credit Card <ArrowRight size={18} />
             </Link>
-            <p className="text-xs text-muted-foreground mt-4">
+            <p style={{ marginTop: 16, fontSize: 13, color: "#52525b" }}>
               3 free interviews per day · No credit card required
             </p>
           </motion.div>
         </div>
       </section>
 
-      {/* ======== FOOTER ======== */}
-      <footer className="border-t border-border/50 py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-violet-600 to-indigo-600 flex items-center justify-center">
-                <Brain className="w-4 h-4 text-white" />
-              </div>
-              <span className="font-bold text-lg">PrepWithAI</span>
+      {/* ── FOOTER ── */}
+      <footer style={{ borderTop: "1px solid #1e1e24", padding: "40px 24px" }}>
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 24,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: "linear-gradient(135deg,#7c3aed,#4f46e5)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Brain size={16} color="white" />
             </div>
-            <div className="flex items-center gap-8 text-sm text-muted-foreground">
-              <Link
-                href="/pricing"
-                className="hover:text-foreground transition-colors"
-              >
-                Pricing
-              </Link>
-              <Link
-                href="/questions"
-                className="hover:text-foreground transition-colors"
-              >
-                Questions
-              </Link>
-              <Link
-                href="/companies"
-                className="hover:text-foreground transition-colors"
-              >
-                Companies
-              </Link>
-              <Link
-                href="/login"
-                className="hover:text-foreground transition-colors"
-              >
-                Sign In
-              </Link>
-            </div>
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Built by{" "}
-              <span className="font-medium text-foreground">
-                Abdullah Tariq
-              </span>
-            </p>
+            <span style={{ fontWeight: 700, fontSize: 17 }}>PrepWithAI</span>
           </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
+            {(
+              [
+                ["Pricing", "/pricing"],
+                ["Questions", "/questions"],
+                ["Companies", "/companies"],
+                ["Sign In", "/login"],
+              ] as [string, string][]
+            ).map(([l, h]) => (
+              <Link
+                key={l}
+                href={h}
+                style={{
+                  fontSize: 14,
+                  color: "#71717a",
+                  textDecoration: "none",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#fafafa")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#71717a")}
+              >
+                {l}
+              </Link>
+            ))}
+          </div>
+          <p
+            style={{
+              fontSize: 13,
+              color: "#52525b",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              margin: 0,
+            }}
+          >
+            <Users size={14} /> Built by{" "}
+            <strong style={{ color: "#a1a1aa" }}>Abdullah Tariq</strong>
+          </p>
         </div>
       </footer>
+
+      {/* ── RESPONSIVE ── */}
+      <style>{`
+        .nav-desktop { display: flex !important; }
+        .nav-mobile  { display: none  !important; }
+        @media (max-width: 768px) {
+          .nav-desktop { display: none  !important; }
+          .nav-mobile  { display: flex  !important; }
+        }
+      `}</style>
     </div>
   );
 }

@@ -5,7 +5,6 @@ import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import { CheckCircle2, Star, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PRICING_PLANS } from "@/lib/constants";
 
@@ -39,7 +38,7 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-8 page-enter bg-[#080808]">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -48,13 +47,15 @@ export default function PricingPage() {
         <Badge className="mb-4">
           <Sparkles className="w-3 h-3 mr-1" /> Pricing
         </Badge>
-        <h1 className="text-4xl font-bold mb-3">Simple, Transparent Pricing</h1>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+        <h1 className="text-4xl font-bold mb-3 tracking-tight">
+          Simple, Transparent Pricing
+        </h1>
+        <p className="text-lg text-[#888] max-w-2xl mx-auto">
           Start free. Upgrade when you need more. Cancel anytime.
         </p>
       </motion.div>
 
-      <div className="grid md:grid-cols-3 gap-8">
+      <div className="grid md:grid-cols-3 gap-6">
         {PRICING_PLANS.map((plan, i) => (
           <motion.div
             key={plan.id}
@@ -62,53 +63,48 @@ export default function PricingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
           >
-            <Card
-              className={`h-full relative ${
+            <div
+              className={`h-full relative bg-[#111] border rounded-2xl p-8 transition-all duration-200 ${
                 plan.popular
-                  ? "border-violet-500 shadow-lg shadow-violet-500/10"
-                  : ""
+                  ? "border-indigo-500/50 shadow-lg shadow-indigo-500/10"
+                  : "border-white/[0.08] hover:border-white/[0.14]"
               }`}
             >
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-violet-600 text-white px-3 py-1">
+                  <Badge className="bg-indigo-600 text-white px-3 py-1">
                     <Star className="w-3 h-3 mr-1" /> Most Popular
                   </Badge>
                 </div>
               )}
-              <CardContent className="p-8">
-                <h3 className="text-xl font-semibold mb-2">{plan.name}</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {plan.description}
-                </p>
-                <div className="mb-6">
-                  <span className="text-4xl font-bold">${plan.price}</span>
-                  <span className="text-muted-foreground">{plan.period}</span>
-                </div>
-                <Button
-                  className="w-full mb-6"
-                  variant={plan.popular ? "glow" : "outline"}
-                  onClick={() => handleCheckout(plan.id)}
-                  disabled={loading === plan.id}
-                >
-                  {loading === plan.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : null}
-                  {plan.cta}
-                </Button>
-                <ul className="space-y-3">
-                  {plan.features.map((feature) => (
-                    <li
-                      key={feature}
-                      className="flex items-start gap-2 text-sm"
-                    >
-                      <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
+              <h3 className="text-xl font-semibold mb-2">{plan.name}</h3>
+              <p className="text-sm text-[#888] mb-4">{plan.description}</p>
+              <div className="mb-6">
+                <span className="text-4xl font-bold tabular-nums">
+                  ${plan.price}
+                </span>
+                <span className="text-[#555]">{plan.period}</span>
+              </div>
+              <Button
+                className="w-full mb-6"
+                variant={plan.popular ? "glow" : "outline"}
+                onClick={() => handleCheckout(plan.id)}
+                disabled={loading === plan.id}
+              >
+                {loading === plan.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : null}
+                {plan.cta}
+              </Button>
+              <ul className="space-y-3">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2 text-sm">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                    <span className="text-[#ccc]">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </motion.div>
         ))}
       </div>
@@ -118,9 +114,9 @@ export default function PricingPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="max-w-2xl mx-auto space-y-4 pt-8"
+        className="max-w-2xl mx-auto space-y-3 pt-8"
       >
-        <h2 className="text-2xl font-bold text-center mb-6">
+        <h2 className="text-2xl font-bold text-center mb-6 tracking-tight">
           Frequently Asked Questions
         </h2>
         {[
@@ -141,12 +137,13 @@ export default function PricingPage() {
             a: "Over 500 curated questions across DSA, system design, behavioral, frontend, and backend categories.",
           },
         ].map((faq) => (
-          <Card key={faq.q}>
-            <CardContent className="p-5">
-              <h3 className="font-medium mb-1">{faq.q}</h3>
-              <p className="text-sm text-muted-foreground">{faq.a}</p>
-            </CardContent>
-          </Card>
+          <div
+            key={faq.q}
+            className="bg-[#111] border border-white/[0.08] rounded-xl p-5 hover:border-white/[0.12] transition-colors"
+          >
+            <h3 className="font-medium text-sm mb-1">{faq.q}</h3>
+            <p className="text-sm text-[#888]">{faq.a}</p>
+          </div>
         ))}
       </motion.div>
     </div>

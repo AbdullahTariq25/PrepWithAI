@@ -96,15 +96,13 @@ export default function SettingsPage() {
   const plan = (session?.user as { plan?: string })?.plan || "free";
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="max-w-3xl mx-auto space-y-8 page-enter bg-[#080808]">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <h1 className="text-3xl font-bold mb-2">Settings</h1>
-        <p className="text-muted-foreground">
-          Manage your account and preferences
-        </p>
+        <p className="text-[#888]">Manage your account and preferences</p>
       </motion.div>
 
       {saved && (
@@ -127,14 +125,12 @@ export default function SettingsPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-violet-500/10 rounded-lg">
-                <User className="w-5 h-5 text-violet-500" />
+              <div className="p-2 bg-indigo-500/10 rounded-lg">
+                <User className="w-5 h-5 text-indigo-500" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold">Profile</h2>
-                <p className="text-sm text-muted-foreground">
-                  Your personal information
-                </p>
+                <p className="text-sm text-[#888]">Your personal information</p>
               </div>
             </div>
             <div className="space-y-4">
@@ -155,7 +151,7 @@ export default function SettingsPage() {
                   Email
                 </label>
                 <Input value={formData.email} disabled className="opacity-60" />
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-[#888] mt-1">
                   Email cannot be changed
                 </p>
               </div>
@@ -186,7 +182,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <h2 className="text-lg font-semibold">Security</h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-[#888]">
                   Password and authentication
                 </p>
               </div>
@@ -275,15 +271,13 @@ export default function SettingsPage() {
               </div>
               <div>
                 <h2 className="text-lg font-semibold">Billing & Plan</h2>
-                <p className="text-sm text-muted-foreground">
-                  Manage your subscription
-                </p>
+                <p className="text-sm text-[#888]">Manage your subscription</p>
               </div>
             </div>
-            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg mb-4">
+            <div className="flex items-center justify-between p-4 bg-white/[0.04] rounded-lg mb-4">
               <div>
                 <p className="font-medium">Current Plan</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-[#888]">
                   {plan === "free"
                     ? "Free tier — 3 interviews/day"
                     : plan === "pro"
@@ -296,7 +290,7 @@ export default function SettingsPage() {
                   plan === "free"
                     ? "bg-zinc-500/10 text-zinc-400"
                     : plan === "pro"
-                      ? "bg-violet-500/10 text-violet-400"
+                      ? "bg-indigo-500/10 text-indigo-400"
                       : "bg-blue-500/10 text-blue-400"
                 }
               >
@@ -342,7 +336,7 @@ export default function SettingsPage() {
             <h2 className="text-lg font-semibold text-red-500 mb-2">
               Danger Zone
             </h2>
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-sm text-[#888] mb-4">
               Permanently delete your account and all data. This action cannot
               be undone.
             </p>

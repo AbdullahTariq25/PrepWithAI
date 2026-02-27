@@ -107,7 +107,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center app-background px-4 py-12">
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-500/5 rounded-full blur-3xl" />
 
       <motion.div
@@ -120,7 +120,7 @@ export default function OnboardingPage() {
             <Brain className="w-6 h-6 text-white" />
           </div>
           <h1 className="text-2xl font-bold">{steps[step].title}</h1>
-          <p className="text-muted-foreground mt-1">{steps[step].subtitle}</p>
+          <p className="text-[#888] mt-1">{steps[step].subtitle}</p>
         </div>
 
         {/* Progress */}
@@ -129,7 +129,7 @@ export default function OnboardingPage() {
             <div
               key={i}
               className={`h-2 rounded-full transition-all duration-300 ${
-                i <= step ? "w-12 bg-violet-600" : "w-8 bg-muted"
+                i <= step ? "w-12 bg-indigo-600" : "w-8 bg-[#1A1A1A]"
               }`}
             />
           ))}
@@ -157,7 +157,7 @@ export default function OnboardingPage() {
                   <CardContent className="p-6 text-center">
                     <div className="text-3xl mb-2">{level.icon}</div>
                     <h3 className="font-semibold">{level.title}</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-[#888]">
                       {level.desc}
                     </p>
                   </CardContent>
@@ -220,7 +220,7 @@ export default function OnboardingPage() {
                 >
                   <CardContent className="p-5">
                     <h3 className="font-semibold">{company.name}</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-[#888]">
                       {company.style}
                     </p>
                   </CardContent>
@@ -268,3 +268,4 @@ export default function OnboardingPage() {
     </div>
   );
 }
+

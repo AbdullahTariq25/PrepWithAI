@@ -1,37 +1,42 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+﻿import type { Metadata } from "next";
+import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
-  title: "PrepWithAI — AI Interview Coach for Developers",
+  title: "PrepWithAI - The Complete Developer Career Platform",
   description:
-    "Practice technical interviews with an AI interviewer. Get real-time feedback, track your progress, and ace your next interview at Google, Meta, Amazon & more.",
+    "From your first line of code to your first 200K job offer. AI-powered interview prep with real-time feedback, ELO ratings, company prep packs, code execution and more.",
   keywords: [
     "interview prep",
     "AI interview",
     "coding interview",
     "system design",
     "mock interview",
-    "software developer",
-    "technical interview",
     "FAANG prep",
+    "developer career",
+    "ELO rating",
+    "technical interview",
+    "code execution",
+    "company prep packs",
   ],
   authors: [{ name: "Abdullah Tariq" }],
   openGraph: {
-    title: "PrepWithAI — AI Interview Coach for Developers",
+    title: "PrepWithAI - The Complete Developer Career Platform",
     description:
-      "Practice technical interviews with an AI interviewer. Get real-time feedback and ace your next interview.",
+      "AI-powered interview prep with real-time feedback, ELO ratings, company prep packs, and more.",
     type: "website",
   },
 };
@@ -42,9 +47,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${dmSans.variable} ${jetbrainsMono.variable} antialiased bg-[#080808] text-[#F5F5F5] min-h-screen`}
       >
         <AuthProvider>{children}</AuthProvider>
       </body>

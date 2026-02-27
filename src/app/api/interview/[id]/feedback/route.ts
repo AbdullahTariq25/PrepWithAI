@@ -1,9 +1,11 @@
-import { auth } from "@/lib/auth";
+﻿import { auth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Session from "@/models/Session";
+import User from "@/models/User";
 import UserProgress from "@/models/UserProgress";
 import Groq from "groq-sdk";
+import { calculateNewElo } from "@/lib/utils";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! });
 
@@ -18,54 +20,49 @@ export async function POST(
     }
 
     const { id } = await params;
-
     await connectDB();
+
     const interviewSession = await Session.findById(id);
     if (!interviewSession) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
-
     if (interviewSession.userId.toString() !== session.user.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // Build transcript from messages
     const transcript = interviewSession.messages
-      .map(
-        (m: { role: string; content: string }) => `${m.role}: ${m.content}`
-      )
+      .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
       .join("\n");
 
-    // Generate comprehensive feedback with Groq
     const response = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [
         {
           role: "system",
-          content: `You are an expert interview evaluator. Analyze the interview transcript and provide detailed, actionable feedback. Be specific about what was done well and what needs improvement. Return valid JSON only.`,
+          content: "You are an expert interview evaluator. Analyze the interview transcript and provide detailed, actionable feedback. Return valid JSON only.",
         },
         {
           role: "user",
-          content: `Analyze this ${interviewSession.type.replace("_", " ")} interview transcript (${interviewSession.difficulty} level, targeting ${interviewSession.company}).
+          content: `Analyze this ${interviewSession.type.replace(/_/g, " ")} interview (${interviewSession.difficulty} level, ${interviewSession.company}).
 
 Transcript:
 ${transcript.slice(0, 6000)}
 
-Return exactly this JSON structure (no markdown, no explanation):
+Return exactly this JSON (no markdown):
 {
-  "overallScore": <number 0-100>,
-  "scores": {
-    "problemSolving": <number 0-10>,
-    "communication": <number 0-10>,
-    "codeQuality": <number 0-10>,
-    "edgeCases": <number 0-10>,
-    "timeManagement": <number 0-10>
+  "overallScore": <0-100>,
+  "grades": {
+    "problemSolving": <0-100>,
+    "communication": <0-100>,
+    "codeQuality": <0-100>,
+    "edgeCases": <0-100>,
+    "timeManagement": <0-100>
   },
-  "strengths": ["strength1", "strength2", "strength3"],
-  "improvements": ["improvement1", "improvement2", "improvement3"],
-  "summary": "2-3 sentence overall assessment of the candidate's performance",
+  "strengths": ["str1", "str2", "str3"],
+  "improvements": ["imp1", "imp2", "imp3"],
+  "summary": "2-3 sentence assessment",
   "recommendedTopics": ["topic1", "topic2"],
-  "seniorTip": "One advanced tip a senior engineer would give"
+  "seniorTip": "one advanced tip"
 }`,
         },
       ],
@@ -81,70 +78,79 @@ Return exactly this JSON structure (no markdown, no explanation):
     } catch {
       feedback = {
         overallScore: 60,
-        scores: {
-          problemSolving: 6,
-          communication: 6,
-          codeQuality: 6,
-          edgeCases: 5,
-          timeManagement: 6,
-        },
+        grades: { problemSolving: 60, communication: 60, codeQuality: 60, edgeCases: 50, timeManagement: 60 },
         strengths: ["Attempted the problem"],
-        improvements: ["Could improve explanation clarity"],
-        summary: "The candidate showed basic understanding but could benefit from more practice.",
+        improvements: ["Could improve clarity"],
+        summary: "Basic understanding shown. More practice recommended.",
+        seniorTip: "Focus on articulating your thought process clearly.",
       };
     }
 
-    // Calculate duration
     const duration = interviewSession.messages.length > 0
-      ? Math.floor(
-          (new Date().getTime() -
-            new Date(interviewSession.createdAt).getTime()) /
-            1000
-        )
+      ? Math.floor((Date.now() - new Date(interviewSession.createdAt).getTime()) / 1000)
       : 0;
 
-    // Save feedback to session
+    const grades = feedback.grades || { problemSolving: 0, communication: 0, codeQuality: 0, edgeCases: 0, timeManagement: 0 };
+    const overallScore = feedback.overallScore || 60;
+
+    // ELO calculation
+    const user = await User.findById(session.user.id);
+    const currentElo = user?.eloRating || 1200;
+    const difficultyElo: Record<string, number> = { easy: 1000, medium: 1300, hard: 1600, expert: 1900 };
+    const expectedDifficulty = difficultyElo[interviewSession.difficulty] || 1300;
+    const newElo = calculateNewElo(currentElo, expectedDifficulty, overallScore, 100);
+    const eloChange = newElo - currentElo;
+
+    // Update session
     await Session.findByIdAndUpdate(id, {
-      overallScore: feedback.overallScore || 60,
+      overallScore,
+      grades,
       duration,
       completed: true,
+      reportGenerated: true,
+    });
+
+    // Update user ELO + streak
+    const streakUpdate = overallScore >= 60
+      ? { $inc: { currentStreak: 1 }, $max: { maxStreak: (user?.currentStreak || 0) + 1 } }
+      : { $set: { currentStreak: 0 } };
+
+    await User.findByIdAndUpdate(session.user.id, {
+      eloRating: newElo,
+      $inc: { totalSessions: 1 },
+      ...streakUpdate,
     });
 
     // Update user progress
+    const categoryMap: Record<string, string> = {
+      dsa: "dsa", system_design: "systemDesign", behavioral: "behavioral",
+      frontend: "frontend", backend: "backend", full_stack: "backend",
+      full_loop: "dsa", machine_learning: "backend", mobile: "frontend",
+      devops: "backend", data_engineering: "backend", security: "backend",
+    };
+    const category = categoryMap[interviewSession.type] || "dsa";
+
     await UserProgress.findOneAndUpdate(
       { userId: session.user.id },
       {
-        $push: {
-          dailyScores: {
-            date: new Date(),
-            score: feedback.overallScore || 60,
-          },
-        },
-        $inc: { totalSessions: 1, totalTime: duration },
         $set: {
-          [`skillScores.problemSolving`]: feedback.scores?.problemSolving
-            ? feedback.scores.problemSolving * 10
-            : undefined,
-          [`skillScores.communication`]: feedback.scores?.communication
-            ? feedback.scores.communication * 10
-            : undefined,
-          [`skillScores.codeQuality`]: feedback.scores?.codeQuality
-            ? feedback.scores.codeQuality * 10
-            : undefined,
-          [`skillScores.edgeCases`]: feedback.scores?.edgeCases
-            ? feedback.scores.edgeCases * 10
-            : undefined,
+          eloRating: newElo,
+          [`categoryScores.${category}`]: overallScore,
+          [`skillScores.problemSolving`]: grades.problemSolving,
+          [`skillScores.communication`]: grades.communication,
+          [`skillScores.codeQuality`]: grades.codeQuality,
         },
+        $push: { dailyScores: { date: new Date(), score: overallScore } },
+        $inc: { totalSessions: 1, totalTime: duration },
       },
       { upsert: true }
     );
 
-    return NextResponse.json({ feedback });
+    return NextResponse.json({
+      feedback: { ...feedback, eloChange, newElo, grades },
+    });
   } catch (error) {
-    console.error("Feedback generation error:", error);
-    return NextResponse.json(
-      { error: "Failed to generate feedback" },
-      { status: 500 }
-    );
+    console.error("Feedback error:", error);
+    return NextResponse.json({ error: "Failed to generate feedback" }, { status: 500 });
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   BarChart3,
@@ -11,36 +11,57 @@ import {
   Brain,
   Trophy,
   Zap,
+  Calendar,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { getEloLevel } from "@/lib/utils";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+} from "recharts";
+
+interface ProgressData {
+  totalSessions: number;
+  avgScore: number;
+  streak: number;
+  maxStreak: number;
+  totalTime: number;
+  eloRating: number;
+  skillScores: Record<string, number>;
+  categoryScores: Record<string, number>;
+  dailyScores: { date: string; score: number }[];
+  weeklyGoal: number;
+  sessionsThisWeek: number;
+}
 
 const skillLabels: Record<string, string> = {
   problemSolving: "Problem Solving",
-  codeQuality: "Code Quality",
   communication: "Communication",
-  systemDesign: "System Design",
+  codeQuality: "Code Quality",
   edgeCases: "Edge Cases",
-  optimization: "Optimization",
+  timeManagement: "Time Management",
+};
+
+const categoryLabels: Record<string, string> = {
+  dsa: "DSA",
+  systemDesign: "System Design",
+  behavioral: "Behavioral",
+  frontend: "Frontend",
+  backend: "Backend",
 };
 
 export default function ProgressPage() {
-  const [stats, setStats] = useState({
-    totalSessions: 0,
-    avgScore: 0,
-    streak: 0,
-    totalTime: 0,
-    skills: {
-      problemSolving: 0,
-      codeQuality: 0,
-      communication: 0,
-      systemDesign: 0,
-      edgeCases: 0,
-      optimization: 0,
-    },
-    dailyScores: [] as { date: string; score: number }[],
-  });
-  const [, setLoading] = useState(true);
+  const [stats, setStats] = useState<ProgressData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadProgress = async () => {
@@ -59,47 +80,169 @@ export default function ProgressPage() {
     loadProgress();
   }, []);
 
+  const eloRating = stats?.eloRating ?? 1200;
+  const eloLevel = useMemo(() => getEloLevel(eloRating), [eloRating]);
+  const skills = stats?.skillScores ?? {};
+  const categories = stats?.categoryScores ?? {};
+
+  const radarData = useMemo(
+    () =>
+      Object.entries(skills).map(([key, value]) => ({
+        subject: skillLabels[key] || key,
+        score: value,
+        fullMark: 100,
+      })),
+    [skills],
+  );
+
+  const chartData = useMemo(
+    () =>
+      (stats?.dailyScores ?? []).slice(-30).map((d) => ({
+        date: new Date(d.date).toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+        }),
+        score: d.score,
+      })),
+    [stats?.dailyScores],
+  );
+
+  const heatmapData = useMemo(() => {
+    const cells: { date: string; count: number; level: number }[] = [];
+    const dailyMap = new Map<string, number>();
+    for (const s of stats?.dailyScores ?? []) {
+      const day = s.date.split("T")[0];
+      dailyMap.set(day, (dailyMap.get(day) || 0) + 1);
+    }
+    for (let i = 83; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split("T")[0];
+      const count = dailyMap.get(key) || 0;
+      cells.push({
+        date: key,
+        count,
+        level:
+          count === 0
+            ? 0
+            : count <= 1
+              ? 1
+              : count <= 2
+                ? 2
+                : count <= 3
+                  ? 3
+                  : 4,
+      });
+    }
+    return cells;
+  }, [stats?.dailyScores]);
+
+  const heatmapColors = [
+    "bg-white/[0.04]",
+    "bg-indigo-500/30",
+    "bg-indigo-500/50",
+    "bg-indigo-500/70",
+    "bg-indigo-500",
+  ];
+
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-6 bg-[#080808]">
+        <div className="skeleton h-10 w-48 rounded-lg" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skeleton h-24 rounded-lg" />
+          ))}
+        </div>
+        <div className="grid lg:grid-cols-2 gap-6">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="skeleton h-64 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   const statCards = [
     {
       label: "Total Sessions",
-      value: stats.totalSessions,
+      value: String(stats?.totalSessions ?? 0),
       icon: Brain,
-      color: "text-blue-500",
+      color: "text-blue-400",
       bg: "bg-blue-500/10",
     },
     {
       label: "Average Score",
-      value: stats.avgScore || "—",
+      value: stats?.avgScore ? `${stats.avgScore}%` : "\u2014",
       icon: TrendingUp,
-      color: "text-green-500",
-      bg: "bg-green-500/10",
+      color: "text-emerald-400",
+      bg: "bg-emerald-500/10",
     },
     {
       label: "Day Streak",
-      value: stats.streak,
+      value: `${stats?.streak ?? 0}d`,
       icon: Flame,
-      color: "text-orange-500",
+      color: "text-orange-400",
       bg: "bg-orange-500/10",
     },
     {
       label: "Total Time",
-      value: `${Math.round(stats.totalTime / 60)}h`,
+      value: `${Math.round((stats?.totalTime ?? 0) / 60)}m`,
       icon: Clock,
-      color: "text-violet-500",
-      bg: "bg-violet-500/10",
+      color: "text-indigo-400",
+      bg: "bg-indigo-500/10",
     },
   ];
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-8 page-enter bg-[#080808]">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="text-3xl font-bold mb-1">Progress</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-3xl font-bold tracking-tight">Progress</h1>
+        <p className="text-[#888] text-sm mt-1">
           Track your improvement over time
         </p>
+      </motion.div>
+
+      {/* ELO banner */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+      >
+        <div className="bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-500/20 rounded-2xl p-6 flex items-center gap-6">
+          <div className="elo-glow flex items-center justify-center w-20 h-20 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 shrink-0">
+            <div className="text-center">
+              <Zap className="w-6 h-6 text-indigo-400 mx-auto" />
+              <div className="text-2xl font-bold text-indigo-400 tabular-nums">
+                {eloRating}
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div
+              className="text-lg font-bold"
+              style={{ color: eloLevel.color }}
+            >
+              {eloLevel.name}
+            </div>
+            <p className="text-sm text-[#888]">
+              Your competitive ELO rating. Win interviews to climb.
+            </p>
+            <div className="mt-2">
+              <Progress
+                value={Math.min(((eloRating - 800) / 1200) * 100, 100)}
+                className="h-2"
+              />
+              <div className="flex justify-between text-xs text-[#555] mt-1">
+                <span>800</span>
+                <span>2000+</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </motion.div>
 
       {/* Stats */}
@@ -110,158 +253,216 @@ export default function ProgressPage() {
         transition={{ delay: 0.1 }}
       >
         {statCards.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="p-4 flex items-center gap-4">
-              <div
-                className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center`}
-              >
-                <stat.icon className={`w-5 h-5 ${stat.color}`} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stat.value}</p>
-                <p className="text-xs text-muted-foreground">{stat.label}</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div
+            key={stat.label}
+            className="bg-[#111] border border-white/[0.08] rounded-xl p-4 flex items-center gap-3 card-3d"
+          >
+            <div
+              className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center shrink-0`}
+            >
+              <stat.icon className={`w-5 h-5 ${stat.color}`} />
+            </div>
+            <div>
+              <p className="text-2xl font-bold tabular-nums">{stat.value}</p>
+              <p className="text-[10px] text-[#555] uppercase tracking-wider">
+                {stat.label}
+              </p>
+            </div>
+          </div>
         ))}
       </motion.div>
 
-      {/* Skills radar */}
-      <div className="grid lg:grid-cols-2 gap-8">
+      {/* Activity Heatmap */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+      >
+        <div className="bg-[#111] border border-white/[0.08] rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Calendar className="w-5 h-5 text-indigo-400" />
+            <h3 className="font-semibold text-sm">Activity Heatmap</h3>
+          </div>
+          <div className="flex gap-[3px] flex-wrap">
+            {heatmapData.map((cell) => (
+              <div
+                key={cell.date}
+                className={`w-3 h-3 rounded-[2px] heatmap-cell ${heatmapColors[cell.level]}`}
+                title={`${cell.date}: ${cell.count} sessions`}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-2 mt-3 text-xs text-[#555]">
+            <span>Less</span>
+            {heatmapColors.map((c, i) => (
+              <div key={i} className={`w-3 h-3 rounded-[2px] ${c}`} />
+            ))}
+            <span>More</span>
+          </div>
+        </div>
+      </motion.div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Score Trend Chart */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="w-5 h-5 text-violet-500" /> Skill Breakdown
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {Object.entries(stats.skills).map(([key, value]) => (
-                <div key={key} className="space-y-1.5">
-                  <div className="flex justify-between text-sm">
-                    <span>{skillLabels[key] || key}</span>
-                    <span className="text-muted-foreground">{value}/100</span>
-                  </div>
-                  <Progress value={value} className="h-2" />
-                </div>
-              ))}
-              {stats.totalSessions === 0 && (
-                <p className="text-sm text-muted-foreground text-center pt-2">
-                  Complete interviews to build your skill profile
+          <div className="bg-[#111] border border-white/[0.08] rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="w-5 h-5 text-indigo-400" />
+              <h3 className="font-semibold text-sm">Score Trend</h3>
+            </div>
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={chartData}>
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11, fill: "#555" }}
+                    axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    tick={{ fontSize: 11, fill: "#555" }}
+                    axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "#1A1A1A",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 8,
+                      color: "#fff",
+                      fontSize: 12,
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="score"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    dot={{ fill: "#6366f1", r: 3 }}
+                    activeDot={{ r: 5, fill: "#818cf8" }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-64 flex flex-col items-center justify-center text-center">
+                <Trophy className="w-10 h-10 text-[#333] mb-3" />
+                <p className="text-sm text-[#555]">
+                  Complete sessions to see your score trend
                 </p>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+            )}
+          </div>
         </motion.div>
 
-        {/* Score trend chart placeholder */}
+        {/* Skill Radar Chart */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.25 }}
         >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-violet-500" /> Score Trend
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {stats.dailyScores.length > 0 ? (
-                <div className="h-64 flex items-end gap-1">
-                  {stats.dailyScores.slice(-14).map((d, i) => (
-                    <div
-                      key={i}
-                      className="flex-1 flex flex-col items-center gap-1"
-                    >
-                      <div
-                        className="w-full bg-violet-500 rounded-t-sm transition-all"
-                        style={{ height: `${(d.score / 100) * 200}px` }}
-                      />
-                      <span className="text-xs text-muted-foreground rotate-45 origin-left">
-                        {new Date(d.date).toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="h-64 flex flex-col items-center justify-center text-center">
-                  <Trophy className="w-12 h-12 text-muted-foreground mb-4" />
-                  <p className="text-sm text-muted-foreground">
-                    Complete more sessions to see your score trend
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="bg-[#111] border border-white/[0.08] rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Target className="w-5 h-5 text-indigo-400" />
+              <h3 className="font-semibold text-sm">Skill Radar</h3>
+            </div>
+            {(stats?.totalSessions ?? 0) > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <RadarChart data={radarData}>
+                  <PolarGrid stroke="rgba(255,255,255,0.06)" />
+                  <PolarAngleAxis
+                    dataKey="subject"
+                    tick={{ fontSize: 10, fill: "#888" }}
+                  />
+                  <PolarRadiusAxis
+                    domain={[0, 100]}
+                    tick={false}
+                    axisLine={false}
+                  />
+                  <Radar
+                    dataKey="score"
+                    stroke="#6366f1"
+                    fill="#6366f1"
+                    fillOpacity={0.15}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-64 flex flex-col items-center justify-center text-center">
+                <Target className="w-10 h-10 text-[#333] mb-3" />
+                <p className="text-sm text-[#555]">
+                  Complete interviews to build your skill radar
+                </p>
+              </div>
+            )}
+          </div>
         </motion.div>
       </div>
 
-      {/* Achievements */}
+      {/* Category Scores */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.3 }}
       >
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-violet-500" /> Achievements
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                {
-                  name: "First Steps",
-                  desc: "Complete 1 interview",
-                  icon: "🎯",
-                  unlocked: stats.totalSessions >= 1,
-                },
-                {
-                  name: "Streak Master",
-                  desc: "7-day streak",
-                  icon: "🔥",
-                  unlocked: stats.streak >= 7,
-                },
-                {
-                  name: "High Achiever",
-                  desc: "Score 90+",
-                  icon: "⭐",
-                  unlocked: stats.avgScore >= 90,
-                },
-                {
-                  name: "Veteran",
-                  desc: "Complete 50 sessions",
-                  icon: "🏆",
-                  unlocked: stats.totalSessions >= 50,
-                },
-              ].map((ach) => (
-                <div
-                  key={ach.name}
-                  className={`p-4 rounded-xl border text-center transition-all ${
-                    ach.unlocked
-                      ? "bg-violet-500/5 border-violet-500/20"
-                      : "opacity-40 grayscale"
-                  }`}
-                >
-                  <div className="text-2xl mb-2">{ach.icon}</div>
-                  <div className="font-medium text-sm">{ach.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {ach.desc}
-                  </div>
+        <div className="bg-[#111] border border-white/[0.08] rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-5">
+            <Target className="w-5 h-5 text-indigo-400" />
+            <h3 className="font-semibold text-sm">Category Breakdown</h3>
+          </div>
+          <div className="space-y-4">
+            {Object.entries(categories).map(([key, value]) => (
+              <div key={key} className="space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#ccc]">
+                    {categoryLabels[key] || key}
+                  </span>
+                  <span className="text-[#888] tabular-nums">{value}/100</span>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <Progress value={value} className="h-2" />
+              </div>
+            ))}
+            {Object.keys(categories).length === 0 && (
+              <p className="text-sm text-[#555] text-center py-4">
+                Complete interviews to build your category scores
+              </p>
+            )}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Skill Breakdown */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+      >
+        <div className="bg-[#111] border border-white/[0.08] rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-5">
+            <Brain className="w-5 h-5 text-indigo-400" />
+            <h3 className="font-semibold text-sm">Skill Breakdown</h3>
+          </div>
+          <div className="space-y-4">
+            {Object.entries(skills).map(([key, value]) => (
+              <div key={key} className="space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#ccc]">{skillLabels[key] || key}</span>
+                  <span className="text-[#888] tabular-nums">{value}/100</span>
+                </div>
+                <Progress value={value} className="h-2" />
+              </div>
+            ))}
+            {Object.keys(skills).length === 0 && (
+              <p className="text-sm text-[#555] text-center py-4">
+                Complete interviews to build your skill profile
+              </p>
+            )}
+          </div>
+        </div>
       </motion.div>
     </div>
   );

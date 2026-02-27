@@ -10,9 +10,9 @@ import {
   Layout,
   Server,
   ChevronRight,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
@@ -22,84 +22,84 @@ const categories = [
     name: "Arrays & Strings",
     count: 45,
     icon: Code2,
-    color: "bg-blue-500",
+    gradient: "from-blue-500 to-cyan-500",
   },
   {
     id: "trees",
     name: "Trees & Graphs",
     count: 38,
     icon: Network,
-    color: "bg-purple-500",
+    gradient: "from-purple-500 to-indigo-500",
   },
   {
     id: "dp",
     name: "Dynamic Programming",
     count: 32,
     icon: Code2,
-    color: "bg-green-500",
+    gradient: "from-green-500 to-emerald-500",
   },
   {
     id: "system-design",
     name: "System Design",
     count: 25,
     icon: Network,
-    color: "bg-orange-500",
+    gradient: "from-orange-500 to-amber-500",
   },
   {
     id: "behavioral",
     name: "Behavioral",
     count: 40,
     icon: MessageSquare,
-    color: "bg-pink-500",
+    gradient: "from-pink-500 to-rose-500",
   },
   {
     id: "frontend",
     name: "Frontend",
     count: 30,
     icon: Layout,
-    color: "bg-cyan-500",
+    gradient: "from-cyan-500 to-teal-500",
   },
   {
     id: "backend",
     name: "Backend & APIs",
     count: 28,
     icon: Server,
-    color: "bg-red-500",
+    gradient: "from-red-500 to-pink-500",
   },
   {
     id: "sorting",
     name: "Sorting & Searching",
     count: 22,
     icon: Code2,
-    color: "bg-indigo-500",
+    gradient: "from-indigo-500 to-violet-500",
   },
   {
     id: "linked-lists",
     name: "Linked Lists",
     count: 18,
     icon: Code2,
-    color: "bg-yellow-500",
+    gradient: "from-yellow-500 to-orange-500",
   },
   {
     id: "stacks-queues",
     name: "Stacks & Queues",
     count: 15,
     icon: Code2,
-    color: "bg-emerald-500",
+    gradient: "from-emerald-500 to-green-500",
   },
   {
     id: "math",
     name: "Math & Logic",
     count: 20,
     icon: Code2,
-    color: "bg-violet-500",
+    gradient: "from-indigo-500 to-blue-500",
   },
   {
     id: "concurrency",
     name: "Concurrency",
     count: 12,
     icon: Server,
-    color: "bg-rose-500",
+    gradient: "from-rose-500 to-red-500",
   },
 ];
 
@@ -142,10 +142,16 @@ const sampleQuestions = [
   },
 ];
 
-const difficultyColors: Record<string, string> = {
-  Easy: "text-green-500 bg-green-500/10",
-  Medium: "text-yellow-500 bg-yellow-500/10",
-  Hard: "text-red-500 bg-red-500/10",
+const difficultyBorder: Record<string, string> = {
+  Easy: "border-l-green-500",
+  Medium: "border-l-amber-500",
+  Hard: "border-l-red-500",
+};
+
+const difficultyText: Record<string, string> = {
+  Easy: "text-green-400 bg-green-500/10",
+  Medium: "text-amber-400 bg-amber-500/10",
+  Hard: "text-red-400 bg-red-500/10",
 };
 
 export default function QuestionsPage() {
@@ -167,104 +173,133 @@ export default function QuestionsPage() {
   });
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-8 page-enter bg-[#080808]">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="text-3xl font-bold mb-1">Question Bank</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-3xl font-bold tracking-tight">Question Bank</h1>
+        <p className="text-[#888] text-sm mt-1">
           Browse 500+ curated interview questions
         </p>
       </motion.div>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search questions..."
-          className="pl-10"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+      >
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555]" />
+          <Input
+            placeholder="Search questions by title or category..."
+            className="pl-10"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </motion.div>
 
       {/* Categories grid */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Categories</h2>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <h2 className="text-lg font-semibold mb-3">Categories</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {categories.map((cat) => (
-            <Card
+          {categories.map((cat, i) => (
+            <motion.div
               key={cat.id}
-              className={`cursor-pointer transition-all hover:shadow-md ${
-                selectedCategory === cat.id ? "border-violet-500" : ""
-              }`}
-              onClick={() =>
-                setSelectedCategory(selectedCategory === cat.id ? null : cat.id)
-              }
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + i * 0.03 }}
             >
-              <CardContent className="p-4 flex items-center gap-3">
+              <div
+                className={`bg-[#111] border rounded-xl p-4 flex items-center gap-3 cursor-pointer transition-all duration-200 hover:bg-[#131313] group ${
+                  selectedCategory === cat.id
+                    ? "border-indigo-500/50 bg-indigo-500/5"
+                    : "border-white/[0.08] hover:border-white/[0.14]"
+                }`}
+                onClick={() =>
+                  setSelectedCategory(
+                    selectedCategory === cat.id ? null : cat.id,
+                  )
+                }
+              >
                 <div
-                  className={`w-9 h-9 rounded-lg ${cat.color} flex items-center justify-center`}
+                  className={`w-9 h-9 rounded-lg bg-gradient-to-br ${cat.gradient} flex items-center justify-center shrink-0`}
                 >
                   <cat.icon className="w-4 h-4 text-white" />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm">{cat.name}</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-[#555]">
                     {cat.count} questions
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </CardContent>
-            </Card>
+                <ChevronRight className="w-4 h-4 text-[#555] opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </motion.div>
           ))}
         </div>
-      </div>
+      </motion.div>
 
       {/* Questions list */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Popular Questions</h2>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <h2 className="text-lg font-semibold mb-3">Popular Questions</h2>
         <div className="space-y-2">
           {filtered.map((q, i) => (
             <motion.div
               key={q.title}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
+              transition={{ delay: 0.2 + i * 0.04 }}
             >
-              <Card className="hover:shadow-sm transition-all cursor-pointer">
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium">{q.title}</span>
-                      <Badge
-                        className={`text-xs ${difficultyColors[q.difficulty] || ""}`}
-                        variant="outline"
-                      >
-                        {q.difficulty}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {q.category}
-                      </Badge>
-                      {q.companies.slice(0, 3).map((c) => (
-                        <span key={c} className="text-xs text-muted-foreground">
-                          {c}
-                        </span>
-                      ))}
-                    </div>
+              <div
+                className={`bg-[#111] border border-white/[0.08] rounded-xl p-4 flex items-center gap-4 hover:border-white/[0.14] hover:bg-[#131313] transition-all duration-200 cursor-pointer group border-l-2 ${difficultyBorder[q.difficulty] || "border-l-white/[0.1]"}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="font-medium text-sm">{q.title}</span>
+                    <Badge
+                      className={`text-[10px] ${difficultyText[q.difficulty] || ""}`}
+                      variant="outline"
+                    >
+                      {q.difficulty}
+                    </Badge>
                   </div>
-                  <Button variant="outline" size="sm">
-                    Practice
-                  </Button>
-                </CardContent>
-              </Card>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-[10px]">
+                      {q.category}
+                    </Badge>
+                    {q.companies.slice(0, 3).map((c) => (
+                      <span
+                        key={c}
+                        className="text-[10px] text-[#555] px-1.5 py-0.5 rounded bg-white/[0.04]"
+                      >
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity gap-1 text-xs"
+                >
+                  Practice <ArrowRight className="w-3 h-3" />
+                </Button>
+              </div>
             </motion.div>
           ))}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

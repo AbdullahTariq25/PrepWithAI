@@ -1,336 +1,171 @@
-import connectDB from "../lib/mongodb";
+﻿import connectDB from "../lib/mongodb";
 import Question from "../models/Question";
 
 const questions = [
-  // ===== DSA - Easy =====
-  {
-    title: "Two Sum",
-    description:
-      "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. You may assume that each input would have exactly one solution.",
-    difficulty: "easy",
-    category: "array",
-    companies: ["google", "amazon", "meta", "apple"],
-    frequency: 9,
-    timeLimit: 20,
-    hints: [
-      "Think about what you need to find for each element",
-      "Could you use a hash map to store complements?",
-      "For each num, check if (target - num) exists in your map",
-    ],
-    solutionApproaches: ["Hash Map — O(n) time, O(n) space", "Brute Force — O(n²) time, O(1) space"],
-    tags: ["array", "hash-map", "beginner-friendly"],
-  },
-  {
-    title: "Valid Parentheses",
-    description:
-      "Given a string s containing just '(', ')', '{', '}', '[' and ']', determine if the input string is valid. Open brackets must be closed in the correct order.",
-    difficulty: "easy",
-    category: "string",
-    companies: ["amazon", "microsoft", "google"],
-    frequency: 8,
-    timeLimit: 15,
-    hints: [
-      "Stack is perfect for matching pairs",
-      "Push on open bracket, pop on close bracket",
-      "At the end, the stack should be empty",
-    ],
-    solutionApproaches: ["Stack — O(n) time, O(n) space"],
-    tags: ["stack", "string"],
-  },
-  {
-    title: "Merge Two Sorted Lists",
-    description:
-      "You are given the heads of two sorted linked lists. Merge the two lists into one sorted list by splicing together the nodes.",
-    difficulty: "easy",
-    category: "linkedlist",
-    companies: ["amazon", "apple", "microsoft"],
-    frequency: 8,
-    timeLimit: 15,
-    hints: [
-      "Use a dummy head to simplify the merge",
-      "Compare heads of both lists and pick the smaller one",
-      "Don't forget to append the remaining list",
-    ],
-    solutionApproaches: ["Iterative merge — O(n+m) time", "Recursive — O(n+m) time"],
-    tags: ["linked-list", "two-pointer"],
-  },
-  {
-    title: "Best Time to Buy and Sell Stock",
-    description:
-      "You are given an array prices where prices[i] is the price of a given stock on the ith day. You want to maximize your profit by choosing a single day to buy and a single day to sell.",
-    difficulty: "easy",
-    category: "array",
-    companies: ["amazon", "meta", "google", "microsoft"],
-    frequency: 9,
-    timeLimit: 15,
-    hints: [
-      "Track the minimum price seen so far",
-      "At each day, calculate profit if you sold today",
-      "Keep the maximum profit across all days",
-    ],
-    solutionApproaches: ["Single pass — O(n) time, O(1) space"],
-    tags: ["array", "greedy", "dynamic-programming"],
-  },
-
-  // ===== DSA - Medium =====
-  {
-    title: "Longest Substring Without Repeating Characters",
-    description:
-      "Given a string s, find the length of the longest substring without repeating characters.",
-    difficulty: "medium",
-    category: "string",
-    companies: ["amazon", "meta", "google", "stripe"],
-    frequency: 9,
-    timeLimit: 25,
-    hints: [
-      "Sliding window technique",
-      "Use a set to track characters in the current window",
-      "Expand right, shrink left on duplicate",
-    ],
-    solutionApproaches: ["Sliding Window + Set — O(n)", "Sliding Window + Map — O(n)"],
-    tags: ["sliding-window", "string", "hash-set"],
-  },
-  {
-    title: "LRU Cache",
-    description:
-      "Design a data structure that follows the constraints of a Least Recently Used (LRU) cache. Implement get() and put() in O(1) time.",
-    difficulty: "medium",
-    category: "design",
-    companies: ["amazon", "google", "meta", "microsoft"],
-    frequency: 8,
-    timeLimit: 35,
-    hints: [
-      "HashMap + Doubly Linked List",
-      "O(1) for both get and put",
-      "Move accessed items to front of list",
-    ],
-    solutionApproaches: ["HashMap + Doubly Linked List — O(1) get/put"],
-    tags: ["design", "linked-list", "hash-map"],
-  },
-  {
-    title: "3Sum",
-    description:
-      "Given an integer array nums, return all the triplets [nums[i], nums[j], nums[k]] such that i != j, i != k, j != k, and nums[i] + nums[j] + nums[k] == 0.",
-    difficulty: "medium",
-    category: "array",
-    companies: ["amazon", "google", "meta", "apple"],
-    frequency: 9,
-    timeLimit: 30,
-    hints: [
-      "Sort the array first",
-      "Fix one element and use two pointers for the rest",
-      "Skip duplicates to avoid repeated triplets",
-    ],
-    solutionApproaches: ["Sort + Two Pointers — O(n²)", "Hash Set approach — O(n²)"],
-    tags: ["array", "two-pointer", "sorting"],
-  },
-  {
-    title: "Binary Tree Level Order Traversal",
-    description:
-      "Given the root of a binary tree, return the level order traversal of its nodes' values (i.e., from left to right, level by level).",
-    difficulty: "medium",
-    category: "tree",
-    companies: ["meta", "amazon", "microsoft"],
-    frequency: 7,
-    timeLimit: 20,
-    hints: [
-      "Use a queue (BFS)",
-      "Process all nodes at one level before moving to the next",
-      "Track the size of the queue at each level",
-    ],
-    solutionApproaches: ["BFS with Queue — O(n)", "DFS with depth tracking — O(n)"],
-    tags: ["tree", "bfs", "queue"],
-  },
-
-  // ===== DSA - Hard =====
-  {
-    title: "Median of Two Sorted Arrays",
-    description:
-      "Given two sorted arrays nums1 and nums2, return the median of the two sorted arrays. The overall run time complexity should be O(log (m+n)).",
-    difficulty: "hard",
-    category: "array",
-    companies: ["google", "amazon", "apple"],
-    frequency: 7,
-    timeLimit: 45,
-    hints: [
-      "Think binary search, not merging",
-      "Partition both arrays at the right point",
-      "The smaller array should be the one you binary search on",
-    ],
-    solutionApproaches: ["Binary Search — O(log(min(m,n)))"],
-    tags: ["array", "binary-search", "divide-and-conquer"],
-  },
-
-  // ===== System Design =====
-  {
-    title: "Design URL Shortener (like bit.ly)",
-    description:
-      "Design a URL shortening service. Cover: API design, database schema, hash generation, redirect mechanism, and scaling strategies.",
-    difficulty: "medium",
-    category: "system_design",
-    companies: ["google", "amazon", "meta"],
-    frequency: 9,
-    timeLimit: 45,
-    hints: [
-      "Start with requirements: scale, latency, storage",
-      "Consider Base62 encoding for short codes",
-      "Think about read-heavy vs write-heavy and caching",
-    ],
-    solutionApproaches: ["Base62 encoding + NoSQL", "Counter-based + SQL"],
-    tags: ["system-design", "hashing", "databases"],
-  },
-  {
-    title: "Design Twitter/X Feed",
-    description:
-      "Design a simplified Twitter. Cover: posting tweets, following users, and generating a home timeline. Discuss fan-out strategies.",
-    difficulty: "hard",
-    category: "system_design",
-    companies: ["meta", "google", "twitter"],
-    frequency: 8,
-    timeLimit: 60,
-    hints: [
-      "Fan-out on write vs fan-out on read",
-      "Consider celebrity users (hot spots)",
-      "Redis for timeline caching, Kafka for async processing",
-    ],
-    solutionApproaches: ["Hybrid fan-out approach"],
-    tags: ["system-design", "social-media", "caching"],
-  },
-  {
-    title: "Design a Chat System (like WhatsApp)",
-    description:
-      "Design a real-time messaging system. Cover: 1:1 chats, group chats, message delivery guarantees, read receipts, and media sharing.",
-    difficulty: "hard",
-    category: "system_design",
-    companies: ["meta", "google", "microsoft"],
-    frequency: 8,
-    timeLimit: 60,
-    hints: [
-      "WebSockets for real-time communication",
-      "Message queue for reliability",
-      "Consider offline message storage and sync",
-    ],
-    solutionApproaches: ["WebSocket + Message Queue + NoSQL"],
-    tags: ["system-design", "real-time", "messaging"],
-  },
-
-  // ===== Behavioral =====
-  {
-    title: "Tell me about a time you disagreed with your manager",
-    description:
-      "Use the STAR method: Situation, Task, Action, Result. Show you can disagree professionally and reach good outcomes.",
-    difficulty: "medium",
-    category: "behavioral",
-    companies: ["amazon", "google", "meta", "microsoft"],
-    frequency: 9,
-    timeLimit: 10,
-    hints: [
-      "Focus on the outcome being positive",
-      "Show respectful disagreement with data",
-      "Emphasize the reasoning you used",
-    ],
-    solutionApproaches: ["STAR method"],
-    tags: ["behavioral", "leadership", "conflict"],
-  },
-  {
-    title: "Describe your biggest technical failure",
-    description:
-      "Talk about a significant technical mistake. What happened, what you learned, and how you prevented it from recurring.",
-    difficulty: "easy",
-    category: "behavioral",
-    companies: ["amazon", "stripe", "shopify"],
-    frequency: 8,
-    timeLimit: 10,
-    hints: [
-      "Be honest — interviewers respect self-awareness",
-      "Focus heavily on learnings",
-      "Show what systems/processes you put in place after",
-    ],
-    solutionApproaches: ["STAR method with emphasis on growth"],
-    tags: ["behavioral", "growth", "reflection"],
-  },
-  {
-    title: "Tell me about a project you're most proud of",
-    description:
-      "Discuss a project showcasing your technical skills, impact, and ownership. Quantify results where possible.",
-    difficulty: "easy",
-    category: "behavioral",
-    companies: ["google", "meta", "amazon", "apple", "microsoft"],
-    frequency: 9,
-    timeLimit: 10,
-    hints: [
-      "Pick a project with measurable impact",
-      "Explain your specific contributions clearly",
-      "Discuss trade-offs and decisions you made",
-    ],
-    solutionApproaches: ["STAR method with metrics"],
-    tags: ["behavioral", "impact", "ownership"],
-  },
-
-  // ===== Frontend =====
-  {
-    title: "Implement Debounce Function",
-    description:
-      "Write a debounce function that limits the rate at which a function fires. Explain when you would use debounce vs throttle.",
-    difficulty: "medium",
-    category: "frontend",
-    companies: ["google", "meta", "amazon"],
-    frequency: 7,
-    timeLimit: 20,
-    hints: [
-      "Use setTimeout and clearTimeout",
-      "Return a new function that wraps the original",
-      "Clear the previous timer on each call",
-    ],
-    solutionApproaches: ["Closure + setTimeout — O(1)"],
-    tags: ["frontend", "javascript", "closures"],
-  },
-
-  // ===== Backend =====
-  {
-    title: "Design a Rate Limiter",
-    description:
-      "Design a rate limiter that can be used in an API gateway. Discuss token bucket, sliding window, and fixed window algorithms.",
-    difficulty: "medium",
-    category: "backend",
-    companies: ["stripe", "amazon", "google"],
-    frequency: 8,
-    timeLimit: 35,
-    hints: [
-      "Compare token bucket vs sliding window",
-      "Consider distributed rate limiting with Redis",
-      "Think about different granularity levels (user, IP, API key)",
-    ],
-    solutionApproaches: [
-      "Token Bucket",
-      "Sliding Window Counter",
-      "Fixed Window with Redis",
-    ],
-    tags: ["backend", "rate-limiting", "system-design"],
-  },
+  // ===== DSA - Easy (15) =====
+  { title: "Two Sum", description: "Given an array of integers and a target, return indices of two numbers that add up to the target.", difficulty: "easy", category: "array", companies: ["google","amazon","meta","apple"], frequency: 9, timeLimit: 20, hints: ["Use a hash map for O(n)","Check if complement exists"], solutionApproaches: ["Hash Map O(n)","Brute Force O(n)"], tags: ["array","hash-map"] },
+  { title: "Valid Parentheses", description: "Determine if a string of brackets is valid. Open brackets must be closed in correct order.", difficulty: "easy", category: "string", companies: ["amazon","microsoft","google"], frequency: 8, timeLimit: 15, hints: ["Use a stack","Push opening, pop on closing"], solutionApproaches: ["Stack O(n)"], tags: ["stack","string"] },
+  { title: "Merge Two Sorted Lists", description: "Merge two sorted linked lists into one sorted list.", difficulty: "easy", category: "linked-list", companies: ["google","apple","amazon"], frequency: 8, timeLimit: 15, hints: ["Use a dummy head node","Compare nodes one by one"], solutionApproaches: ["Iterative O(n)","Recursive O(n)"], tags: ["linked-list","recursion"] },
+  { title: "Best Time to Buy and Sell Stock", description: "Find the maximum profit from buying and selling a stock once.", difficulty: "easy", category: "array", companies: ["amazon","meta","google"], frequency: 9, timeLimit: 15, hints: ["Track minimum price so far","Calculate max profit at each step"], solutionApproaches: ["One Pass O(n)"], tags: ["array","greedy"] },
+  { title: "Contains Duplicate", description: "Return true if any value appears at least twice in the array.", difficulty: "easy", category: "array", companies: ["amazon","apple"], frequency: 7, timeLimit: 10, hints: ["Use a Set"], solutionApproaches: ["Hash Set O(n)","Sort O(n log n)"], tags: ["array","hash-set"] },
+  { title: "Maximum Subarray", description: "Find the contiguous subarray with the largest sum.", difficulty: "easy", category: "array", companies: ["amazon","microsoft","google"], frequency: 8, timeLimit: 15, hints: ["Kadane's algorithm","Track current and global max"], solutionApproaches: ["Kadane O(n)","Divide & Conquer O(n log n)"], tags: ["array","dynamic-programming"] },
+  { title: "Reverse Linked List", description: "Reverse a singly linked list.", difficulty: "easy", category: "linked-list", companies: ["amazon","microsoft","apple"], frequency: 8, timeLimit: 15, hints: ["Use three pointers: prev, curr, next","Or use recursion"], solutionApproaches: ["Iterative O(n)","Recursive O(n)"], tags: ["linked-list"] },
+  { title: "Valid Anagram", description: "Determine if two strings are anagrams of each other.", difficulty: "easy", category: "string", companies: ["amazon","google"], frequency: 7, timeLimit: 10, hints: ["Count character frequencies","Compare frequency maps"], solutionApproaches: ["Frequency Counter O(n)","Sort O(n log n)"], tags: ["string","hash-map"] },
+  { title: "Binary Search", description: "Implement binary search on a sorted array.", difficulty: "easy", category: "array", companies: ["google","microsoft"], frequency: 8, timeLimit: 10, hints: ["Use two pointers: left and right","Calculate mid without overflow"], solutionApproaches: ["Iterative O(log n)","Recursive O(log n)"], tags: ["array","binary-search"] },
+  { title: "Climbing Stairs", description: "You can climb 1 or 2 steps. How many distinct ways to reach the top of n steps?", difficulty: "easy", category: "dynamic-programming", companies: ["amazon","apple","google"], frequency: 7, timeLimit: 15, hints: ["It's like Fibonacci","dp[i] = dp[i-1] + dp[i-2]"], solutionApproaches: ["DP O(n)","Math (Fibonacci)"], tags: ["dynamic-programming"] },
+  { title: "Invert Binary Tree", description: "Invert a binary tree (mirror it).", difficulty: "easy", category: "tree", companies: ["google","amazon"], frequency: 7, timeLimit: 10, hints: ["Swap left and right children recursively"], solutionApproaches: ["Recursive O(n)","Iterative BFS O(n)"], tags: ["tree","recursion"] },
+  { title: "Maximum Depth of Binary Tree", description: "Find the maximum depth of a binary tree.", difficulty: "easy", category: "tree", companies: ["amazon","microsoft"], frequency: 7, timeLimit: 10, hints: ["DFS: 1 + max(left, right)"], solutionApproaches: ["Recursive DFS O(n)","Iterative BFS O(n)"], tags: ["tree","dfs"] },
+  { title: "Linked List Cycle", description: "Determine if a linked list has a cycle.", difficulty: "easy", category: "linked-list", companies: ["amazon","microsoft","google"], frequency: 8, timeLimit: 15, hints: ["Floyd's slow/fast pointer"], solutionApproaches: ["Two Pointers O(n)","Hash Set O(n)"], tags: ["linked-list","two-pointers"] },
+  { title: "Roman to Integer", description: "Convert a Roman numeral string to an integer.", difficulty: "easy", category: "string", companies: ["amazon","microsoft"], frequency: 6, timeLimit: 15, hints: ["Map each symbol to value","If smaller before larger, subtract"], solutionApproaches: ["Left to Right O(n)"], tags: ["string","math"] },
+  { title: "Palindrome Number", description: "Determine whether an integer is a palindrome without converting to string.", difficulty: "easy", category: "math", companies: ["amazon"], frequency: 6, timeLimit: 10, hints: ["Reverse half the number","Compare first half with reversed second half"], solutionApproaches: ["Reverse Half O(log n)"], tags: ["math"] },
+  // ===== DSA - Medium (20) =====
+  { title: "Longest Substring Without Repeating Characters", description: "Find the length of the longest substring without duplicate characters.", difficulty: "medium", category: "string", companies: ["amazon","google","meta","netflix"], frequency: 9, timeLimit: 25, hints: ["Sliding window","Use a Set to track chars in window"], solutionApproaches: ["Sliding Window O(n)"], tags: ["string","sliding-window"] },
+  { title: "LRU Cache", description: "Design a data structure for Least Recently Used cache with O(1) get and put.", difficulty: "medium", category: "design", companies: ["amazon","meta","google","microsoft"], frequency: 9, timeLimit: 30, hints: ["Doubly linked list + hash map","Move to head on access"], solutionApproaches: ["DLL + HashMap O(1)"], tags: ["design","linked-list","hash-map"] },
+  { title: "3Sum", description: "Find all unique triplets in the array that sum to zero.", difficulty: "medium", category: "array", companies: ["amazon","meta","google"], frequency: 8, timeLimit: 25, hints: ["Sort first","Fix one element, use two pointers for the rest"], solutionApproaches: ["Sort + Two Pointers O(n)"], tags: ["array","two-pointers","sorting"] },
+  { title: "Binary Tree Level Order Traversal", description: "Return the level order traversal of a binary tree.", difficulty: "medium", category: "tree", companies: ["amazon","microsoft","google"], frequency: 8, timeLimit: 20, hints: ["Use a queue (BFS)","Process one level at a time"], solutionApproaches: ["BFS O(n)","DFS with level tracking"], tags: ["tree","bfs"] },
+  { title: "Number of Islands", description: "Count the number of islands in a 2D grid of 1s and 0s.", difficulty: "medium", category: "graph", companies: ["amazon","google","meta","microsoft"], frequency: 9, timeLimit: 25, hints: ["DFS/BFS from each unvisited 1","Mark visited cells"], solutionApproaches: ["DFS O(m*n)","BFS O(m*n)","Union-Find"], tags: ["graph","dfs","bfs"] },
+  { title: "Course Schedule", description: "Determine if you can finish all courses given prerequisites (cycle detection).", difficulty: "medium", category: "graph", companies: ["amazon","google","meta"], frequency: 8, timeLimit: 25, hints: ["Topological sort","Detect cycle in directed graph"], solutionApproaches: ["BFS Topological Sort","DFS Cycle Detection"], tags: ["graph","topological-sort"] },
+  { title: "Product of Array Except Self", description: "Return an array where each element is the product of all other elements without division.", difficulty: "medium", category: "array", companies: ["amazon","meta","apple"], frequency: 8, timeLimit: 20, hints: ["Use prefix and suffix products","Left pass then right pass"], solutionApproaches: ["Prefix/Suffix O(n)"], tags: ["array","prefix-sum"] },
+  { title: "Group Anagrams", description: "Group strings that are anagrams of each other.", difficulty: "medium", category: "string", companies: ["amazon","meta","google"], frequency: 8, timeLimit: 20, hints: ["Sort each string as key","Or use character count as key"], solutionApproaches: ["Sort + HashMap O(n*k log k)","Count Key O(n*k)"], tags: ["string","hash-map","sorting"] },
+  { title: "Coin Change", description: "Find the fewest coins needed to make a given amount.", difficulty: "medium", category: "dynamic-programming", companies: ["amazon","google","apple"], frequency: 8, timeLimit: 25, hints: ["Bottom-up DP","dp[amount] = min(dp[amount], dp[amount-coin]+1)"], solutionApproaches: ["DP O(amount*coins)"], tags: ["dynamic-programming"] },
+  { title: "Validate Binary Search Tree", description: "Determine if a binary tree is a valid BST.", difficulty: "medium", category: "tree", companies: ["amazon","meta","microsoft"], frequency: 7, timeLimit: 20, hints: ["In-order traversal should be sorted","Or use min/max bounds"], solutionApproaches: ["Recursive with bounds O(n)","In-order traversal O(n)"], tags: ["tree","dfs","bst"] },
+  { title: "Merge Intervals", description: "Merge all overlapping intervals.", difficulty: "medium", category: "array", companies: ["google","meta","amazon","microsoft"], frequency: 8, timeLimit: 20, hints: ["Sort by start time","Merge if overlap"], solutionApproaches: ["Sort + Merge O(n log n)"], tags: ["array","sorting","intervals"] },
+  { title: "Word Break", description: "Determine if a string can be segmented into dictionary words.", difficulty: "medium", category: "dynamic-programming", companies: ["amazon","google","meta"], frequency: 8, timeLimit: 25, hints: ["DP: dp[i] = true if s[0..i] can be segmented","Try all possible splits"], solutionApproaches: ["DP O(n)","BFS O(n)"], tags: ["dynamic-programming","string"] },
+  { title: "Top K Frequent Elements", description: "Return the k most frequent elements in an array.", difficulty: "medium", category: "array", companies: ["amazon","meta","google"], frequency: 8, timeLimit: 20, hints: ["HashMap for frequency","Heap or bucket sort"], solutionApproaches: ["Heap O(n log k)","Bucket Sort O(n)"], tags: ["array","heap","hash-map"] },
+  { title: "Search in Rotated Sorted Array", description: "Search for a target in a rotated sorted array in O(log n).", difficulty: "medium", category: "array", companies: ["amazon","meta","google","microsoft"], frequency: 8, timeLimit: 20, hints: ["Modified binary search","Determine which half is sorted"], solutionApproaches: ["Binary Search O(log n)"], tags: ["array","binary-search"] },
+  { title: "Clone Graph", description: "Deep clone a connected undirected graph.", difficulty: "medium", category: "graph", companies: ["amazon","meta","google"], frequency: 7, timeLimit: 25, hints: ["BFS/DFS with visited map","Map old nodes to new nodes"], solutionApproaches: ["BFS O(n)","DFS O(n)"], tags: ["graph","bfs","dfs","hash-map"] },
+  { title: "Implement Trie (Prefix Tree)", description: "Implement a trie with insert, search, and startsWith.", difficulty: "medium", category: "tree", companies: ["amazon","google","microsoft"], frequency: 7, timeLimit: 25, hints: ["Each node has 26 children","Mark end of word"], solutionApproaches: ["Trie Node with HashMap"], tags: ["trie","design"] },
+  { title: "Longest Palindromic Substring", description: "Find the longest palindromic substring.", difficulty: "medium", category: "string", companies: ["amazon","meta","microsoft"], frequency: 8, timeLimit: 25, hints: ["Expand around center","Try each char and between chars as center"], solutionApproaches: ["Expand Center O(n)","DP O(n)","Manacher O(n)"], tags: ["string","dynamic-programming"] },
+  { title: "Container With Most Water", description: "Find two lines that together with x-axis form the container holding the most water.", difficulty: "medium", category: "array", companies: ["amazon","google","meta"], frequency: 8, timeLimit: 20, hints: ["Two pointers from both ends","Move the shorter line inward"], solutionApproaches: ["Two Pointers O(n)"], tags: ["array","two-pointers","greedy"] },
+  { title: "Rotting Oranges", description: "Determine the minimum time for all oranges to rot via BFS spreading.", difficulty: "medium", category: "graph", companies: ["amazon","microsoft"], frequency: 7, timeLimit: 20, hints: ["Multi-source BFS","Start from all rotten oranges simultaneously"], solutionApproaches: ["BFS O(m*n)"], tags: ["graph","bfs","matrix"] },
+  { title: "Decode Ways", description: "Count the number of ways to decode a digit string into letters.", difficulty: "medium", category: "dynamic-programming", companies: ["amazon","meta","google"], frequency: 7, timeLimit: 25, hints: ["DP similar to climbing stairs","Handle 0s carefully"], solutionApproaches: ["DP O(n)"], tags: ["dynamic-programming","string"] },
+  // ===== DSA - Hard (10) =====
+  { title: "Median of Two Sorted Arrays", description: "Find the median of two sorted arrays in O(log(m+n)).", difficulty: "hard", category: "array", companies: ["google","amazon","meta","apple"], frequency: 9, timeLimit: 35, hints: ["Binary search on the smaller array","Partition both arrays"], solutionApproaches: ["Binary Search O(log(min(m,n)))"], tags: ["array","binary-search"] },
+  { title: "Merge K Sorted Lists", description: "Merge k sorted linked lists into one sorted list.", difficulty: "hard", category: "linked-list", companies: ["google","amazon","meta"], frequency: 8, timeLimit: 30, hints: ["Min-heap of k elements","Or divide and conquer merge"], solutionApproaches: ["Min-Heap O(n log k)","Divide & Conquer O(n log k)"], tags: ["linked-list","heap"] },
+  { title: "Trapping Rain Water", description: "Calculate how much water can be trapped between bars.", difficulty: "hard", category: "array", companies: ["amazon","google","meta","microsoft"], frequency: 9, timeLimit: 30, hints: ["Two pointer approach","Or precompute left/right max arrays"], solutionApproaches: ["Two Pointers O(n)","DP O(n)","Stack O(n)"], tags: ["array","two-pointers","stack"] },
+  { title: "Word Ladder", description: "Find the shortest transformation sequence from beginWord to endWord.", difficulty: "hard", category: "graph", companies: ["amazon","google","meta"], frequency: 7, timeLimit: 35, hints: ["BFS level by level","Each level is one transformation"], solutionApproaches: ["BFS O(M*N)","Bidirectional BFS"], tags: ["graph","bfs","string"] },
+  { title: "Serialize and Deserialize Binary Tree", description: "Design an algorithm to serialize/deserialize a binary tree.", difficulty: "hard", category: "tree", companies: ["amazon","meta","google","microsoft"], frequency: 8, timeLimit: 30, hints: ["Use preorder traversal","Use null markers for empty nodes"], solutionApproaches: ["BFS O(n)","DFS Preorder O(n)"], tags: ["tree","design","dfs","bfs"] },
+  { title: "Alien Dictionary", description: "Given a sorted dictionary of an alien language, derive the character order.", difficulty: "hard", category: "graph", companies: ["meta","google","amazon","airbnb"], frequency: 8, timeLimit: 35, hints: ["Build graph from adjacent word comparisons","Topological sort"], solutionApproaches: ["Topological Sort O(C)"], tags: ["graph","topological-sort","string"] },
+  { title: "Minimum Window Substring", description: "Find the minimum window substring containing all characters of target string.", difficulty: "hard", category: "string", companies: ["amazon","meta","google","uber"], frequency: 8, timeLimit: 35, hints: ["Sliding window with frequency counter","Contract window from left"], solutionApproaches: ["Sliding Window O(n)"], tags: ["string","sliding-window","hash-map"] },
+  { title: "Regular Expression Matching", description: "Implement regex matching with . and * support.", difficulty: "hard", category: "dynamic-programming", companies: ["google","meta","amazon"], frequency: 7, timeLimit: 40, hints: ["2D DP table","Handle * by zero or more matches"], solutionApproaches: ["DP O(m*n)","Recursive with memoization"], tags: ["dynamic-programming","string","recursion"] },
+  { title: "Longest Increasing Path in Matrix", description: "Find the length of the longest increasing path in a matrix.", difficulty: "hard", category: "graph", companies: ["google","amazon","meta"], frequency: 7, timeLimit: 35, hints: ["DFS + memoization","Each cell's result depends on neighbors"], solutionApproaches: ["DFS + Memo O(m*n)","Topological Sort"], tags: ["graph","dfs","dynamic-programming","matrix"] },
+  { title: "Maximum Profit in Job Scheduling", description: "Find the maximum profit by scheduling non-overlapping jobs.", difficulty: "hard", category: "dynamic-programming", companies: ["amazon","google","uber"], frequency: 7, timeLimit: 35, hints: ["Sort by end time","Binary search for compatible jobs","DP"], solutionApproaches: ["DP + Binary Search O(n log n)"], tags: ["dynamic-programming","binary-search","sorting"] },
+  // ===== System Design (15) =====
+  { title: "Design URL Shortener", description: "Design a URL shortening service like bit.ly. Consider scale, uniqueness, and analytics.", difficulty: "medium", category: "system-design", companies: ["meta","google","amazon","stripe"], frequency: 9, timeLimit: 45, hints: ["Base62 encoding","Consider read-heavy workload","Cache popular URLs"], solutionApproaches: ["Hash + Base62","Counter-based ID"], tags: ["system-design","distributed-systems"] },
+  { title: "Design Twitter Feed", description: "Design the Twitter/X news feed system. Consider fan-out, ranking, and real-time updates.", difficulty: "medium", category: "system-design", companies: ["meta","google","amazon"], frequency: 9, timeLimit: 45, hints: ["Fan-out on write vs read","Use Redis for timeline cache","Ranking service"], solutionApproaches: ["Fan-out on Write","Hybrid Approach"], tags: ["system-design","social-media"] },
+  { title: "Design Chat System", description: "Design a chat system like WhatsApp/Slack with real-time messaging.", difficulty: "medium", category: "system-design", companies: ["meta","amazon","microsoft","slack"], frequency: 8, timeLimit: 45, hints: ["WebSocket for real-time","Message queue for delivery","Read receipts"], solutionApproaches: ["WebSocket + Message Queue","Long Polling fallback"], tags: ["system-design","real-time"] },
+  { title: "Design Rate Limiter", description: "Design a distributed rate limiter for an API gateway.", difficulty: "medium", category: "system-design", companies: ["google","amazon","stripe","uber"], frequency: 8, timeLimit: 40, hints: ["Token bucket vs sliding window","Redis for distributed state"], solutionApproaches: ["Token Bucket","Sliding Window Counter","Leaky Bucket"], tags: ["system-design","api"] },
+  { title: "Design YouTube", description: "Design a video streaming platform like YouTube. Consider upload, encoding, CDN, and recommendations.", difficulty: "hard", category: "system-design", companies: ["google","amazon","netflix"], frequency: 8, timeLimit: 50, hints: ["CDN for delivery","Async video processing pipeline","Recommendation engine"], solutionApproaches: ["Microservices Architecture","Event-Driven Pipeline"], tags: ["system-design","streaming","cdn"] },
+  { title: "Design Uber/Lyft", description: "Design a ride-sharing service with matching, ETA, and surge pricing.", difficulty: "hard", category: "system-design", companies: ["uber","google","amazon"], frequency: 8, timeLimit: 50, hints: ["Geospatial indexing","Real-time driver tracking","Supply-demand matching"], solutionApproaches: ["Cell-based Geohash","QuadTree indexing"], tags: ["system-design","geo","real-time"] },
+  { title: "Design Notification System", description: "Design a multi-channel notification system (push, SMS, email).", difficulty: "medium", category: "system-design", companies: ["amazon","meta","google"], frequency: 7, timeLimit: 40, hints: ["Message queue per channel","Priority and rate limiting","User preferences"], solutionApproaches: ["Event-Driven + Queue per Channel"], tags: ["system-design","messaging"] },
+  { title: "Design Google Search", description: "Design the core of a web search engine with crawling, indexing, and ranking.", difficulty: "hard", category: "system-design", companies: ["google","microsoft","amazon"], frequency: 7, timeLimit: 50, hints: ["Inverted index","PageRank","Crawl queue with politeness"], solutionApproaches: ["Inverted Index + TF-IDF + PageRank"], tags: ["system-design","search","distributed-systems"] },
+  { title: "Design E-Commerce Platform", description: "Design an e-commerce system with product catalog, cart, checkout, and inventory.", difficulty: "medium", category: "system-design", companies: ["amazon","shopify","stripe"], frequency: 8, timeLimit: 45, hints: ["Eventual consistency for inventory","Payment idempotency","CQRS pattern"], solutionApproaches: ["Microservices + Event Sourcing"], tags: ["system-design","e-commerce"] },
+  { title: "Design Distributed Cache", description: "Design a distributed caching system like Memcached/Redis.", difficulty: "hard", category: "system-design", companies: ["google","amazon","meta"], frequency: 7, timeLimit: 45, hints: ["Consistent hashing","Replication strategy","Cache eviction policies"], solutionApproaches: ["Consistent Hashing + LRU"], tags: ["system-design","caching","distributed-systems"] },
+  { title: "Design File Storage System", description: "Design a cloud file storage system like Google Drive or Dropbox.", difficulty: "medium", category: "system-design", companies: ["google","microsoft","amazon"], frequency: 7, timeLimit: 45, hints: ["Block-level dedup","Sync conflict resolution","Metadata service"], solutionApproaches: ["Block Storage + Metadata Service"], tags: ["system-design","storage"] },
+  { title: "Design Payment System", description: "Design a payment processing system with transactions, refunds, and reconciliation.", difficulty: "hard", category: "system-design", companies: ["stripe","amazon","shopify"], frequency: 8, timeLimit: 50, hints: ["Idempotency keys","Two-phase commit","Ledger system"], solutionApproaches: ["Event Sourcing + CQRS","Double-Entry Ledger"], tags: ["system-design","fintech"] },
+  { title: "Design Content Delivery Network", description: "Design a CDN for serving static assets globally with low latency.", difficulty: "hard", category: "system-design", companies: ["amazon","google","netflix"], frequency: 6, timeLimit: 45, hints: ["Edge caching strategy","DNS-based routing","Cache invalidation"], solutionApproaches: ["Pull CDN","Push CDN","Hybrid"], tags: ["system-design","cdn","networking"] },
+  { title: "Design Authentication System", description: "Design a secure authentication and authorization system with OAuth, JWT, MFA.", difficulty: "medium", category: "system-design", companies: ["google","amazon","microsoft","stripe"], frequency: 7, timeLimit: 40, hints: ["JWT vs session tokens","Refresh token rotation","Rate limiting on login"], solutionApproaches: ["JWT + Refresh Token","OAuth 2.0 Flow"], tags: ["system-design","security","auth"] },
+  { title: "Design Real-Time Analytics Dashboard", description: "Design a system for real-time analytics with streaming data aggregation.", difficulty: "hard", category: "system-design", companies: ["google","amazon","uber","meta"], frequency: 7, timeLimit: 45, hints: ["Lambda architecture","Stream processing with Kafka","Pre-aggregation"], solutionApproaches: ["Lambda Architecture","Kappa Architecture"], tags: ["system-design","analytics","streaming"] },
+  // ===== Behavioral (15) =====
+  { title: "Tell Me About a Time You Disagreed With Your Manager", description: "Describe a situation where you had a professional disagreement and how you handled it.", difficulty: "medium", category: "behavioral", companies: ["amazon","google","meta","microsoft"], frequency: 9, timeLimit: 20, hints: ["Use STAR method","Focus on resolution, not blame","Show maturity"], solutionApproaches: ["STAR Method"], tags: ["behavioral","conflict-resolution","leadership"] },
+  { title: "Describe a Technical Failure You Caused", description: "Talk about a time your code/decision caused a production issue. What did you learn?", difficulty: "medium", category: "behavioral", companies: ["amazon","google","meta","netflix"], frequency: 8, timeLimit: 20, hints: ["Be honest and own it","Explain the fix AND prevention","Show growth mindset"], solutionApproaches: ["STAR Method"], tags: ["behavioral","failure","growth"] },
+  { title: "Tell Me About Your Proudest Technical Achievement", description: "Share a project you are most proud of and explain the technical challenges.", difficulty: "easy", category: "behavioral", companies: ["google","meta","amazon","apple"], frequency: 9, timeLimit: 20, hints: ["Quantify impact","Explain YOUR contribution","Technical depth matters"], solutionApproaches: ["STAR Method"], tags: ["behavioral","achievement","impact"] },
+  { title: "How Do You Handle Tight Deadlines?", description: "Describe your approach when facing an aggressive timeline with competing priorities.", difficulty: "medium", category: "behavioral", companies: ["amazon","meta","uber","stripe"], frequency: 8, timeLimit: 20, hints: ["Prioritization framework","Communication with stakeholders","Tradeoff decisions"], solutionApproaches: ["STAR Method"], tags: ["behavioral","time-management","prioritization"] },
+  { title: "Describe a Time You Mentored Someone", description: "How have you helped junior engineers grow? Give a specific example.", difficulty: "easy", category: "behavioral", companies: ["google","meta","microsoft","amazon"], frequency: 7, timeLimit: 20, hints: ["Specific mentoring actions","Measurable outcome for mentee","Show empathy and patience"], solutionApproaches: ["STAR Method"], tags: ["behavioral","mentorship","leadership"] },
+  { title: "Tell Me About a Time You Had to Learn Something Quickly", description: "Describe picking up a new technology or domain under time pressure.", difficulty: "easy", category: "behavioral", companies: ["amazon","google","meta","startup"], frequency: 8, timeLimit: 20, hints: ["Learning strategy","How you applied it","Result and timeline"], solutionApproaches: ["STAR Method"], tags: ["behavioral","learning","adaptability"] },
+  { title: "How Do You Approach Ambiguous Problems?", description: "Walk through how you handle a problem with unclear requirements or constraints.", difficulty: "medium", category: "behavioral", companies: ["google","meta","amazon","microsoft"], frequency: 8, timeLimit: 20, hints: ["Clarifying questions","Break into smaller pieces","Iterative approach"], solutionApproaches: ["STAR Method"], tags: ["behavioral","problem-solving","ambiguity"] },
+  { title: "Describe Cross-Team Collaboration", description: "Give an example of working across multiple teams to deliver a project.", difficulty: "medium", category: "behavioral", companies: ["amazon","google","meta","microsoft"], frequency: 7, timeLimit: 20, hints: ["Communication challenges","Alignment strategy","Shared outcome"], solutionApproaches: ["STAR Method"], tags: ["behavioral","collaboration","communication"] },
+  { title: "Tell Me About a Time You Pushed Back on a Requirement", description: "When did you challenge a product requirement and what was the outcome?", difficulty: "medium", category: "behavioral", companies: ["google","meta","stripe","apple"], frequency: 7, timeLimit: 20, hints: ["Data-driven argument","Respectful approach","Better alternative proposed"], solutionApproaches: ["STAR Method"], tags: ["behavioral","influence","product-sense"] },
+  { title: "How Do You Handle Code Review Disagreements?", description: "Describe your approach when you and a colleague disagree during code review.", difficulty: "easy", category: "behavioral", companies: ["google","meta","amazon"], frequency: 7, timeLimit: 15, hints: ["Focus on code, not person","Cite best practices","Know when to compromise"], solutionApproaches: ["STAR Method"], tags: ["behavioral","code-review","teamwork"] },
+  { title: "Describe Your Biggest Technical Decision", description: "Walk through a major architecture or technology choice you made and its impact.", difficulty: "hard", category: "behavioral", companies: ["google","amazon","meta","netflix"], frequency: 7, timeLimit: 25, hints: ["Decision framework","Tradeoffs considered","Long-term impact"], solutionApproaches: ["STAR Method"], tags: ["behavioral","architecture","decision-making"] },
+  { title: "Tell Me About a Time You Improved a Process", description: "Describe how you identified and improved an inefficient engineering process.", difficulty: "easy", category: "behavioral", companies: ["amazon","google","meta"], frequency: 7, timeLimit: 20, hints: ["Identify the bottleneck","Propose solution","Measure improvement"], solutionApproaches: ["STAR Method"], tags: ["behavioral","process-improvement","initiative"] },
+  { title: "How Do You Handle Competing Priorities From Different Stakeholders?", description: "Multiple teams need your help simultaneously. How do you decide?", difficulty: "medium", category: "behavioral", companies: ["amazon","google","meta","uber"], frequency: 7, timeLimit: 20, hints: ["Impact assessment","Transparent communication","Escalation when needed"], solutionApproaches: ["STAR Method"], tags: ["behavioral","prioritization","stakeholder-management"] },
+  { title: "Describe a Time You Dealt With Legacy Code", description: "How did you approach refactoring or working within a large legacy codebase?", difficulty: "medium", category: "behavioral", companies: ["google","amazon","microsoft","meta"], frequency: 6, timeLimit: 20, hints: ["Incremental approach","Testing strategy","Risk mitigation"], solutionApproaches: ["STAR Method"], tags: ["behavioral","legacy-code","refactoring"] },
+  { title: "Why This Company?", description: "What specifically draws you to this company and this role?", difficulty: "easy", category: "behavioral", companies: ["google","meta","amazon","apple","microsoft","netflix","stripe","uber"], frequency: 10, timeLimit: 15, hints: ["Research the company","Connect to your goals","Be genuine and specific"], solutionApproaches: ["Research + Personal Story"], tags: ["behavioral","motivation","culture-fit"] },
+  // ===== Frontend (10) =====
+  { title: "Implement Debounce Function", description: "Create a debounce function that limits how often a function fires.", difficulty: "medium", category: "frontend", companies: ["meta","google","amazon","uber"], frequency: 9, timeLimit: 25, hints: ["Use setTimeout and clearTimeout","Return a wrapper function","Handle leading/trailing edge"], solutionApproaches: ["Closure + setTimeout"], tags: ["frontend","javascript","closures"] },
+  { title: "Build a Virtual DOM Differ", description: "Implement a simple virtual DOM diffing algorithm that computes minimal updates.", difficulty: "hard", category: "frontend", companies: ["meta","google"], frequency: 6, timeLimit: 40, hints: ["Tree comparison by node type","Reconcile children with keys","Minimize DOM operations"], solutionApproaches: ["Recursive Diff O(n)"], tags: ["frontend","react","dom"] },
+  { title: "Implement Promise.all", description: "Recreate Promise.all from scratch handling parallel promises.", difficulty: "medium", category: "frontend", companies: ["meta","google","amazon","stripe"], frequency: 8, timeLimit: 25, hints: ["Track resolved count","Reject on first failure","Maintain order"], solutionApproaches: ["Counter Pattern"], tags: ["frontend","javascript","promises","async"] },
+  { title: "Build Autocomplete Component", description: "Create an accessible autocomplete/typeahead with debounced search, keyboard nav, and highlighting.", difficulty: "medium", category: "frontend", companies: ["google","meta","amazon","uber"], frequency: 8, timeLimit: 35, hints: ["Debounce input","ARIA roles for accessibility","Keyboard navigation"], solutionApproaches: ["Controlled Component + Debounce"], tags: ["frontend","react","accessibility","ui"] },
+  { title: "Implement Infinite Scroll", description: "Build an infinite scroll component with virtualization for performance.", difficulty: "medium", category: "frontend", companies: ["meta","google","amazon"], frequency: 7, timeLimit: 30, hints: ["IntersectionObserver API","Virtual list renders only visible items","Sentinel element pattern"], solutionApproaches: ["IntersectionObserver + Virtualization"], tags: ["frontend","react","performance","ui"] },
+  { title: "CSS Grid Dashboard Layout", description: "Create a responsive dashboard layout using CSS Grid with collapsible sidebar.", difficulty: "easy", category: "frontend", companies: ["meta","google","shopify"], frequency: 6, timeLimit: 25, hints: ["grid-template-areas","Media queries for breakpoints","CSS transitions for sidebar"], solutionApproaches: ["CSS Grid + Media Queries"], tags: ["frontend","css","layout","responsive"] },
+  { title: "Implement React useReducer from Scratch", description: "Build a custom hook that replicates React useReducer behavior.", difficulty: "medium", category: "frontend", companies: ["meta","google"], frequency: 6, timeLimit: 25, hints: ["useState under the hood","Dispatch triggers state update","Action pattern"], solutionApproaches: ["useState + dispatch wrapper"], tags: ["frontend","react","hooks","state-management"] },
+  { title: "Build Drag and Drop Kanban Board", description: "Create a Kanban board with drag-and-drop columns and cards.", difficulty: "hard", category: "frontend", companies: ["meta","google","atlassian"], frequency: 6, timeLimit: 45, hints: ["HTML5 Drag and Drop API or pointer events","State management for columns","Optimistic UI updates"], solutionApproaches: ["Pointer Events + State Machine"], tags: ["frontend","react","dnd","ui"] },
+  { title: "Implement Event Emitter", description: "Build an EventEmitter class with on, off, emit, and once methods.", difficulty: "medium", category: "frontend", companies: ["meta","google","amazon"], frequency: 7, timeLimit: 25, hints: ["Map of event name to listeners array","once wraps listener to auto-remove","Handle edge cases"], solutionApproaches: ["Map + Listener Arrays"], tags: ["frontend","javascript","design-pattern"] },
+  { title: "Build Accessible Modal Component", description: "Create a modal with focus trap, ESC to close, and ARIA attributes.", difficulty: "medium", category: "frontend", companies: ["meta","google","microsoft"], frequency: 7, timeLimit: 30, hints: ["createPortal for rendering","Focus trap with tab cycling","aria-modal and role=dialog"], solutionApproaches: ["Portal + Focus Trap + ARIA"], tags: ["frontend","react","accessibility","ui"] },
+  // ===== Backend (10) =====
+  { title: "Design RESTful API for Social Network", description: "Design a complete REST API for a social network with users, posts, comments, likes.", difficulty: "medium", category: "backend", companies: ["meta","google","amazon","twitter"], frequency: 8, timeLimit: 35, hints: ["Resource naming conventions","Pagination strategy","Authentication middleware"], solutionApproaches: ["REST Best Practices + JWT Auth"], tags: ["backend","api-design","rest"] },
+  { title: "Implement API Rate Limiter Middleware", description: "Build a rate limiting middleware using token bucket algorithm.", difficulty: "medium", category: "backend", companies: ["stripe","amazon","google","uber"], frequency: 8, timeLimit: 30, hints: ["Token bucket or sliding window","Redis for distributed state","Response headers"], solutionApproaches: ["Token Bucket","Sliding Window Log"], tags: ["backend","middleware","rate-limiting"] },
+  { title: "Build Caching Layer with TTL", description: "Implement an in-memory cache with TTL, LRU eviction, and cache stampede prevention.", difficulty: "medium", category: "backend", companies: ["amazon","google","meta"], frequency: 7, timeLimit: 30, hints: ["Map + doubly linked list for LRU","setTimeout for TTL","Mutex for stampede prevention"], solutionApproaches: ["LRU Cache + TTL Map"], tags: ["backend","caching","data-structures"] },
+  { title: "Design Database Schema for E-Commerce", description: "Design normalized and denormalized schemas for an e-commerce platform.", difficulty: "medium", category: "backend", companies: ["amazon","shopify","stripe"], frequency: 7, timeLimit: 35, hints: ["Products, orders, inventory tables","Indexes for common queries","Consider read vs write patterns"], solutionApproaches: ["3NF + Strategic Denormalization"], tags: ["backend","database","schema-design"] },
+  { title: "Implement JWT Authentication System", description: "Build a complete JWT auth system with access tokens, refresh tokens, and revocation.", difficulty: "medium", category: "backend", companies: ["google","amazon","meta","stripe"], frequency: 8, timeLimit: 35, hints: ["Short-lived access token","Long-lived refresh token","Token rotation on refresh"], solutionApproaches: ["Access + Refresh Token Pattern"], tags: ["backend","auth","security","jwt"] },
+  { title: "Build Message Queue Consumer", description: "Implement a reliable message queue consumer with retry logic and dead letter queue.", difficulty: "hard", category: "backend", companies: ["amazon","uber","google"], frequency: 7, timeLimit: 35, hints: ["Exponential backoff for retries","Idempotent message processing","DLQ after max retries"], solutionApproaches: ["Consumer with Retry + DLQ"], tags: ["backend","messaging","distributed-systems"] },
+  { title: "Implement Database Connection Pool", description: "Build a connection pool manager with min/max connections, health checks, and timeouts.", difficulty: "hard", category: "backend", companies: ["amazon","google","uber"], frequency: 6, timeLimit: 35, hints: ["Pool of reusable connections","Queue waiting requests","Health check ping"], solutionApproaches: ["Pool Pattern + Semaphore"], tags: ["backend","database","performance"] },
+  { title: "Design Webhook Delivery System", description: "Build a reliable webhook delivery system with retries, signatures, and monitoring.", difficulty: "medium", category: "backend", companies: ["stripe","github","shopify"], frequency: 7, timeLimit: 35, hints: ["HMAC signature verification","Exponential backoff","Circuit breaker pattern"], solutionApproaches: ["Queue + Retry + Circuit Breaker"], tags: ["backend","webhooks","reliability"] },
+  { title: "Implement GraphQL Resolver with DataLoader", description: "Build efficient GraphQL resolvers that batch and cache database queries.", difficulty: "medium", category: "backend", companies: ["meta","shopify","github"], frequency: 6, timeLimit: 30, hints: ["N+1 query problem","DataLoader batching","Cache per request"], solutionApproaches: ["DataLoader Pattern"], tags: ["backend","graphql","performance"] },
+  { title: "Build RBAC Authorization System", description: "Implement role-based access control with hierarchical roles and resource permissions.", difficulty: "hard", category: "backend", companies: ["google","amazon","microsoft","stripe"], frequency: 7, timeLimit: 35, hints: ["Role hierarchy tree","Permission inheritance","Policy evaluation engine"], solutionApproaches: ["RBAC + Policy Engine"], tags: ["backend","auth","security","access-control"] },
+  // ===== DevOps / Cloud (5) =====
+  { title: "Design CI/CD Pipeline", description: "Design a complete CI/CD pipeline with testing, staging, canary deployments, and rollback.", difficulty: "medium", category: "devops", companies: ["amazon","google","meta","netflix"], frequency: 7, timeLimit: 35, hints: ["Stages: build, test, stage, deploy","Canary vs blue-green","Automated rollback triggers"], solutionApproaches: ["Multi-Stage Pipeline + Canary"], tags: ["devops","ci-cd","deployment"] },
+  { title: "Kubernetes Pod Scheduling Design", description: "Design a custom Kubernetes scheduler with affinity rules, resource requests, and priority.", difficulty: "hard", category: "devops", companies: ["google","amazon","microsoft"], frequency: 5, timeLimit: 40, hints: ["Node affinity and taints","Resource quotas","Priority classes and preemption"], solutionApproaches: ["Custom Scheduler + Priority Queue"], tags: ["devops","kubernetes","scheduling"] },
+  { title: "Design Monitoring and Alerting System", description: "Design a monitoring system with metrics collection, anomaly detection, and alerting.", difficulty: "medium", category: "devops", companies: ["google","amazon","uber","netflix"], frequency: 6, timeLimit: 40, hints: ["Time-series database","SLO/SLI/SLA definitions","PagerDuty-style escalation"], solutionApproaches: ["TSDB + Rules Engine + Alert Manager"], tags: ["devops","monitoring","observability"] },
+  { title: "Infrastructure as Code with Terraform", description: "Design and implement a multi-environment IaC setup with Terraform modules.", difficulty: "medium", category: "devops", companies: ["amazon","google","microsoft"], frequency: 6, timeLimit: 35, hints: ["Module reuse across environments","State management","Secret handling"], solutionApproaches: ["Terraform Modules + Remote State"], tags: ["devops","terraform","iac"] },
+  { title: "Design Log Aggregation Pipeline", description: "Design a centralized logging system that collects, processes, and stores logs from distributed services.", difficulty: "medium", category: "devops", companies: ["amazon","google","uber","meta"], frequency: 6, timeLimit: 35, hints: ["ELK stack or equivalent","Structured logging format","Log retention policies"], solutionApproaches: ["ELK Stack","Fluentd + S3 + Athena"], tags: ["devops","logging","observability"] },
+  // ===== Machine Learning (5) =====
+  { title: "Design a Recommendation System", description: "Design a recommendation engine for an e-commerce platform or content feed.", difficulty: "hard", category: "machine-learning", companies: ["amazon","netflix","meta","google","spotify"], frequency: 8, timeLimit: 45, hints: ["Collaborative filtering","Content-based filtering","Hybrid approach with ML ranking"], solutionApproaches: ["Collaborative Filtering + Deep Learning"], tags: ["machine-learning","recommendations","data-science"] },
+  { title: "Implement K-Means Clustering", description: "Code the K-Means algorithm from scratch and handle convergence, initialization, and edge cases.", difficulty: "medium", category: "machine-learning", companies: ["google","amazon","meta"], frequency: 5, timeLimit: 30, hints: ["Random initialization or K-Means++","Iterate assign-update until convergence","Handle empty clusters"], solutionApproaches: ["Lloyd's Algorithm"], tags: ["machine-learning","clustering","algorithms"] },
+  { title: "Design Spam Detection System", description: "Design an ML pipeline for email/content spam detection with feature engineering and model serving.", difficulty: "medium", category: "machine-learning", companies: ["google","meta","microsoft"], frequency: 6, timeLimit: 40, hints: ["Text features: TF-IDF, n-grams","Model: logistic regression or gradient boosting","Online learning for adaptation"], solutionApproaches: ["NLP Pipeline + Classifier"], tags: ["machine-learning","nlp","classification"] },
+  { title: "Explain Bias-Variance Tradeoff", description: "Explain the bias-variance tradeoff with examples. How does it affect model selection?", difficulty: "easy", category: "machine-learning", companies: ["google","meta","amazon"], frequency: 6, timeLimit: 20, hints: ["High bias = underfitting","High variance = overfitting","Regularization balances both"], solutionApproaches: ["Theory + Visual Explanation"], tags: ["machine-learning","theory","model-selection"] },
+  { title: "Design A/B Testing Framework", description: "Design a statistical A/B testing framework for feature experiments.", difficulty: "medium", category: "machine-learning", companies: ["meta","google","netflix","uber"], frequency: 7, timeLimit: 40, hints: ["Sample size calculation","Statistical significance","Guardrail metrics"], solutionApproaches: ["Frequentist Hypothesis Testing","Bayesian A/B Testing"], tags: ["machine-learning","statistics","experimentation"] },
+  // ===== Mobile (3) =====
+  { title: "Design Offline-First Mobile App", description: "Design the architecture for a mobile app that works offline and syncs when connected.", difficulty: "hard", category: "mobile", companies: ["google","meta","uber","amazon"], frequency: 6, timeLimit: 40, hints: ["Local SQLite/Realm database","Conflict resolution strategy","Sync queue with retry"], solutionApproaches: ["CRDT-based Sync","Event Sourcing + Merge"], tags: ["mobile","offline","architecture"] },
+  { title: "Implement Pagination with Caching", description: "Build a paginated list with in-memory cache, prefetching, and pull-to-refresh.", difficulty: "medium", category: "mobile", companies: ["meta","google","amazon"], frequency: 7, timeLimit: 30, hints: ["Cursor-based pagination","LRU cache for pages","Prefetch next page"], solutionApproaches: ["Cursor Pagination + LRU Cache"], tags: ["mobile","pagination","caching","performance"] },
+  { title: "Design Mobile App Navigation Architecture", description: "Design navigation architecture for a complex mobile app with deep linking and auth flows.", difficulty: "medium", category: "mobile", companies: ["meta","uber","google"], frequency: 6, timeLimit: 30, hints: ["Stack-based navigation","Tab-based bottom nav","Deep link URL mapping"], solutionApproaches: ["Navigator Pattern + URL Mapping"], tags: ["mobile","navigation","architecture"] },
+  // ===== Security (3) =====
+  { title: "Design Secure Session Management", description: "Design a session management system resistant to common attacks (XSS, CSRF, fixation).", difficulty: "medium", category: "security", companies: ["google","amazon","stripe","meta"], frequency: 7, timeLimit: 30, hints: ["HttpOnly + Secure + SameSite cookies","Session rotation on auth change","CSRF tokens for mutations"], solutionApproaches: ["Secure Cookie + CSRF Token"], tags: ["security","session","web-security"] },
+  { title: "Implement Input Validation and Sanitization", description: "Build a comprehensive input validation layer preventing injection attacks.", difficulty: "medium", category: "security", companies: ["stripe","google","amazon"], frequency: 7, timeLimit: 25, hints: ["Whitelist over blacklist","Parameterized queries","Context-dependent output encoding"], solutionApproaches: ["Validation Library + Parameterized Queries"], tags: ["security","validation","injection-prevention"] },
+  { title: "Design OAuth 2.0 Implementation", description: "Implement OAuth 2.0 authorization code flow with PKCE for a web application.", difficulty: "hard", category: "security", companies: ["google","meta","microsoft","stripe"], frequency: 6, timeLimit: 35, hints: ["Authorization code + PKCE","Token exchange server-side","Scope-based access control"], solutionApproaches: ["Auth Code Flow + PKCE"], tags: ["security","oauth","authentication"] },
+  // ===== Data Engineering (4) =====
+  { title: "Design ETL Pipeline", description: "Design an ETL pipeline for processing terabytes of daily log data.", difficulty: "medium", category: "data-engineering", companies: ["amazon","google","meta","uber"], frequency: 7, timeLimit: 40, hints: ["Batch vs stream processing","Schema evolution handling","Data quality checks"], solutionApproaches: ["Spark/Flink + Data Lake"], tags: ["data-engineering","etl","big-data"] },
+  { title: "Design Data Warehouse Schema", description: "Design a star/snowflake schema for an analytics data warehouse.", difficulty: "medium", category: "data-engineering", companies: ["amazon","google","meta","netflix"], frequency: 6, timeLimit: 35, hints: ["Fact and dimension tables","Slowly changing dimensions","Partitioning strategy"], solutionApproaches: ["Star Schema + SCD Type 2"], tags: ["data-engineering","data-warehouse","schema"] },
+  { title: "Implement Stream Processing Pipeline", description: "Build a real-time stream processing pipeline for event data with windowing.", difficulty: "hard", category: "data-engineering", companies: ["uber","amazon","google","meta"], frequency: 6, timeLimit: 40, hints: ["Tumbling vs sliding windows","Watermarks for late data","Exactly-once semantics"], solutionApproaches: ["Kafka Streams","Apache Flink"], tags: ["data-engineering","streaming","real-time"] },
+  { title: "Design Data Lake Architecture", description: "Design a scalable data lake with raw, curated, and consumption layers.", difficulty: "hard", category: "data-engineering", companies: ["amazon","google","netflix","uber"], frequency: 5, timeLimit: 40, hints: ["Bronze/Silver/Gold layers","Metadata catalog","Access control and governance"], solutionApproaches: ["Medallion Architecture"], tags: ["data-engineering","data-lake","architecture"] },
 ];
 
 async function seed() {
   try {
     await connectDB();
     console.log("Connected to MongoDB");
-
+    
+    console.log(`Seeding ${questions.length} questions...`);
+    
     await Question.deleteMany({});
     console.log("Cleared existing questions");
-
-    await Question.insertMany(questions);
-    console.log(`✅ Seeded ${questions.length} questions successfully!`);
-
-    console.log("\nBreakdown:");
-    const categories = [...new Set(questions.map((q) => q.category))];
-    for (const cat of categories) {
-      const count = questions.filter((q) => q.category === cat).length;
-      console.log(`  ${cat}: ${count} questions`);
-    }
-
+    
+    const result = await Question.insertMany(questions);
+    console.log(`Successfully seeded ${result.length} questions!`);
+    
+    // Print summary
+    const categories = questions.reduce((acc: Record<string, number>, q) => {
+      acc[q.category] = (acc[q.category] || 0) + 1;
+      return acc;
+    }, {});
+    
+    console.log("\nBreakdown by category:");
+    Object.entries(categories)
+      .sort(([,a], [,b]) => (b as number) - (a as number))
+      .forEach(([cat, count]) => console.log(`  ${cat}: ${count}`));
+    
+    const difficulties = questions.reduce((acc: Record<string, number>, q) => {
+      acc[q.difficulty] = (acc[q.difficulty] || 0) + 1;
+      return acc;
+    }, {});
+    
+    console.log("\nBreakdown by difficulty:");
+    Object.entries(difficulties).forEach(([diff, count]) => console.log(`  ${diff}: ${count}`));
+    
     process.exit(0);
   } catch (error) {
-    console.error("❌ Seed failed:", error);
+    console.error("Seeding failed:", error);
     process.exit(1);
   }
 }

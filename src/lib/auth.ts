@@ -15,6 +15,8 @@ declare module "next-auth" {
       image?: string;
       plan: string;
       onboarded: boolean;
+      eloRating: number;
+      currentStreak: number;
     };
   }
 }
@@ -73,14 +75,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return true;
     },
-    async jwt({ token, user }) {
-      if (user) {
+    async jwt({ token, user, trigger }) {
+      if (user || trigger === "update") {
         await connectDB();
-        const dbUser = await User.findOne({ email: user.email });
+        const dbUser = await User.findOne({ email: token.email || user?.email });
         if (dbUser) {
           token.id = dbUser._id.toString();
           token.plan = dbUser.plan;
           token.onboarded = dbUser.onboarded;
+          token.eloRating = dbUser.eloRating;
+          token.currentStreak = dbUser.currentStreak;
         }
       }
       return token;
@@ -90,6 +94,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.id as string;
         session.user.plan = token.plan as string;
         session.user.onboarded = token.onboarded as boolean;
+        session.user.eloRating = (token.eloRating as number) || 1200;
+        session.user.currentStreak = (token.currentStreak as number) || 0;
       }
       return session;
     },

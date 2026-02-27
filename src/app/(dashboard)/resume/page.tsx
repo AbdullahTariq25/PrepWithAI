@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import {
   Upload,
   FileText,
@@ -84,7 +85,7 @@ export default function ResumePage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8 page-enter bg-[#080808]">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -93,7 +94,7 @@ export default function ResumePage() {
         <h1 className="text-3xl font-bold">
           Resume <span className="gradient-text">Analysis</span>
         </h1>
-        <p className="text-muted-foreground mt-1">
+        <p className="text-[#888] mt-1">
           Upload your resume for AI-powered interview preparation tailored to
           your experience.
         </p>
@@ -108,10 +109,10 @@ export default function ResumePage() {
         <Card
           className={`border-2 border-dashed transition-all duration-300 ${
             dragActive
-              ? "border-violet-500 bg-violet-500/5"
+              ? "border-indigo-500 bg-indigo-500/5"
               : file
                 ? "border-green-500/30 bg-green-500/5"
-                : "border-border hover:border-violet-500/30"
+                : "border-white/[0.06] hover:border-indigo-500/30"
           }`}
         >
           <CardContent className="p-8">
@@ -144,7 +145,7 @@ export default function ResumePage() {
                     </div>
                     <div>
                       <p className="font-semibold">{file.name}</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-[#888]">
                         {(file.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
@@ -184,14 +185,14 @@ export default function ResumePage() {
                     className="space-y-4 cursor-pointer"
                     onClick={() => inputRef.current?.click()}
                   >
-                    <div className="w-16 h-16 rounded-2xl bg-violet-500/10 flex items-center justify-center mx-auto">
-                      <Upload className="w-8 h-8 text-violet-500" />
+                    <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center mx-auto">
+                      <Upload className="w-8 h-8 text-indigo-500" />
                     </div>
                     <div>
                       <p className="font-semibold text-lg">
                         Drop your resume here
                       </p>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="text-sm text-[#888] mt-1">
                         or click to browse · PDF only · Max 10MB
                       </p>
                     </div>
@@ -239,7 +240,7 @@ export default function ResumePage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <Target className="w-5 h-5 text-violet-500" />
+                    <Target className="w-5 h-5 text-indigo-500" />
                     Detected Skills
                   </CardTitle>
                 </CardHeader>
@@ -263,7 +264,7 @@ export default function ResumePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <p className="text-sm text-[#888] leading-relaxed">
                     {parsed.experience}
                   </p>
                 </CardContent>
@@ -278,7 +279,7 @@ export default function ResumePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <p className="text-sm text-[#888] leading-relaxed">
                     {parsed.education}
                   </p>
                 </CardContent>
@@ -297,9 +298,9 @@ export default function ResumePage() {
                     {parsed.projects.map((p, i) => (
                       <li
                         key={i}
-                        className="text-sm text-muted-foreground flex items-start gap-2"
+                        className="text-sm text-[#888] flex items-start gap-2"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5 text-violet-500 mt-0.5 shrink-0" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-indigo-500 mt-0.5 shrink-0" />
                         {p}
                       </li>
                     ))}
@@ -308,17 +309,17 @@ export default function ResumePage() {
               </Card>
             </div>
 
-            <Card className="border-violet-500/20 bg-violet-500/5">
+            <Card className="border-indigo-500/20 bg-indigo-500/5">
               <CardContent className="p-6 text-center">
-                <p className="text-sm text-muted-foreground mb-4">
+                <p className="text-sm text-[#888] mb-4">
                   Your resume has been saved. AI interviews will now be tailored
                   to your background.
                 </p>
                 <Button variant="glow" asChild>
-                  <a href="/interview">
+                  <Link href="/interview">
                     <Sparkles className="w-4 h-4 mr-1.5" />
                     Start Tailored Interview
-                  </a>
+                  </Link>
                 </Button>
               </CardContent>
             </Card>
@@ -354,11 +355,11 @@ export default function ResumePage() {
             ].map((b) => (
               <Card key={b.title}>
                 <CardContent className="p-5">
-                  <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center mb-3">
-                    <b.icon className="w-5 h-5 text-violet-500" />
+                  <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center mb-3">
+                    <b.icon className="w-5 h-5 text-indigo-500" />
                   </div>
                   <h4 className="font-semibold text-sm mb-1">{b.title}</h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
+                  <p className="text-xs text-[#888] leading-relaxed">
                     {b.desc}
                   </p>
                 </CardContent>

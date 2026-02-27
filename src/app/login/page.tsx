@@ -41,7 +41,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="min-h-screen flex items-center justify-center app-background px-4">
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-500/5 rounded-full blur-3xl" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl" />
 
@@ -61,12 +61,12 @@ export default function LoginPage() {
             </span>
           </Link>
           <h1 className="text-2xl font-bold">Welcome back</h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-[#888] mt-1">
             Sign in to continue your prep
           </p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-8">
+        <div className="rounded-2xl border border-white/[0.06] bg-[#111] p-8">
           <div className="space-y-3 mb-6">
             <Button
               variant="outline"
@@ -107,10 +107,10 @@ export default function LoginPage() {
 
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
+              <div className="w-full border-t border-white/[0.06]" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">or</span>
+              <span className="bg-[#111] px-2 text-[#888]">or</span>
             </div>
           </div>
 
@@ -121,7 +121,7 @@ export default function LoginPage() {
               </div>
             )}
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#888]" />
               <Input
                 type="email"
                 placeholder="Email address"
@@ -132,7 +132,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#888]" />
               <Input
                 type={showPassword ? "text" : "password"}
                 placeholder="Password"
@@ -143,7 +143,7 @@ export default function LoginPage() {
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#888] hover:text-white"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? (
@@ -162,7 +162,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-sm text-muted-foreground mt-6">
+        <p className="text-center text-sm text-[#888] mt-6">
           Don&apos;t have an account?{" "}
           <Link
             href="/signup"
@@ -175,3 +175,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
