@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
 import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+function getStripe() {
+  if (!process.env.STRIPE_SECRET_KEY) return null;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Stripe = require("stripe").default;
+  return new Stripe(process.env.STRIPE_SECRET_KEY);
+}
 
 export async function POST() {
   try {
+    const stripe = getStripe();
+    if (!stripe) {
+      return NextResponse.json({ error: "Billing is not configured" }, { status: 200 });
+    }
+
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

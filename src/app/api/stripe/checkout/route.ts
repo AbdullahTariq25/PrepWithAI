@@ -1,18 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+function getStripe() {
+  if (!process.env.STRIPE_SECRET_KEY) return null;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Stripe = require("stripe").default;
+  return new Stripe(process.env.STRIPE_SECRET_KEY);
+}
 
 const PRICE_MAP: Record<string, string> = {
-  pro: process.env.STRIPE_PRO_MONTHLY_PRICE_ID!,
-  team: process.env.STRIPE_TEAM_MONTHLY_PRICE_ID!,
+  pro: process.env.STRIPE_PRO_MONTHLY_PRICE_ID || "",
+  team: process.env.STRIPE_TEAM_MONTHLY_PRICE_ID || "",
 };
 
 export async function POST(req: NextRequest) {
   try {
+    const stripe = getStripe();
+    if (!stripe) {
+      return NextResponse.json(
+        { error: "Payments are not configured. All features are free during beta!" },
+        { status: 200 }
+      );
+    }
+
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -30,7 +42,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Create or retrieve Stripe customer
     let customerId = user.stripeCustomerId;
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -43,7 +54,6 @@ export async function POST(req: NextRequest) {
       await user.save();
     }
 
-    // Create checkout session
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",

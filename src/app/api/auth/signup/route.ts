@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
-import { FREE_TRIAL_DAYS } from "@/lib/constants";
-import { sendWelcomeEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,27 +19,26 @@ export async function POST(req: NextRequest) {
     }
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Auto-start 14-day Pro trial for every new account
-    const now = new Date();
-    const trialEnd = new Date(now);
-    trialEnd.setDate(trialEnd.getDate() + FREE_TRIAL_DAYS);
-
+    // All users get pro plan — everything is free
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      proTrialStartedAt: now,
-      proTrialEndsAt: trialEnd,
+      plan: "pro",
     });
 
-    // Send welcome email (non-blocking)
-    sendWelcomeEmail(email, name).catch(console.error);
+    // Try sending welcome email (non-blocking, won't fail signup)
+    try {
+      const { sendWelcomeEmail } = await import("@/lib/email");
+      sendWelcomeEmail(email, name).catch(console.error);
+    } catch {
+      // Email service not configured — that's fine
+    }
 
     return NextResponse.json(
       {
-        message: "Account created successfully",
+        message: "Account created successfully — all features unlocked!",
         userId: user._id,
-        proTrialEndsAt: trialEnd.toISOString(),
       },
       { status: 201 }
     );

@@ -6,11 +6,10 @@ import { motion } from "framer-motion";
 import {
   User,
   Shield,
-  CreditCard,
   Save,
   Loader2,
-  ExternalLink,
   CheckCircle2,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +21,6 @@ export default function SettingsPage() {
   const { data: session } = useSession();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [portalLoading, setPortalLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: session?.user?.name || "",
     email: session?.user?.email || "",
@@ -79,21 +77,6 @@ export default function SettingsPage() {
       setSaving(false);
     }
   };
-
-  const handleManageBilling = async () => {
-    setPortalLoading(true);
-    try {
-      const res = await fetch("/api/stripe/portal", { method: "POST" });
-      const data = await res.json();
-      if (data.url) window.location.href = data.url;
-    } catch (error) {
-      console.error("Billing portal error:", error);
-    } finally {
-      setPortalLoading(false);
-    }
-  };
-
-  const plan = (session?.user as { plan?: string })?.plan || "free";
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 page-enter bg-[#080808]">
@@ -257,7 +240,7 @@ export default function SettingsPage() {
         </Card>
       </motion.div>
 
-      {/* Billing Section */}
+      {/* Plan Status */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -266,60 +249,25 @@ export default function SettingsPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-green-500/10 rounded-lg">
-                <CreditCard className="w-5 h-5 text-green-500" />
+              <div className="p-2 bg-emerald-500/10 rounded-lg">
+                <Sparkles className="w-5 h-5 text-emerald-500" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold">Billing & Plan</h2>
-                <p className="text-sm text-[#888]">Manage your subscription</p>
+                <h2 className="text-lg font-semibold">Plan Status</h2>
+                <p className="text-sm text-[#888]">Your current plan</p>
               </div>
             </div>
-            <div className="flex items-center justify-between p-4 bg-white/4 rounded-lg mb-4">
+            <div className="flex items-center justify-between p-4 bg-white/4 rounded-lg">
               <div>
-                <p className="font-medium">Current Plan</p>
+                <p className="font-medium">Beta — All Features Free</p>
                 <p className="text-sm text-[#888]">
-                  {plan === "free"
-                    ? "Free tier — 3 interviews/day"
-                    : plan === "pro"
-                      ? "Pro — Unlimited interviews"
-                      : "Team — 5 seats included"}
+                  Unlimited interviews, all types, voice mode, video interviews,
+                  and more.
                 </p>
               </div>
-              <Badge
-                className={
-                  plan === "free"
-                    ? "bg-zinc-500/10 text-zinc-400"
-                    : plan === "pro"
-                      ? "bg-indigo-500/10 text-indigo-400"
-                      : "bg-blue-500/10 text-blue-400"
-                }
-              >
-                {plan.charAt(0).toUpperCase() + plan.slice(1)}
+              <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                Free
               </Badge>
-            </div>
-            <div className="flex gap-3">
-              {plan !== "free" && (
-                <Button
-                  variant="outline"
-                  onClick={handleManageBilling}
-                  disabled={portalLoading}
-                >
-                  {portalLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                  )}
-                  Manage Billing
-                </Button>
-              )}
-              {plan === "free" && (
-                <Button
-                  variant="glow"
-                  onClick={() => (window.location.href = "/pricing")}
-                >
-                  Upgrade to Pro
-                </Button>
-              )}
             </div>
           </CardContent>
         </Card>

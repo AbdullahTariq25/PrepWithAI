@@ -24,7 +24,6 @@ import {
   Target,
   Crown,
   Users,
-  Lock,
   Video,
   Keyboard,
 } from "lucide-react";
@@ -79,9 +78,7 @@ export default function InterviewSetupPage() {
 function InterviewSetupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data: session } = useSession();
-  const userPlan =
-    ((session?.user as Record<string, unknown>)?.plan as string) || "free";
+  useSession(); // keep session alive
   const preselectedType = searchParams?.get("type") ?? null;
   const preselectedCompany = searchParams?.get("company") ?? null;
   const preselectedMode = searchParams?.get("mode") ?? null;
@@ -210,7 +207,6 @@ function InterviewSetupContent() {
           >
             {INTERVIEW_TYPES.map((t) => {
               const Icon = iconMap[t.icon] || Code2;
-              const isLocked = !t.free && userPlan === "free";
               return (
                 <div
                   key={t.id}
@@ -218,10 +214,8 @@ function InterviewSetupContent() {
                     type === t.id
                       ? "border-indigo-500 shadow-lg shadow-indigo-500/10"
                       : "border-white/8 hover:border-white/15"
-                  } ${isLocked ? "opacity-60" : ""}`}
-                  onClick={() => {
-                    if (!isLocked) setType(t.id);
-                  }}
+                  }`}
+                  onClick={() => setType(t.id)}
                 >
                   <div
                     className={`w-10 h-10 rounded-lg bg-linear-to-br ${t.color} flex items-center justify-center mb-3`}
@@ -230,12 +224,9 @@ function InterviewSetupContent() {
                   </div>
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-sm">{t.name}</h3>
-                    {isLocked && <Lock className="w-3 h-3 text-[#555]" />}
-                    {t.free && (
-                      <Badge className="text-[10px] bg-white/6 text-[#888] border-white/8">
-                        Free
-                      </Badge>
-                    )}
+                    <Badge className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                      Free
+                    </Badge>
                   </div>
                   <p className="text-xs text-[#666]">{t.description}</p>
                 </div>

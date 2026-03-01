@@ -39,7 +39,7 @@ export const INTERVIEW_TYPES: {
     description: "Design Twitter, Uber, Rate Limiter — whiteboard style",
     icon: "Network",
     color: "from-purple-500 to-pink-500",
-    free: false,
+    free: true,
   },
   {
     id: "behavioral",
@@ -48,7 +48,7 @@ export const INTERVIEW_TYPES: {
     description: "Leadership, Conflict, Teamwork, Failure Stories",
     icon: "Users",
     color: "from-green-500 to-emerald-500",
-    free: false,
+    free: true,
   },
   {
     id: "frontend",
@@ -57,7 +57,7 @@ export const INTERVIEW_TYPES: {
     description: "React, CSS, JavaScript, TypeScript, Web Performance",
     icon: "Monitor",
     color: "from-orange-500 to-yellow-500",
-    free: false,
+    free: true,
   },
   {
     id: "backend",
@@ -66,7 +66,7 @@ export const INTERVIEW_TYPES: {
     description: "APIs, Databases, Architecture, Microservices",
     icon: "Server",
     color: "from-red-500 to-rose-500",
-    free: false,
+    free: true,
   },
   {
     id: "full_stack",
@@ -75,7 +75,7 @@ export const INTERVIEW_TYPES: {
     description: "Frontend + Backend + System Design combined",
     icon: "Layers",
     color: "from-teal-500 to-cyan-500",
-    free: false,
+    free: true,
   },
   {
     id: "devops",
@@ -84,7 +84,7 @@ export const INTERVIEW_TYPES: {
     description: "CI/CD, Docker, Kubernetes, AWS, Infrastructure",
     icon: "Cloud",
     color: "from-sky-500 to-blue-500",
-    free: false,
+    free: true,
   },
   {
     id: "mobile",
@@ -93,7 +93,7 @@ export const INTERVIEW_TYPES: {
     description: "React Native, Flutter concepts, mobile architecture",
     icon: "Smartphone",
     color: "from-violet-500 to-purple-500",
-    free: false,
+    free: true,
   },
   {
     id: "machine_learning",
@@ -102,7 +102,7 @@ export const INTERVIEW_TYPES: {
     description: "ML concepts, model evaluation, data pipelines",
     icon: "Brain",
     color: "from-amber-500 to-orange-500",
-    free: false,
+    free: true,
   },
   {
     id: "product_management",
@@ -111,7 +111,7 @@ export const INTERVIEW_TYPES: {
     description: "Product sense, metrics, prioritization — for dev → PM",
     icon: "Target",
     color: "from-pink-500 to-rose-500",
-    free: false,
+    free: true,
   },
   {
     id: "leadership",
@@ -120,7 +120,7 @@ export const INTERVIEW_TYPES: {
     description: "Staff/Principal level: architecture, mentoring, strategy",
     icon: "Crown",
     color: "from-yellow-500 to-amber-500",
-    free: false,
+    free: true,
   },
   {
     id: "full_loop",
@@ -129,7 +129,7 @@ export const INTERVIEW_TYPES: {
     description: "3-hour FAANG simulation — all types, multiple interviewers",
     icon: "Trophy",
     color: "from-indigo-500 to-violet-500",
-    free: false,
+    free: true,
   },
 ];
 
@@ -723,20 +723,20 @@ export const SKILL_LABELS: Record<string, string> = {
 // ─── Free Tier Limits ───────────────────────────
 
 export const FREE_TIER_LIMITS = {
-  sessionsPerDay: 3,
-  savedSessions: 5,
-  questionTypes: ["dsa"] as InterviewType[],
-  voiceMode: false,
-  companyPacks: false,
-  resumeUpload: false,
-  analytics: false,
+  sessionsPerDay: Infinity,
+  savedSessions: Infinity,
+  questionTypes: ["dsa", "system_design", "behavioral", "frontend", "backend", "full_stack", "devops", "mobile", "machine_learning", "product_management", "leadership", "full_loop"] as InterviewType[],
+  voiceMode: true,
+  companyPacks: true,
+  resumeUpload: true,
+  analytics: true,
   codeExecution: true,
   dailyChallenge: true,
 };
 
 // ─── Pricing Plans ──────────────────────────────
 
-export const FREE_TRIAL_DAYS = 14;
+export const FREE_TRIAL_DAYS = 36500; // Effectively forever — everything is free
 
 export const PRICING_PLANS = [
   {

@@ -55,7 +55,7 @@ const UserSchema = new Schema<IUser>(
     plan: {
       type: String,
       enum: ["free", "pro", "team", "enterprise"],
-      default: "free",
+      default: "pro",
     },
     planExpiresAt: { type: Date },
     proTrialStartedAt: { type: Date },

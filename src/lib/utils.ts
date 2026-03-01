@@ -12,45 +12,40 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // ─── Pro Trial Helpers ───────────────────────────
+// ALL FEATURES ARE FREE — These functions always return pro status.
 
 /**
- * Check if a user is currently on an active Pro trial.
- * Works on both server (IUser) and client (session.user) shapes.
+ * Always returns false — no trial system, everything is free.
  */
 export function isOnProTrial(
-  user: { plan: string; proTrialEndsAt?: Date | string | null } | null | undefined
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _user: { plan: string; proTrialEndsAt?: Date | string | null } | null | undefined
 ): boolean {
-  if (!user || user.plan !== "free") return false;
-  if (!user.proTrialEndsAt) return false;
-  return new Date(user.proTrialEndsAt) > new Date();
+  return false;
 }
 
 /**
- * How many days remain in the Pro trial (0 if expired or no trial).
+ * Always returns 0 — no trial system.
  */
 export function proTrialDaysRemaining(
-  proTrialEndsAt: Date | string | null | undefined
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _proTrialEndsAt: Date | string | null | undefined
 ): number {
-  if (!proTrialEndsAt) return 0;
-  const ms = new Date(proTrialEndsAt).getTime() - Date.now();
-  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+  return 0;
 }
 
 /**
- * Returns the effective plan for a user:
- * - "pro_trial" if they are on an active trial
- * - their actual plan otherwise
+ * Always returns "pro" — all users get full access.
  */
 export function effectivePlan(
-  user: { plan: string; proTrialEndsAt?: Date | string | null } | null | undefined
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _user: { plan: string; proTrialEndsAt?: Date | string | null } | null | undefined
 ): string {
-  if (!user) return "free";
-  if (isOnProTrial(user)) return "pro_trial";
-  return user.plan;
+  return "pro";
 }
 
 /**
- * Calculate the trial end date from a start date.
+ * Calculate the trial end date — kept for backward compat, returns far future.
  */
 export function calculateTrialEndDate(startDate?: Date): Date {
   const start = startDate ?? new Date();
@@ -60,15 +55,13 @@ export function calculateTrialEndDate(startDate?: Date): Date {
 }
 
 /**
- * Whether a feature is accessible given the user's plan + trial status.
- * Pro trial unlocks all pro features.
+ * Always returns true — all features accessible to everyone.
  */
 export function canAccessProFeature(
-  user: { plan: string; proTrialEndsAt?: Date | string | null } | null | undefined
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _user: { plan: string; proTrialEndsAt?: Date | string | null } | null | undefined
 ): boolean {
-  if (!user) return false;
-  const ep = effectivePlan(user);
-  return ep === "pro" || ep === "pro_trial" || ep === "team" || ep === "enterprise";
+  return true;
 }
 
 

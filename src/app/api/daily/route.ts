@@ -29,7 +29,7 @@ export async function GET() {
       { $sample: { size: 1 } },
     ]);
 
-    const challenges = [...easyQuestions, ...mediumQuestions, ...hardQuestions].map((q, i) => ({
+    const challenges = [...easyQuestions, ...mediumQuestions, ...hardQuestions].map((q) => ({
       id: q._id.toString(),
       title: q.title,
       description: q.description,
@@ -40,7 +40,7 @@ export async function GET() {
       points: q.difficulty === 'easy' ? 30 : q.difficulty === 'medium' ? 75 : 150,
       completedBy: Math.floor(Math.random() * 2000) + 100,
       isCompleted: false,
-      isLocked: i >= 4,
+      isLocked: false,
     }));
 
     return NextResponse.json({ challenges });

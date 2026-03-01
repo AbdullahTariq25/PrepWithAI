@@ -6,7 +6,7 @@
 
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 const FROM_EMAIL = process.env.FROM_EMAIL || "PrepWithAI <noreply@prepwithai.com>";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -17,6 +17,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
   const firstName = name.split(" ")[0];
 
   try {
+    if (!resend) return { success: false, error: "Email not configured" };
     await resend.emails.send({
       from: FROM_EMAIL,
       to,
@@ -48,7 +49,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
       </h1>
       <p style="color:#A3A3A3;font-size:16px;line-height:1.6;margin:0;">
         You just joined the smartest way to prepare for technical interviews. 
-        Your 14-day Pro trial is active — every feature is unlocked.
+        All features are unlocked — start practicing now!
       </p>
     </div>
 
@@ -62,7 +63,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
     <!-- What you get -->
     <div style="background:#111;border:1px solid #222;border-radius:12px;padding:24px;margin-bottom:24px;">
       <h2 style="color:#F5F5F5;font-size:18px;font-weight:600;margin:0 0 16px;">
-        What's included in your Pro trial:
+        What's included (everything — free during beta):
       </h2>
       <div style="color:#A3A3A3;font-size:14px;line-height:2;">
         ✅ AI mock interviews with real-time feedback<br>
@@ -115,6 +116,7 @@ export async function sendSessionCompletionEmail(
   const scoreEmoji = score >= 80 ? "🏆" : score >= 60 ? "💪" : "📈";
 
   try {
+    if (!resend) return { success: false, error: "Email not configured" };
     await resend.emails.send({
       from: FROM_EMAIL,
       to,
@@ -190,6 +192,7 @@ export async function sendDailyReminderEmail(
   const firstName = name.split(" ")[0];
 
   try {
+    if (!resend) return { success: false, error: "Email not configured" };
     await resend.emails.send({
       from: FROM_EMAIL,
       to,
@@ -273,6 +276,7 @@ export async function sendWeeklyReportEmail(
   const sessionsDiff = stats.sessionsThisWeek - stats.sessionsLastWeek;
 
   try {
+    if (!resend) return { success: false, error: "Email not configured" };
     await resend.emails.send({
       from: FROM_EMAIL,
       to,
