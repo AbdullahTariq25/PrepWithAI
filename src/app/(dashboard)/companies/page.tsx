@@ -124,7 +124,7 @@ export default function CompaniesPage() {
                   {company.description}
                 </p>
 
-                <div className="text-xs text-[#888] bg-white/[0.04] rounded-lg px-3 py-2">
+                <div className="text-xs text-[#888] bg-white/4 rounded-lg px-3 py-2">
                   {company.interviewFormat}
                 </div>
 

@@ -165,7 +165,7 @@ export default function DashboardPage() {
   }, [progress?.dailyScores]);
 
   const heatmapColors = [
-    "bg-white/[0.04]",
+    "bg-white/4",
     "bg-indigo-500/30",
     "bg-indigo-500/50",
     "bg-indigo-500/70",
@@ -253,33 +253,33 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* KPI Cards */}
-      <motion.div
-        className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-      >
-        {stats.map((stat) => (
-          <div
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((stat, i) => (
+          <motion.div
             key={stat.label}
-            className={`card-3d bg-[#111] border ${stat.border} rounded-2xl p-4`}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.1 + i * 0.06 }}
+            className={`card-3d premium-card bg-[#111] border ${stat.border} rounded-2xl p-5`}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 relative z-10">
               <div
-                className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center`}
+                className={`w-11 h-11 rounded-xl ${stat.bg} flex items-center justify-center`}
               >
                 <stat.icon className={`w-5 h-5 ${stat.color}`} />
               </div>
               <div>
-                <p className="text-2xl font-bold tracking-tight">
+                <p className="text-2xl font-bold tracking-tight tabular-nums number-reveal">
                   {stat.value}
                 </p>
-                <p className="text-xs text-[#666]">{stat.label}</p>
+                <p className="text-xs text-[#666] uppercase tracking-wider">
+                  {stat.label}
+                </p>
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
-      </motion.div>
+      </div>
 
       {/* Video Interview CTA */}
       <motion.div
@@ -287,11 +287,11 @@ export default function DashboardPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.15 }}
       >
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600/20 via-violet-600/20 to-purple-600/20 border border-indigo-500/20 p-6">
+        <div className="relative overflow-hidden rounded-2xl bg-linear-to-r from-indigo-600/20 via-violet-600/20 to-purple-600/20 border border-indigo-500/20 p-6">
           <div className="absolute inset-0 hero-grid opacity-20" />
           <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
                 <Video className="w-7 h-7 text-white" />
               </div>
               <div>
@@ -325,16 +325,16 @@ export default function DashboardPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
-        <div className="bg-[#111] border border-white/[0.08] rounded-2xl p-6">
+        <div className="bg-[#111] border border-white/8 rounded-2xl p-6">
           <div className="flex items-center gap-2 mb-4">
             <Calendar className="w-5 h-5 text-indigo-400" />
             <h2 className="font-semibold">Activity</h2>
           </div>
-          <div className="flex gap-[3px] flex-wrap">
+          <div className="flex gap-0.75 flex-wrap">
             {heatmapData.map((cell) => (
               <div
                 key={cell.date}
-                className={`w-3 h-3 rounded-[2px] heatmap-cell transition-colors ${heatmapColors[cell.level]}`}
+                className={`w-3 h-3 rounded-xs heatmap-cell transition-colors ${heatmapColors[cell.level]}`}
                 title={`${cell.date}: ${cell.count} sessions`}
               />
             ))}
@@ -342,7 +342,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 mt-3 text-xs text-[#555]">
             <span>Less</span>
             {heatmapColors.map((color, i) => (
-              <div key={i} className={`w-3 h-3 rounded-[2px] ${color}`} />
+              <div key={i} className={`w-3 h-3 rounded-xs ${color}`} />
             ))}
             <span>More</span>
           </div>
@@ -370,9 +370,9 @@ export default function DashboardPage() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
           {quickStartTypes.map((type) => (
             <Link key={type.id} href={`/interview?type=${type.id}`}>
-              <div className="card-3d bg-[#111] border border-white/[0.08] rounded-2xl p-5 flex items-center gap-4 cursor-pointer group">
+              <div className="card-3d premium-card bg-[#111] border border-white/8 rounded-2xl p-5 flex items-center gap-4 cursor-pointer group">
                 <div
-                  className={`w-12 h-12 rounded-xl bg-gradient-to-br ${type.color} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-200`}
+                  className={`w-12 h-12 rounded-xl bg-linear-to-br ${type.color} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-200`}
                 >
                   <type.icon className="w-6 h-6 text-white" />
                 </div>
@@ -395,7 +395,7 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.3 }}
         >
-          <div className="bg-[#111] border border-white/[0.08] rounded-2xl p-6">
+          <div className="bg-[#111] border border-white/8 rounded-2xl p-6">
             <div className="flex items-center gap-2 mb-5">
               <Target className="w-5 h-5 text-indigo-400" />
               <h2 className="font-semibold">Skill Overview</h2>
@@ -436,7 +436,7 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.35 }}
         >
-          <div className="bg-[#111] border border-white/[0.08] rounded-2xl p-6">
+          <div className="bg-[#111] border border-white/8 rounded-2xl p-6">
             <div className="flex items-center gap-2 mb-5">
               <Clock className="w-5 h-5 text-indigo-400" />
               <h2 className="font-semibold">Recent Sessions</h2>
@@ -445,7 +445,7 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 {recentSessions.map((s) => (
                   <Link key={s._id} href={`/interview/${s._id}/report`}>
-                    <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/[0.04] transition-colors cursor-pointer">
+                    <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/4 transition-colors cursor-pointer group/item">
                       <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
                         <MessageSquare className="w-5 h-5 text-indigo-400" />
                       </div>
@@ -480,7 +480,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-white/[0.04] flex items-center justify-center mb-4">
+                <div className="w-16 h-16 rounded-2xl bg-white/4 flex items-center justify-center mb-4">
                   <Brain className="w-8 h-8 text-[#555]" />
                 </div>
                 <h3 className="font-semibold mb-1">No sessions yet</h3>

@@ -138,7 +138,7 @@ export default function ProgressPage() {
   }, [stats?.dailyScores]);
 
   const heatmapColors = [
-    "bg-white/[0.04]",
+    "bg-white/4",
     "bg-indigo-500/30",
     "bg-indigo-500/50",
     "bg-indigo-500/70",
@@ -212,7 +212,7 @@ export default function ProgressPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
       >
-        <div className="bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-500/20 rounded-2xl p-6 flex items-center gap-6">
+        <div className="bg-linear-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-500/20 rounded-2xl p-6 flex items-center gap-6">
           <div className="elo-glow flex items-center justify-center w-20 h-20 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 shrink-0">
             <div className="text-center">
               <Zap className="w-6 h-6 text-indigo-400 mx-auto" />
@@ -255,7 +255,7 @@ export default function ProgressPage() {
         {statCards.map((stat) => (
           <div
             key={stat.label}
-            className="bg-[#111] border border-white/[0.08] rounded-xl p-4 flex items-center gap-3 card-3d"
+            className="bg-[#111] border border-white/8 rounded-xl p-4 flex items-center gap-3 card-3d premium-card"
           >
             <div
               className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center shrink-0`}
@@ -278,16 +278,16 @@ export default function ProgressPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
       >
-        <div className="bg-[#111] border border-white/[0.08] rounded-xl p-5">
+        <div className="bg-[#111] border border-white/8 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <Calendar className="w-5 h-5 text-indigo-400" />
             <h3 className="font-semibold text-sm">Activity Heatmap</h3>
           </div>
-          <div className="flex gap-[3px] flex-wrap">
+          <div className="flex gap-0.75 flex-wrap">
             {heatmapData.map((cell) => (
               <div
                 key={cell.date}
-                className={`w-3 h-3 rounded-[2px] heatmap-cell ${heatmapColors[cell.level]}`}
+                className={`w-3 h-3 rounded-xs heatmap-cell ${heatmapColors[cell.level]}`}
                 title={`${cell.date}: ${cell.count} sessions`}
               />
             ))}
@@ -295,7 +295,7 @@ export default function ProgressPage() {
           <div className="flex items-center gap-2 mt-3 text-xs text-[#555]">
             <span>Less</span>
             {heatmapColors.map((c, i) => (
-              <div key={i} className={`w-3 h-3 rounded-[2px] ${c}`} />
+              <div key={i} className={`w-3 h-3 rounded-xs ${c}`} />
             ))}
             <span>More</span>
           </div>
@@ -309,7 +309,7 @@ export default function ProgressPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <div className="bg-[#111] border border-white/[0.08] rounded-xl p-5">
+          <div className="bg-[#111] border border-white/8 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-4">
               <BarChart3 className="w-5 h-5 text-indigo-400" />
               <h3 className="font-semibold text-sm">Score Trend</h3>
@@ -365,7 +365,7 @@ export default function ProgressPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
         >
-          <div className="bg-[#111] border border-white/[0.08] rounded-xl p-5">
+          <div className="bg-[#111] border border-white/8 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-4">
               <Target className="w-5 h-5 text-indigo-400" />
               <h3 className="font-semibold text-sm">Skill Radar</h3>
@@ -409,7 +409,7 @@ export default function ProgressPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
       >
-        <div className="bg-[#111] border border-white/[0.08] rounded-xl p-5">
+        <div className="bg-[#111] border border-white/8 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-5">
             <Target className="w-5 h-5 text-indigo-400" />
             <h3 className="font-semibold text-sm">Category Breakdown</h3>
@@ -441,7 +441,7 @@ export default function ProgressPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.35 }}
       >
-        <div className="bg-[#111] border border-white/[0.08] rounded-xl p-5">
+        <div className="bg-[#111] border border-white/8 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-5">
             <Brain className="w-5 h-5 text-indigo-400" />
             <h3 className="font-semibold text-sm">Skill Breakdown</h3>

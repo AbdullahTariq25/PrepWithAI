@@ -382,7 +382,7 @@ export default function JobsPage() {
                         ))}
                       </div>
 
-                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/[0.06]">
+                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/6">
                         <div className="flex items-center gap-4 text-sm">
                           <span className="flex items-center gap-1 text-emerald-400 font-medium">
                             <DollarSign className="w-3.5 h-3.5" />

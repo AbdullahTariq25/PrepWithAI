@@ -162,7 +162,7 @@ export default function StudyGroupsPage() {
             </div>
             Study Groups
           </h1>
-          <p className="text-gray-400 mt-1">
+          <p className="text-[#888] mt-1">
             Join study groups to practice together and stay accountable
           </p>
         </div>
@@ -212,7 +212,7 @@ export default function StudyGroupsPage() {
       {/* Search & Filters */}
       <div className="space-y-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#666]" />
           <input
             type="text"
             value={searchQuery}
@@ -229,7 +229,7 @@ export default function StudyGroupsPage() {
               className={`px-3 py-1 rounded-full text-sm transition-colors ${
                 selectedCategory === cat
                   ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
-                  : "bg-white/5 text-gray-400 border border-white/10 hover:border-white/20"
+                  : "bg-white/5 text-[#888] border border-white/10 hover:border-white/20"
               }`}
             >
               {cat}
@@ -256,11 +256,11 @@ export default function StudyGroupsPage() {
                 ) : (
                   <Lock className="w-4 h-4 text-amber-400" />
                 )}
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-[#666]">
                   {group.isPublic ? "Public" : "Private"}
                 </span>
               </div>
-              <div className="flex items-center gap-1 text-xs text-gray-500">
+              <div className="flex items-center gap-1 text-xs text-[#666]">
                 <Clock className="w-3 h-3" />
                 {group.lastActive}
               </div>
@@ -270,7 +270,7 @@ export default function StudyGroupsPage() {
             <h3 className="text-white font-semibold mb-1 group-hover:text-cyan-400 transition-colors">
               {group.name}
             </h3>
-            <p className="text-gray-400 text-sm mb-3 line-clamp-2">
+            <p className="text-[#888] text-sm mb-3 line-clamp-2">
               {group.description}
             </p>
 
@@ -279,7 +279,7 @@ export default function StudyGroupsPage() {
               {group.tags.slice(0, 3).map((tag) => (
                 <span
                   key={tag}
-                  className="px-2 py-0.5 bg-white/5 text-gray-400 rounded-full text-xs"
+                  className="px-2 py-0.5 bg-white/5 text-[#888] rounded-full text-xs"
                 >
                   {tag}
                 </span>
@@ -299,11 +299,11 @@ export default function StudyGroupsPage() {
                     </div>
                   ))}
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-[#666]">
                   {group.members}/{group.maxMembers} members
                 </span>
               </div>
-              <div className="flex items-center gap-1 text-xs text-gray-500">
+              <div className="flex items-center gap-1 text-xs text-[#666]">
                 <Crown className="w-3 h-3 text-amber-400" />
                 {group.createdBy}
               </div>
@@ -331,9 +331,9 @@ export default function StudyGroupsPage() {
 
       {filteredGroups.length === 0 && (
         <div className="text-center py-20">
-          <Users className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+          <Users className="w-12 h-12 text-[#555] mx-auto mb-4" />
           <h3 className="text-white font-medium mb-2">No Groups Found</h3>
-          <p className="text-gray-400 text-sm mb-4">
+          <p className="text-[#888] text-sm mb-4">
             Try adjusting your search or create a new group.
           </p>
           <button
@@ -364,7 +364,7 @@ export default function StudyGroupsPage() {
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="text-sm text-gray-400 mb-1 block">
+                <label className="text-sm text-[#888] mb-1 block">
                   Group Name *
                 </label>
                 <input
@@ -374,7 +374,7 @@ export default function StudyGroupsPage() {
                 />
               </div>
               <div>
-                <label className="text-sm text-gray-400 mb-1 block">
+                <label className="text-sm text-[#888] mb-1 block">
                   Description
                 </label>
                 <textarea
@@ -385,7 +385,7 @@ export default function StudyGroupsPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm text-gray-400 mb-1 block">
+                  <label className="text-sm text-[#888] mb-1 block">
                     Category
                   </label>
                   <select className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-indigo-500 focus:outline-none">
@@ -397,7 +397,7 @@ export default function StudyGroupsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-400 mb-1 block">
+                  <label className="text-sm text-[#888] mb-1 block">
                     Max Members
                   </label>
                   <input
@@ -408,7 +408,7 @@ export default function StudyGroupsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 text-sm text-gray-400">
+                <label className="flex items-center gap-2 text-sm text-[#888]">
                   <input
                     type="radio"
                     name="visibility"
@@ -418,7 +418,7 @@ export default function StudyGroupsPage() {
                   <Globe className="w-4 h-4" />
                   Public
                 </label>
-                <label className="flex items-center gap-2 text-sm text-gray-400">
+                <label className="flex items-center gap-2 text-sm text-[#888]">
                   <input
                     type="radio"
                     name="visibility"
@@ -431,7 +431,7 @@ export default function StudyGroupsPage() {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="flex-1 py-2.5 bg-white/5 text-gray-400 rounded-lg hover:bg-white/10 transition-colors"
+                  className="flex-1 py-2.5 bg-white/5 text-[#888] rounded-lg hover:bg-white/10 transition-colors"
                 >
                   Cancel
                 </button>

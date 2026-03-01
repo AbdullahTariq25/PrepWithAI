@@ -248,14 +248,14 @@ export default function VideoInterviewPage() {
   return (
     <div className="h-screen bg-[#050505] flex flex-col overflow-hidden">
       {/* TOP BAR */}
-      <div className="flex items-center justify-between px-6 h-14 border-b border-white/[0.06] bg-[#080808] shrink-0">
+      <div className="flex items-center justify-between px-6 h-14 border-b border-white/6 bg-[#080808] shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
           <span className="text-sm text-white font-medium capitalize">
             {interviewTitle}
           </span>
           {sessionInfo?.difficulty && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.06] text-[#888] capitalize">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/6 text-[#888] capitalize">
               {sessionInfo.difficulty}
             </span>
           )}
@@ -314,7 +314,7 @@ export default function VideoInterviewPage() {
               )}
 
               {/* Avatar */}
-              <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 flex items-center justify-center overflow-hidden">
+              <div className="w-full h-full rounded-full bg-linear-to-br from-indigo-600 via-indigo-700 to-violet-800 flex items-center justify-center overflow-hidden">
                 <div className="relative w-full h-full flex items-center justify-center">
                   <span className="text-5xl font-bold text-white/90">AI</span>
                   {/* Waveform when speaking */}
@@ -402,7 +402,7 @@ export default function VideoInterviewPage() {
         <div
           className={`${
             showTranscript ? "w-[320px]" : "w-[240px]"
-          } border-l border-white/[0.06] relative bg-[#080808] flex flex-col transition-all duration-200`}
+          } border-l border-white/6 relative bg-[#080808] flex flex-col transition-all duration-200`}
         >
           {/* User video */}
           <div className="relative flex-1 bg-[#0D0D0D] overflow-hidden min-h-[200px]">
@@ -448,7 +448,7 @@ export default function VideoInterviewPage() {
 
           {/* Live transcript panel */}
           {showTranscript && (
-            <div className="h-[200px] p-4 overflow-y-auto border-t border-white/[0.06]">
+            <div className="h-[200px] p-4 overflow-y-auto border-t border-white/6">
               <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2 font-medium">
                 Your Answer (Live)
               </p>
@@ -474,7 +474,7 @@ export default function VideoInterviewPage() {
       </div>
 
       {/* BOTTOM CONTROLS */}
-      <div className="h-20 flex items-center justify-center gap-4 border-t border-white/[0.06] bg-[#080808] shrink-0">
+      <div className="h-20 flex items-center justify-center gap-4 border-t border-white/6 bg-[#080808] shrink-0">
         {/* Mic toggle */}
         <button
           onClick={toggleMic}
@@ -591,7 +591,7 @@ export default function VideoInterviewPage() {
       {/* End call confirmation modal */}
       {showEndConfirm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-[#111] border border-white/[0.08] rounded-2xl p-6 max-w-sm w-full mx-4 page-enter">
+          <div className="bg-[#111] border border-white/8 rounded-2xl p-6 max-w-sm w-full mx-4 page-enter">
             <h3 className="text-lg font-semibold text-white mb-2">
               End Interview?
             </h3>
@@ -603,7 +603,7 @@ export default function VideoInterviewPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowEndConfirm(false)}
-                className="flex-1 px-4 py-2.5 bg-transparent border border-white/[0.1] hover:border-white/[0.2] text-[#888] hover:text-white text-sm rounded-lg transition-all"
+                className="flex-1 px-4 py-2.5 bg-transparent border border-white/10 hover:border-white/20 text-[#888] hover:text-white text-sm rounded-lg transition-all"
               >
                 Continue
               </button>

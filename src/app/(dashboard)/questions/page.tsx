@@ -217,10 +217,10 @@ export default function QuestionsPage() {
               transition={{ delay: 0.1 + i * 0.03 }}
             >
               <div
-                className={`bg-[#111] border rounded-xl p-4 flex items-center gap-3 cursor-pointer transition-all duration-200 hover:bg-[#131313] group ${
+                className={`bg-[#111] border rounded-xl p-4 flex items-center gap-3 cursor-pointer transition-all duration-200 hover:bg-[#131313] group premium-card ${
                   selectedCategory === cat.id
                     ? "border-indigo-500/50 bg-indigo-500/5"
-                    : "border-white/[0.08] hover:border-white/[0.14]"
+                    : "border-white/8 hover:border-white/14"
                 }`}
                 onClick={() =>
                   setSelectedCategory(
@@ -229,7 +229,7 @@ export default function QuestionsPage() {
                 }
               >
                 <div
-                  className={`w-9 h-9 rounded-lg bg-gradient-to-br ${cat.gradient} flex items-center justify-center shrink-0`}
+                  className={`w-9 h-9 rounded-lg bg-linear-to-br ${cat.gradient} flex items-center justify-center shrink-0`}
                 >
                   <cat.icon className="w-4 h-4 text-white" />
                 </div>
@@ -262,7 +262,7 @@ export default function QuestionsPage() {
               transition={{ delay: 0.2 + i * 0.04 }}
             >
               <div
-                className={`bg-[#111] border border-white/[0.08] rounded-xl p-4 flex items-center gap-4 hover:border-white/[0.14] hover:bg-[#131313] transition-all duration-200 cursor-pointer group border-l-2 ${difficultyBorder[q.difficulty] || "border-l-white/[0.1]"}`}
+                className={`bg-[#111] border border-white/8 rounded-xl p-4 flex items-center gap-4 hover:border-white/14 hover:bg-[#131313] transition-all duration-200 cursor-pointer group border-l-2 ${difficultyBorder[q.difficulty] || "border-l-white/10"}`}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5">
@@ -281,7 +281,7 @@ export default function QuestionsPage() {
                     {q.companies.slice(0, 3).map((c) => (
                       <span
                         key={c}
-                        className="text-[10px] text-[#555] px-1.5 py-0.5 rounded bg-white/[0.04]"
+                        className="text-[10px] text-[#555] px-1.5 py-0.5 rounded bg-white/4"
                       >
                         {c}
                       </span>

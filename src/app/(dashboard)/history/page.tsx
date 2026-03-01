@@ -156,7 +156,7 @@ export default function HistoryPage() {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="bg-[#111] border border-white/[0.08] rounded-xl p-4 flex items-center gap-3"
+            className="bg-[#111] border border-white/8 rounded-xl p-4 flex items-center gap-3 premium-card"
           >
             <div
               className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center`}
@@ -218,8 +218,8 @@ export default function HistoryPage() {
           <p className="text-sm text-[#555]">Loading your sessions...</p>
         </div>
       ) : filteredSessions.length === 0 ? (
-        <div className="bg-[#111] border border-white/[0.08] rounded-2xl p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
+        <div className="bg-[#111] border border-white/8 rounded-2xl p-12 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-white/4 flex items-center justify-center mx-auto mb-4">
             <Brain className="w-8 h-8 text-[#555]" />
           </div>
           <h3 className="font-semibold mb-1">No sessions yet</h3>
@@ -246,11 +246,11 @@ export default function HistoryPage() {
                 transition={{ delay: i * 0.04 }}
               >
                 <Link href={`/interview/${s._id}/report`}>
-                  <div className="bg-[#111] border border-white/[0.08] rounded-xl p-5 hover:border-white/[0.14] hover:bg-[#131313] transition-all duration-200 cursor-pointer group">
+                  <div className="bg-[#111] border border-white/8 rounded-xl p-5 hover:border-white/14 hover:bg-[#131313] transition-all duration-200 cursor-pointer group premium-card">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-10 h-10 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0`}
+                          className={`w-10 h-10 rounded-lg bg-linear-to-br ${gradient} flex items-center justify-center shrink-0`}
                         >
                           <Icon className="w-5 h-5 text-white" />
                         </div>

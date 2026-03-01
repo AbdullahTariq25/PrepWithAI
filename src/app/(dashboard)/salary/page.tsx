@@ -146,7 +146,7 @@ export default function SalaryNegotiationPage() {
           </div>
           Salary Negotiation Coach
         </h1>
-        <p className="text-gray-400 mt-1">
+        <p className="text-[#888] mt-1">
           Data-driven salary negotiation strategies and scripts
         </p>
       </div>
@@ -160,7 +160,7 @@ export default function SalaryNegotiationPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
-            <label className="text-sm text-gray-400 mb-1 block">Role</label>
+            <label className="text-sm text-[#888] mb-1 block">Role</label>
             <select
               value={selectedRole}
               onChange={(e) => setSelectedRole(e.target.value)}
@@ -175,7 +175,7 @@ export default function SalaryNegotiationPage() {
             </select>
           </div>
           <div>
-            <label className="text-sm text-gray-400 mb-1 block">Location</label>
+            <label className="text-sm text-[#888] mb-1 block">Location</label>
             <select
               value={selectedLocation}
               onChange={(e) => setSelectedLocation(e.target.value)}
@@ -202,14 +202,14 @@ export default function SalaryNegotiationPage() {
               key={item.label}
               className="bg-white/5 rounded-lg p-4 border border-white/10"
             >
-              <p className="text-gray-400 text-xs uppercase tracking-wider mb-2">
+              <p className="text-[#888] text-xs uppercase tracking-wider mb-2">
                 {item.label}
               </p>
               <p className="text-xl font-bold text-white">
                 {formatCurrency(item.data.median)}
               </p>
               <div className="flex items-center gap-2 mt-2 text-xs">
-                <span className="text-gray-500">
+                <span className="text-[#666]">
                   {formatCurrency(item.data.low)}
                 </span>
                 <div className="flex-1 bg-white/10 rounded-full h-1.5 relative">
@@ -229,7 +229,7 @@ export default function SalaryNegotiationPage() {
                     }}
                   />
                 </div>
-                <span className="text-gray-500">
+                <span className="text-[#666]">
                   {formatCurrency(item.data.high)}
                 </span>
               </div>
@@ -237,7 +237,7 @@ export default function SalaryNegotiationPage() {
           ))}
         </div>
 
-        <p className="text-xs text-gray-600 mt-3 flex items-center gap-1">
+        <p className="text-xs text-[#555] mt-3 flex items-center gap-1">
           <Building2 className="w-3 h-3" />
           Data based on {salaryData.company} — {salaryData.level} —{" "}
           {salaryData.location}
@@ -252,7 +252,7 @@ export default function SalaryNegotiationPage() {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="text-sm text-gray-400 mb-1 block">
+            <label className="text-sm text-[#888] mb-1 block">
               Current Offer (Total Comp)
             </label>
             <input
@@ -264,7 +264,7 @@ export default function SalaryNegotiationPage() {
             />
           </div>
           <div>
-            <label className="text-sm text-gray-400 mb-1 block">
+            <label className="text-sm text-[#888] mb-1 block">
               Your Target
             </label>
             <input
@@ -276,7 +276,7 @@ export default function SalaryNegotiationPage() {
             />
           </div>
           <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-            <p className="text-xs text-gray-500 mb-1">Negotiation Gap</p>
+            <p className="text-xs text-[#666] mb-1">Negotiation Gap</p>
             {offerNum > 0 && targetNum > 0 ? (
               <div className="flex items-center gap-2">
                 {gapAmount > 0 ? (
@@ -291,7 +291,7 @@ export default function SalaryNegotiationPage() {
                 </span>
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">Enter both values</p>
+              <p className="text-[#666] text-sm">Enter both values</p>
             )}
           </div>
         </div>
@@ -328,7 +328,7 @@ export default function SalaryNegotiationPage() {
                 </div>
                 <div>
                   <p className="text-white text-sm font-medium">{tip.title}</p>
-                  <p className="text-gray-400 text-xs mt-0.5">
+                  <p className="text-[#888] text-xs mt-0.5">
                     {tip.description}
                   </p>
                 </div>
@@ -362,7 +362,7 @@ export default function SalaryNegotiationPage() {
                     </span>
                   </div>
                   <ChevronRight
-                    className={`w-4 h-4 text-gray-500 transition-transform ${expandedScript === index ? "rotate-90" : ""}`}
+                    className={`w-4 h-4 text-[#666] transition-transform ${expandedScript === index ? "rotate-90" : ""}`}
                   />
                 </button>
                 {expandedScript === index && (
@@ -372,7 +372,7 @@ export default function SalaryNegotiationPage() {
                     className="px-3 pb-3"
                   >
                     <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
-                      <p className="text-gray-300 text-sm italic leading-relaxed">
+                      <p className="text-[#ccc] text-sm italic leading-relaxed">
                         &ldquo;{script.script}&rdquo;
                       </p>
                     </div>
@@ -404,7 +404,7 @@ export default function SalaryNegotiationPage() {
           ].map((item, i) => (
             <label
               key={i}
-              className="flex items-center gap-2 p-2 rounded-lg bg-white/5 text-sm text-gray-400 hover:text-white hover:bg-white/10 cursor-pointer transition-colors"
+              className="flex items-center gap-2 p-2 rounded-lg bg-white/5 text-sm text-[#888] hover:text-white hover:bg-white/10 cursor-pointer transition-colors"
             >
               <input type="checkbox" className="rounded border-white/20" />
               {item}
@@ -446,7 +446,7 @@ export default function SalaryNegotiationPage() {
                 <p className="text-white text-sm font-medium">
                   {resource.name}
                 </p>
-                <p className="text-gray-500 text-xs">{resource.desc}</p>
+                <p className="text-[#666] text-xs">{resource.desc}</p>
               </div>
             </div>
           ))}

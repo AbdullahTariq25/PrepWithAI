@@ -9,14 +9,14 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-[0.98]",
+          "bg-linear-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-[0.98]",
         destructive: "bg-red-500 text-white shadow-sm hover:bg-red-600",
         outline:
-          "border border-white/[0.1] bg-transparent text-[#ccc] hover:bg-white/[0.04] hover:border-white/[0.2]",
+          "border border-white/10 bg-transparent text-[#ccc] hover:bg-white/4 hover:border-white/20",
         secondary: "bg-[#1A1A1A] text-[#ccc] hover:bg-[#222]",
-        ghost: "hover:bg-white/[0.04] hover:text-white text-[#888]",
+        ghost: "hover:bg-white/4 hover:text-white text-[#888]",
         link: "text-indigo-400 underline-offset-4 hover:underline",
-        glow: "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] hover:shadow-[0_0_30px_rgba(99,102,241,0.7)] hover:scale-[1.02] active:scale-[0.98]",
+        glow: "bg-linear-to-r from-indigo-600 to-violet-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)] hover:shadow-[0_0_30px_rgba(99,102,241,0.7)] hover:scale-[1.02] active:scale-[0.98]",
       },
       size: {
         default: "h-11 px-6 py-2",

@@ -112,7 +112,7 @@ export default function ResumePage() {
               ? "border-indigo-500 bg-indigo-500/5"
               : file
                 ? "border-green-500/30 bg-green-500/5"
-                : "border-white/[0.06] hover:border-indigo-500/30"
+                : "border-white/6 hover:border-indigo-500/30"
           }`}
         >
           <CardContent className="p-8">

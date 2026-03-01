@@ -284,7 +284,7 @@ export default function ResumeBuilderPage() {
             </div>
             Resume Builder
           </h1>
-          <p className="text-gray-400 mt-1">
+          <p className="text-[#888] mt-1">
             Create an ATS-optimized resume with AI assistance
           </p>
         </div>
@@ -341,7 +341,7 @@ export default function ResumeBuilderPage() {
                   <p className="text-white font-medium">
                     ATS Compatibility Score: {atsScore}%
                   </p>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-[#888]">
                     {atsScore >= 80
                       ? "Great! Your resume is well-optimized for ATS systems."
                       : "Add more content to improve your ATS score."}
@@ -387,7 +387,7 @@ export default function ResumeBuilderPage() {
                 className={`w-full h-16 rounded-lg bg-linear-to-br ${template.color} mb-2 opacity-80`}
               />
               <p className="text-white text-sm font-medium">{template.name}</p>
-              <p className="text-gray-500 text-xs">{template.description}</p>
+              <p className="text-[#666] text-xs">{template.description}</p>
             </button>
           ))}
         </div>
@@ -408,7 +408,7 @@ export default function ResumeBuilderPage() {
                   className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
                     activeSection === section.id
                       ? "bg-indigo-500/20 text-indigo-400"
-                      : "text-gray-400 hover:bg-white/5 hover:text-white"
+                      : "text-[#888] hover:bg-white/5 hover:text-white"
                   }`}
                 >
                   <GripVertical className="w-3 h-3 opacity-50" />
@@ -453,7 +453,7 @@ export default function ResumeBuilderPage() {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">
+                    <label className="text-sm text-[#888] mb-1 block">
                       Full Name *
                     </label>
                     <input
@@ -470,7 +470,7 @@ export default function ResumeBuilderPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">
+                    <label className="text-sm text-[#888] mb-1 block">
                       Email *
                     </label>
                     <input
@@ -487,7 +487,7 @@ export default function ResumeBuilderPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">
+                    <label className="text-sm text-[#888] mb-1 block">
                       Phone
                     </label>
                     <input
@@ -504,7 +504,7 @@ export default function ResumeBuilderPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">
+                    <label className="text-sm text-[#888] mb-1 block">
                       Location
                     </label>
                     <input
@@ -521,7 +521,7 @@ export default function ResumeBuilderPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">
+                    <label className="text-sm text-[#888] mb-1 block">
                       LinkedIn URL
                     </label>
                     <input
@@ -538,7 +538,7 @@ export default function ResumeBuilderPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">
+                    <label className="text-sm text-[#888] mb-1 block">
                       GitHub URL
                     </label>
                     <input
@@ -555,7 +555,7 @@ export default function ResumeBuilderPage() {
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="text-sm text-gray-400 mb-1 block">
+                    <label className="text-sm text-[#888] mb-1 block">
                       Portfolio Website
                     </label>
                     <input
@@ -586,7 +586,7 @@ export default function ResumeBuilderPage() {
                   <Sparkles className="w-5 h-5 text-indigo-400" />
                   Professional Summary
                 </h3>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-[#888]">
                   Write a compelling 2-3 sentence summary of your experience and
                   goals.
                 </p>
@@ -598,7 +598,7 @@ export default function ResumeBuilderPage() {
                   placeholder="Experienced full-stack developer with 5+ years building scalable web applications..."
                 />
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">
+                  <span className="text-[#666]">
                     {summary.length} characters
                   </span>
                   <button className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
@@ -672,7 +672,7 @@ export default function ResumeBuilderPage() {
                     className="p-4 bg-white/5 rounded-lg border border-white/10 space-y-3"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400">
+                      <span className="text-sm text-[#888]">
                         Education {index + 1}
                       </span>
                       {education.length > 1 && (
@@ -686,7 +686,7 @@ export default function ResumeBuilderPage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-gray-500 mb-1 block">
+                        <label className="text-xs text-[#666] mb-1 block">
                           School
                         </label>
                         <input
@@ -707,7 +707,7 @@ export default function ResumeBuilderPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500 mb-1 block">
+                        <label className="text-xs text-[#666] mb-1 block">
                           Degree
                         </label>
                         <input
@@ -728,7 +728,7 @@ export default function ResumeBuilderPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500 mb-1 block">
+                        <label className="text-xs text-[#666] mb-1 block">
                           Field of Study
                         </label>
                         <input
@@ -749,7 +749,7 @@ export default function ResumeBuilderPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500 mb-1 block">
+                        <label className="text-xs text-[#666] mb-1 block">
                           GPA (optional)
                         </label>
                         <input
@@ -770,7 +770,7 @@ export default function ResumeBuilderPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500 mb-1 block">
+                        <label className="text-xs text-[#666] mb-1 block">
                           Start Date
                         </label>
                         <input
@@ -790,7 +790,7 @@ export default function ResumeBuilderPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500 mb-1 block">
+                        <label className="text-xs text-[#666] mb-1 block">
                           End Date
                         </label>
                         <input
@@ -858,13 +858,13 @@ export default function ResumeBuilderPage() {
                     </span>
                   ))}
                   {skills.length === 0 && (
-                    <p className="text-gray-500 text-sm">
+                    <p className="text-[#666] text-sm">
                       No skills added yet. Type above to add.
                     </p>
                   )}
                 </div>
                 <div className="p-3 bg-white/5 rounded-lg border border-white/10">
-                  <p className="text-xs text-gray-400 mb-2">
+                  <p className="text-xs text-[#888] mb-2">
                     Suggested skills for developers:
                   </p>
                   <div className="flex flex-wrap gap-1">
@@ -886,7 +886,7 @@ export default function ResumeBuilderPage() {
                           if (!skills.includes(s))
                             setSkills((prev) => [...prev, s]);
                         }}
-                        className="px-2 py-0.5 bg-white/5 text-gray-400 rounded text-xs hover:bg-white/10 hover:text-white"
+                        className="px-2 py-0.5 bg-white/5 text-[#888] rounded text-xs hover:bg-white/10 hover:text-white"
                       >
                         + {s}
                       </button>
@@ -922,7 +922,7 @@ export default function ResumeBuilderPage() {
                     className="p-4 bg-white/5 rounded-lg border border-white/10 space-y-3"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400">
+                      <span className="text-sm text-[#888]">
                         Project {index + 1}
                       </span>
                       {projects.length > 1 && (
@@ -936,7 +936,7 @@ export default function ResumeBuilderPage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-gray-500 mb-1 block">
+                        <label className="text-xs text-[#666] mb-1 block">
                           Project Name
                         </label>
                         <input
@@ -955,7 +955,7 @@ export default function ResumeBuilderPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500 mb-1 block">
+                        <label className="text-xs text-[#666] mb-1 block">
                           Link
                         </label>
                         <input
@@ -975,7 +975,7 @@ export default function ResumeBuilderPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs text-gray-500 mb-1 block">
+                      <label className="text-xs text-[#666] mb-1 block">
                         Description
                       </label>
                       <textarea
@@ -1008,13 +1008,13 @@ export default function ResumeBuilderPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-center py-12"
               >
-                <Award className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                <Award className="w-12 h-12 text-[#555] mx-auto mb-4" />
                 <h3 className="text-white font-medium mb-2">
                   {activeSection === "certifications"
                     ? "Certifications"
                     : "Languages"}
                 </h3>
-                <p className="text-gray-400 text-sm">
+                <p className="text-[#888] text-sm">
                   This section is optional. Toggle it on from the sidebar to
                   include it.
                 </p>
@@ -1052,7 +1052,7 @@ export default function ResumeBuilderPage() {
               <h2 className="text-2xl font-bold text-gray-900">
                 {personalInfo.fullName || "Your Name"}
               </h2>
-              <p className="text-gray-600 text-sm mt-1">
+              <p className="text-[#555] text-sm mt-1">
                 {[personalInfo.email, personalInfo.phone, personalInfo.location]
                   .filter(Boolean)
                   .join(" • ")}
@@ -1078,12 +1078,12 @@ export default function ResumeBuilderPage() {
                           <p className="font-medium text-gray-900 text-sm">
                             {exp.position}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-[#666]">
                             {exp.startDate} -{" "}
                             {exp.current ? "Present" : exp.endDate}
                           </p>
                         </div>
-                        <p className="text-gray-600 text-sm">{exp.company}</p>
+                        <p className="text-[#555] text-sm">{exp.company}</p>
                         {exp.description && (
                           <p className="text-gray-700 text-xs mt-1">
                             {exp.description}
@@ -1106,7 +1106,7 @@ export default function ResumeBuilderPage() {
               <div className="mt-6 text-center">
                 <button
                   onClick={() => setShowPreview(false)}
-                  className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800"
+                  className="px-4 py-2 bg-[#111] text-white rounded-lg text-sm hover:bg-[#1A1A1A]"
                 >
                   Close Preview
                 </button>
@@ -1139,7 +1139,7 @@ function ExperienceCard({
       <div className="flex items-center justify-between">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-2 text-sm text-gray-400"
+          className="flex items-center gap-2 text-sm text-[#888]"
         >
           {expanded ? (
             <ChevronUp className="w-4 h-4" />
@@ -1161,7 +1161,7 @@ function ExperienceCard({
       {expanded && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Company</label>
+            <label className="text-xs text-[#666] mb-1 block">Company</label>
             <input
               type="text"
               value={experience.company}
@@ -1173,7 +1173,7 @@ function ExperienceCard({
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Position</label>
+            <label className="text-xs text-[#666] mb-1 block">Position</label>
             <input
               type="text"
               value={experience.position}
@@ -1185,7 +1185,7 @@ function ExperienceCard({
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">
+            <label className="text-xs text-[#666] mb-1 block">
               Start Date
             </label>
             <input
@@ -1198,7 +1198,7 @@ function ExperienceCard({
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">End Date</label>
+            <label className="text-xs text-[#666] mb-1 block">End Date</label>
             <input
               type="month"
               value={experience.endDate}
@@ -1208,7 +1208,7 @@ function ExperienceCard({
               disabled={experience.current}
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:border-indigo-500 focus:outline-none disabled:opacity-50"
             />
-            <label className="flex items-center gap-2 mt-1 text-xs text-gray-400">
+            <label className="flex items-center gap-2 mt-1 text-xs text-[#888]">
               <input
                 type="checkbox"
                 checked={experience.current}
@@ -1221,7 +1221,7 @@ function ExperienceCard({
             </label>
           </div>
           <div className="md:col-span-2">
-            <label className="text-xs text-gray-500 mb-1 block">
+            <label className="text-xs text-[#666] mb-1 block">
               Description
             </label>
             <textarea

@@ -5,11 +5,72 @@
 
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { ELO_CONFIG, FILLER_WORDS } from "./constants";
+import { ELO_CONFIG, FILLER_WORDS, FREE_TRIAL_DAYS } from "./constants";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+// ─── Pro Trial Helpers ───────────────────────────
+
+/**
+ * Check if a user is currently on an active Pro trial.
+ * Works on both server (IUser) and client (session.user) shapes.
+ */
+export function isOnProTrial(
+  user: { plan: string; proTrialEndsAt?: Date | string | null } | null | undefined
+): boolean {
+  if (!user || user.plan !== "free") return false;
+  if (!user.proTrialEndsAt) return false;
+  return new Date(user.proTrialEndsAt) > new Date();
+}
+
+/**
+ * How many days remain in the Pro trial (0 if expired or no trial).
+ */
+export function proTrialDaysRemaining(
+  proTrialEndsAt: Date | string | null | undefined
+): number {
+  if (!proTrialEndsAt) return 0;
+  const ms = new Date(proTrialEndsAt).getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+}
+
+/**
+ * Returns the effective plan for a user:
+ * - "pro_trial" if they are on an active trial
+ * - their actual plan otherwise
+ */
+export function effectivePlan(
+  user: { plan: string; proTrialEndsAt?: Date | string | null } | null | undefined
+): string {
+  if (!user) return "free";
+  if (isOnProTrial(user)) return "pro_trial";
+  return user.plan;
+}
+
+/**
+ * Calculate the trial end date from a start date.
+ */
+export function calculateTrialEndDate(startDate?: Date): Date {
+  const start = startDate ?? new Date();
+  const end = new Date(start);
+  end.setDate(end.getDate() + FREE_TRIAL_DAYS);
+  return end;
+}
+
+/**
+ * Whether a feature is accessible given the user's plan + trial status.
+ * Pro trial unlocks all pro features.
+ */
+export function canAccessProFeature(
+  user: { plan: string; proTrialEndsAt?: Date | string | null } | null | undefined
+): boolean {
+  if (!user) return false;
+  const ep = effectivePlan(user);
+  return ep === "pro" || ep === "pro_trial" || ep === "team" || ep === "enterprise";
+}
+
 
 // ─── Formatting ─────────────────────────────────
 

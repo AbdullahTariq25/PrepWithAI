@@ -5,6 +5,7 @@ import GitHub from "next-auth/providers/github";
 import bcrypt from "bcryptjs";
 import connectDB from "./mongodb";
 import User from "@/models/User";
+import { FREE_TRIAL_DAYS } from "./constants";
 
 declare module "next-auth" {
   interface Session {
@@ -17,6 +18,8 @@ declare module "next-auth" {
       onboarded: boolean;
       eloRating: number;
       currentStreak: number;
+      proTrialEndsAt?: string | null;
+      isOnProTrial: boolean;
     };
   }
 }
@@ -66,10 +69,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         await connectDB();
         const existingUser = await User.findOne({ email: user.email });
         if (!existingUser) {
+          // Auto-start 14-day Pro trial for every new account
+          const now = new Date();
+          const trialEnd = new Date(now);
+          trialEnd.setDate(trialEnd.getDate() + FREE_TRIAL_DAYS);
           await User.create({
             name: user.name || "",
             email: user.email || "",
             image: user.image || "",
+            proTrialStartedAt: now,
+            proTrialEndsAt: trialEnd,
           });
         }
       }
@@ -85,6 +94,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.onboarded = dbUser.onboarded;
           token.eloRating = dbUser.eloRating;
           token.currentStreak = dbUser.currentStreak;
+          token.proTrialEndsAt = dbUser.proTrialEndsAt
+            ? dbUser.proTrialEndsAt.toISOString()
+            : null;
+          const now = new Date();
+          token.isOnProTrial =
+            dbUser.proTrialEndsAt != null &&
+            dbUser.proTrialEndsAt > now &&
+            dbUser.plan === "free";
         }
       }
       return token;
@@ -96,6 +113,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.onboarded = token.onboarded as boolean;
         session.user.eloRating = (token.eloRating as number) || 1200;
         session.user.currentStreak = (token.currentStreak as number) || 0;
+        session.user.proTrialEndsAt = (token.proTrialEndsAt as string | null) ?? null;
+        session.user.isOnProTrial = (token.isOnProTrial as boolean) ?? false;
       }
       return session;
     },

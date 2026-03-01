@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import Session from "@/models/Session";
 import { COMPANY_PACKS } from "@/lib/constants";
+import { trackApiCall, checkApiLimit } from "@/lib/api-usage";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -67,6 +68,19 @@ export async function POST(
     const { id } = await params;
     const { action, content } = await req.json();
 
+    // Check API rate limit before making Groq call
+    const apiLimit = await checkApiLimit();
+    if (!apiLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: "AI responses are temporarily limited due to high usage. Please try again shortly.",
+          rateLimited: true,
+          remaining: apiLimit.remaining,
+        },
+        { status: 429 }
+      );
+    }
+
     await connectDB();
     const session = await Session.findOne({ _id: id, userId: userSession.user.id });
     if (!session) {
@@ -124,6 +138,8 @@ export async function POST(
           max_tokens: 800,
         });
 
+        await trackApiCall(endCompletion.usage?.total_tokens || 0);
+
         const endMessage = endCompletion.choices[0]?.message?.content || "";
         let overallScore = 0;
         let grades = { problemSolving: 0, communication: 0, codeQuality: 0, edgeCases: 0, timeManagement: 0 };
@@ -155,6 +171,8 @@ export async function POST(
       max_tokens: 800,
     });
 
+    await trackApiCall(completion.usage?.total_tokens || 0);
+
     const aiMessage = completion.choices[0]?.message?.content || "I apologize, I encountered an issue. Could you repeat that?";
 
     if (action === "message" && userMessage) {
@@ -166,6 +184,7 @@ export async function POST(
     return NextResponse.json({ message: aiMessage, newQuestion });
   } catch (error) {
     console.error("Chat error:", error);
+    await trackApiCall(0, true);
     return NextResponse.json({ error: "Failed to process message" }, { status: 500 });
   }
 }

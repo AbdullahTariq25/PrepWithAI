@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -434,9 +434,9 @@ export default function InterviewSessionPage() {
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col bg-[#080808]">
       {/* Top bar */}
-      <div className="flex items-center justify-between py-3 px-4 border-b border-white/[0.06] shrink-0">
+      <div className="flex items-center justify-between py-3 px-4 border-b border-white/6 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-linear-to-br from-indigo-600 to-violet-600 flex items-center justify-center">
             <Brain className="w-4 h-4 text-white" />
           </div>
           <div>
@@ -509,7 +509,7 @@ export default function InterviewSessionPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Chat panel */}
         <div
-          className={`flex flex-col ${showCode ? "w-1/2 border-r border-white/[0.06]" : "w-full max-w-4xl mx-auto"}`}
+          className={`flex flex-col ${showCode ? "w-1/2 border-r border-white/6" : "w-full max-w-4xl mx-auto"}`}
         >
           <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
             <AnimatePresence>
@@ -565,7 +565,7 @@ export default function InterviewSessionPage() {
           </div>
 
           {/* Hint/Skip bar */}
-          <div className="border-t border-white/[0.06] p-2 flex items-center gap-2 justify-center shrink-0">
+          <div className="border-t border-white/6 p-2 flex items-center gap-2 justify-center shrink-0">
             <Button
               variant="outline"
               size="sm"
@@ -587,12 +587,12 @@ export default function InterviewSessionPage() {
           </div>
 
           {/* Input area */}
-          <div className="border-t border-white/[0.06] p-3 shrink-0">
+          <div className="border-t border-white/6 p-3 shrink-0">
             <div className="flex items-end gap-3">
               {sessionInfo?.voiceMode && (
                 <button
                   onClick={toggleRecording}
-                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all shrink-0 relative ${isRecording ? "bg-red-500 scale-110 shadow-lg shadow-red-500/30" : "bg-[#1A1A1A] border border-white/[0.08] hover:border-indigo-500/30"}`}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all shrink-0 relative ${isRecording ? "bg-red-500 scale-110 shadow-lg shadow-red-500/30" : "bg-[#1A1A1A] border border-white/8 hover:border-indigo-500/30"}`}
                 >
                   {isRecording && (
                     <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-30" />
@@ -658,7 +658,7 @@ export default function InterviewSessionPage() {
                       setCode(DEFAULT_CODE[lang.id] || "");
                       setCodeOutput(null);
                     }}
-                    className={`text-xs px-2.5 py-1 rounded transition-colors ${codeLang === lang.id ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white hover:bg-white/10"}`}
+                    className={`text-xs px-2.5 py-1 rounded transition-colors ${codeLang === lang.id ? "bg-indigo-600 text-white" : "text-[#888] hover:text-white hover:bg-white/10"}`}
                   >
                     {lang.label}
                   </button>
@@ -668,7 +668,7 @@ export default function InterviewSessionPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="gap-1 h-7 text-xs border-white/10 text-gray-300 hover:text-white"
+                  className="gap-1 h-7 text-xs border-white/10 text-[#ccc] hover:text-white"
                   onClick={runCode}
                   disabled={runningCode}
                 >
@@ -715,7 +715,7 @@ export default function InterviewSessionPage() {
               <div className="border-t border-white/10 max-h-40 overflow-y-auto">
                 <div className="px-3 py-2">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] uppercase tracking-wider text-gray-500">
+                    <span className="text-[10px] uppercase tracking-wider text-[#666]">
                       Output
                     </span>
                     {codeOutput.exitCode === 0 ? (
@@ -728,12 +728,12 @@ export default function InterviewSessionPage() {
                       </Badge>
                     )}
                     {codeOutput.executionTime > 0 && (
-                      <span className="text-[10px] text-gray-500">
+                      <span className="text-[10px] text-[#666]">
                         {codeOutput.executionTime.toFixed(0)}ms
                       </span>
                     )}
                   </div>
-                  <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">
+                  <pre className="text-xs text-[#ccc] font-mono whitespace-pre-wrap">
                     {codeOutput.stdout || codeOutput.stderr || "No output"}
                   </pre>
                 </div>

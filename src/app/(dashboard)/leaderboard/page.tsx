@@ -50,7 +50,7 @@ export default function LeaderboardPage() {
 
   const getRankIcon = (index: number) => {
     if (index === 0) return <Crown className="w-5 h-5 text-yellow-400" />;
-    if (index === 1) return <Medal className="w-5 h-5 text-gray-300" />;
+    if (index === 1) return <Medal className="w-5 h-5 text-[#ccc]" />;
     if (index === 2) return <Medal className="w-5 h-5 text-amber-600" />;
     return (
       <span className="text-sm font-semibold text-[#888] w-5 text-center">
@@ -112,7 +112,7 @@ export default function LeaderboardPage() {
             return (
               <Card
                 key={u._id}
-                className={`bg-[#111] border-white/[0.06] ${isCenter ? "ring-2 ring-yellow-500/30 -mt-4" : ""}`}
+                className={`bg-[#111] border-white/6 ${isCenter ? "ring-2 ring-yellow-500/30 -mt-4" : ""}`}
               >
                 <CardContent className="p-6 text-center">
                   <div className="mb-3">{getRankIcon(pos)}</div>
@@ -149,7 +149,7 @@ export default function LeaderboardPage() {
       )}
 
       {/* Full rankings */}
-      <Card className="bg-[#111] border-white/[0.06]">
+      <Card className="bg-[#111] border-white/6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-indigo-400" /> Rankings
@@ -180,7 +180,7 @@ export default function LeaderboardPage() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                    className={`flex items-center gap-4 p-3 rounded-lg transition-colors ${isMe ? "bg-indigo-500/10 border border-indigo-500/20" : "hover:bg-white/[0.04]"}`}
+                    className={`flex items-center gap-4 p-3 rounded-lg transition-colors ${isMe ? "bg-indigo-500/10 border border-indigo-500/20" : "hover:bg-white/4"}`}
                   >
                     <div className="w-8 flex justify-center">
                       {getRankIcon(i)}

@@ -41,7 +41,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center app-background px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#080808] px-4">
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-500/5 rounded-full blur-3xl" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl" />
 
@@ -61,12 +61,10 @@ export default function LoginPage() {
             </span>
           </Link>
           <h1 className="text-2xl font-bold">Welcome back</h1>
-          <p className="text-[#888] mt-1">
-            Sign in to continue your prep
-          </p>
+          <p className="text-[#888] mt-1">Sign in to continue your prep</p>
         </div>
 
-        <div className="rounded-2xl border border-white/[0.06] bg-[#111] p-8">
+        <div className="rounded-2xl border border-white/6 bg-[#111] p-8 glow-border">
           <div className="space-y-3 mb-6">
             <Button
               variant="outline"
@@ -107,7 +105,7 @@ export default function LoginPage() {
 
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/[0.06]" />
+              <div className="w-full border-t border-white/6" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-[#111] px-2 text-[#888]">or</span>
@@ -175,4 +173,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

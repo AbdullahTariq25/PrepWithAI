@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
+import { FREE_TRIAL_DAYS } from "@/lib/constants";
+import { sendWelcomeEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,9 +20,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email already in use" }, { status: 409 });
     }
     const hashedPassword = await bcrypt.hash(password, 12);
-    const user = await User.create({ name, email, password: hashedPassword });
+
+    // Auto-start 14-day Pro trial for every new account
+    const now = new Date();
+    const trialEnd = new Date(now);
+    trialEnd.setDate(trialEnd.getDate() + FREE_TRIAL_DAYS);
+
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      proTrialStartedAt: now,
+      proTrialEndsAt: trialEnd,
+    });
+
+    // Send welcome email (non-blocking)
+    sendWelcomeEmail(email, name).catch(console.error);
+
     return NextResponse.json(
-      { message: "Account created successfully", userId: user._id },
+      {
+        message: "Account created successfully",
+        userId: user._id,
+        proTrialEndsAt: trialEnd.toISOString(),
+      },
       { status: 201 }
     );
   } catch (error) {

@@ -274,7 +274,7 @@ export default function SettingsPage() {
                 <p className="text-sm text-[#888]">Manage your subscription</p>
               </div>
             </div>
-            <div className="flex items-center justify-between p-4 bg-white/[0.04] rounded-lg mb-4">
+            <div className="flex items-center justify-between p-4 bg-white/4 rounded-lg mb-4">
               <div>
                 <p className="font-medium">Current Plan</p>
                 <p className="text-sm text-[#888]">

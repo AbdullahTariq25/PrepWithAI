@@ -182,11 +182,11 @@ export default function DailyChallengePage() {
             </div>
             Daily Challenges
           </h1>
-          <p className="text-gray-400 mt-1">
+          <p className="text-[#888] mt-1">
             Complete challenges daily to maintain your streak
           </p>
         </div>
-        <div className="flex items-center gap-2 text-gray-400">
+        <div className="flex items-center gap-2 text-[#888]">
           <Clock className="w-4 h-4" />
           <span className="text-sm">
             New challenges in:{" "}
@@ -196,14 +196,14 @@ export default function DailyChallengePage() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white/5 rounded-xl border border-white/10 p-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 slide-up-stagger">
+        <div className="bg-white/5 rounded-xl border border-white/10 p-4 premium-card">
           <div className="flex items-center gap-2 text-orange-400 mb-2">
             <Flame className="w-4 h-4" />
             <span className="text-sm">Current Streak</span>
           </div>
           <p className="text-2xl font-bold text-white">{streak} days</p>
-          <p className="text-xs text-gray-500 mt-1">Keep it going!</p>
+          <p className="text-xs text-[#666] mt-1">Keep it going!</p>
         </div>
         <div className="bg-white/5 rounded-xl border border-white/10 p-4">
           <div className="flex items-center gap-2 text-emerald-400 mb-2">
@@ -228,7 +228,7 @@ export default function DailyChallengePage() {
             <span className="text-sm">Points Earned</span>
           </div>
           <p className="text-2xl font-bold text-white">{totalPoints}</p>
-          <p className="text-xs text-gray-500 mt-1">Today&apos;s total</p>
+          <p className="text-xs text-[#666] mt-1">Today&apos;s total</p>
         </div>
         <div className="bg-white/5 rounded-xl border border-white/10 p-4">
           <div className="flex items-center gap-2 text-purple-400 mb-2">
@@ -236,7 +236,7 @@ export default function DailyChallengePage() {
             <span className="text-sm">Best Streak</span>
           </div>
           <p className="text-2xl font-bold text-white">21 days</p>
-          <p className="text-xs text-gray-500 mt-1">Personal record</p>
+          <p className="text-xs text-[#666] mt-1">Personal record</p>
         </div>
       </div>
 
@@ -258,7 +258,7 @@ export default function DailyChallengePage() {
                     ? "border-2 border-orange-500 bg-orange-500/20 text-orange-400"
                     : isActive
                       ? "bg-orange-500/30 text-orange-400"
-                      : "bg-white/5 text-gray-600"
+                      : "bg-white/5 text-[#555]"
                 }`}
               >
                 {isActive ? "🔥" : "·"}
@@ -278,7 +278,7 @@ export default function DailyChallengePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className={`bg-white/5 rounded-xl border border-white/10 p-5 hover:border-white/20 transition-all group ${
+              className={`bg-white/5 rounded-xl border border-white/10 p-5 hover:border-white/20 transition-all group premium-card ${
                 challenge.isLocked ? "opacity-60" : "cursor-pointer"
               } ${challenge.isCompleted ? "border-emerald-500/30" : ""}`}
               onClick={() =>
@@ -310,11 +310,11 @@ export default function DailyChallengePage() {
               <h3 className="text-white font-semibold mb-1 group-hover:text-indigo-400 transition-colors">
                 {challenge.title}
               </h3>
-              <p className="text-gray-400 text-sm mb-3 line-clamp-2">
+              <p className="text-[#888] text-sm mb-3 line-clamp-2">
                 {challenge.description}
               </p>
 
-              <div className="flex items-center justify-between text-xs text-gray-500">
+              <div className="flex items-center justify-between text-xs text-[#666]">
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1">
                     <Timer className="w-3 h-3" />
@@ -347,7 +347,7 @@ export default function DailyChallengePage() {
               )}
 
               {challenge.isLocked && (
-                <div className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-white/5 text-gray-500 rounded-lg text-sm">
+                <div className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-white/5 text-[#666] rounded-lg text-sm">
                   <Lock className="w-3 h-3" />
                   Complete previous to unlock
                 </div>
@@ -379,7 +379,7 @@ export default function DailyChallengePage() {
                   <h2 className="text-xl font-bold text-white">
                     {selectedChallenge.title}
                   </h2>
-                  <p className="text-gray-400 text-sm mt-1">
+                  <p className="text-[#888] text-sm mt-1">
                     {selectedChallenge.category}
                   </p>
                 </div>
@@ -390,7 +390,7 @@ export default function DailyChallengePage() {
                 </span>
               </div>
 
-              <p className="text-gray-300 mb-4">
+              <p className="text-[#ccc] mb-4">
                 {selectedChallenge.description}
               </p>
 
@@ -400,28 +400,28 @@ export default function DailyChallengePage() {
                   <p className="text-white text-sm font-medium">
                     {selectedChallenge.timeLimit}m
                   </p>
-                  <p className="text-xs text-gray-500">Time Limit</p>
+                  <p className="text-xs text-[#666]">Time Limit</p>
                 </div>
                 <div className="bg-white/5 rounded-lg p-3 text-center">
                   <Star className="w-4 h-4 text-amber-400 mx-auto mb-1" />
                   <p className="text-white text-sm font-medium">
                     {selectedChallenge.points}
                   </p>
-                  <p className="text-xs text-gray-500">Points</p>
+                  <p className="text-xs text-[#666]">Points</p>
                 </div>
                 <div className="bg-white/5 rounded-lg p-3 text-center">
                   <Users className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
                   <p className="text-white text-sm font-medium">
                     {selectedChallenge.completedBy}
                   </p>
-                  <p className="text-xs text-gray-500">Completed</p>
+                  <p className="text-xs text-[#666]">Completed</p>
                 </div>
               </div>
 
               <div className="flex gap-3">
                 <button
                   onClick={() => setSelectedChallenge(null)}
-                  className="flex-1 py-2.5 bg-white/5 text-gray-400 rounded-lg hover:bg-white/10 transition-colors"
+                  className="flex-1 py-2.5 bg-white/5 text-[#888] rounded-lg hover:bg-white/10 transition-colors"
                 >
                   Cancel
                 </button>

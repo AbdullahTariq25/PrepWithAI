@@ -187,7 +187,7 @@ export default function FlashcardsPage() {
             </div>
             Flashcards
           </h1>
-          <p className="text-gray-400 mt-1">
+          <p className="text-[#888] mt-1">
             Master interview concepts with spaced repetition
           </p>
         </div>
@@ -199,7 +199,7 @@ export default function FlashcardsPage() {
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
               studyMode === "study"
                 ? "bg-purple-500 text-white"
-                : "bg-white/5 text-gray-400 hover:text-white"
+                : "bg-white/5 text-[#888] hover:text-white"
             }`}
           >
             <Brain className="w-4 h-4" />
@@ -207,7 +207,7 @@ export default function FlashcardsPage() {
           </button>
           <button
             onClick={shuffleCards}
-            className="flex items-center gap-2 px-4 py-2 bg-white/5 text-gray-400 rounded-lg hover:text-white hover:bg-white/10 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-white/5 text-[#888] rounded-lg hover:text-white hover:bg-white/10 transition-colors"
           >
             <Shuffle className="w-4 h-4" />
             Shuffle
@@ -216,22 +216,22 @@ export default function FlashcardsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white/5 rounded-xl border border-white/10 p-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 slide-up-stagger">
+        <div className="bg-white/5 rounded-xl border border-white/10 p-4 premium-card">
           <div className="flex items-center gap-2 text-purple-400 mb-2">
             <Layers className="w-4 h-4" />
             <span className="text-sm">Total Cards</span>
           </div>
           <p className="text-2xl font-bold text-white">{cards.length}</p>
         </div>
-        <div className="bg-white/5 rounded-xl border border-white/10 p-4">
+        <div className="bg-white/5 rounded-xl border border-white/10 p-4 premium-card">
           <div className="flex items-center gap-2 text-emerald-400 mb-2">
             <Check className="w-4 h-4" />
             <span className="text-sm">Mastered</span>
           </div>
           <p className="text-2xl font-bold text-white">{masteredCount}</p>
         </div>
-        <div className="bg-white/5 rounded-xl border border-white/10 p-4">
+        <div className="bg-white/5 rounded-xl border border-white/10 p-4 premium-card">
           <div className="flex items-center gap-2 text-amber-400 mb-2">
             <RotateCcw className="w-4 h-4" />
             <span className="text-sm">To Review</span>
@@ -240,7 +240,7 @@ export default function FlashcardsPage() {
             {cards.length - masteredCount}
           </p>
         </div>
-        <div className="bg-white/5 rounded-xl border border-white/10 p-4">
+        <div className="bg-white/5 rounded-xl border border-white/10 p-4 premium-card">
           <div className="flex items-center gap-2 text-indigo-400 mb-2">
             <Sparkles className="w-4 h-4" />
             <span className="text-sm">Mastery</span>
@@ -253,7 +253,7 @@ export default function FlashcardsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        <Filter className="w-4 h-4 text-gray-500" />
+        <Filter className="w-4 h-4 text-[#666]" />
         {CATEGORIES.map((cat) => (
           <button
             key={cat}
@@ -265,7 +265,7 @@ export default function FlashcardsPage() {
             className={`px-3 py-1 rounded-full text-sm transition-colors ${
               selectedCategory === cat
                 ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
-                : "bg-white/5 text-gray-400 border border-white/10 hover:border-white/20"
+                : "bg-white/5 text-[#888] border border-white/10 hover:border-white/20"
             }`}
           >
             {cat}
@@ -275,7 +275,7 @@ export default function FlashcardsPage() {
           onClick={() => setShowMastered(!showMastered)}
           className={`px-3 py-1 rounded-full text-sm transition-colors ${
             showMastered
-              ? "bg-white/5 text-gray-400 border border-white/10"
+              ? "bg-white/5 text-[#888] border border-white/10"
               : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
           }`}
         >
@@ -287,7 +287,7 @@ export default function FlashcardsPage() {
       {filteredCards.length > 0 && currentCard ? (
         <div className="flex flex-col items-center">
           {/* Progress */}
-          <div className="w-full max-w-2xl flex items-center justify-between mb-4 text-sm text-gray-400">
+          <div className="w-full max-w-2xl flex items-center justify-between mb-4 text-sm text-[#888]">
             <span>
               Card {currentIndex + 1} of {filteredCards.length}
             </span>
@@ -297,7 +297,7 @@ export default function FlashcardsPage() {
               >
                 {currentCard.difficulty}
               </span>
-              <span className="text-gray-500">{currentCard.category}</span>
+              <span className="text-[#666]">{currentCard.category}</span>
             </div>
           </div>
 
@@ -319,15 +319,15 @@ export default function FlashcardsPage() {
                     : "bg-white/5 border-white/10"
                 }`}
               >
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">
+                <p className="text-xs text-[#666] uppercase tracking-wider mb-4">
                   {isFlipped ? "💡 Answer" : "❓ Question"}
                 </p>
                 <p
-                  className={`text-lg md:text-xl ${isFlipped ? "text-gray-300" : "text-white"} leading-relaxed`}
+                  className={`text-lg md:text-xl ${isFlipped ? "text-[#ccc]" : "text-white"} leading-relaxed`}
                 >
                   {isFlipped ? currentCard.back : currentCard.front}
                 </p>
-                <p className="text-xs text-gray-600 mt-6">
+                <p className="text-xs text-[#555] mt-6">
                   {isFlipped
                     ? "Click to see question"
                     : "Click to reveal answer"}
@@ -340,7 +340,7 @@ export default function FlashcardsPage() {
           <div className="flex items-center gap-4 mt-6">
             <button
               onClick={prevCard}
-              className="p-3 bg-white/5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              className="p-3 bg-white/5 rounded-full hover:bg-white/10 text-[#888] hover:text-white transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -376,7 +376,7 @@ export default function FlashcardsPage() {
                   className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-colors ${
                     currentCard.mastered
                       ? "bg-emerald-500/20 text-emerald-400"
-                      : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
+                      : "bg-white/5 text-[#888] hover:text-white hover:bg-white/10"
                   }`}
                 >
                   <Star
@@ -389,7 +389,7 @@ export default function FlashcardsPage() {
 
             <button
               onClick={nextCard}
-              className="p-3 bg-white/5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              className="p-3 bg-white/5 rounded-full hover:bg-white/10 text-[#888] hover:text-white transition-colors"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -419,9 +419,9 @@ export default function FlashcardsPage() {
         </div>
       ) : (
         <div className="text-center py-20">
-          <BookOpen className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+          <BookOpen className="w-12 h-12 text-[#555] mx-auto mb-4" />
           <h3 className="text-white font-medium mb-2">No Flashcards Found</h3>
-          <p className="text-gray-400 text-sm">
+          <p className="text-[#888] text-sm">
             Try changing your filters or category selection.
           </p>
         </div>

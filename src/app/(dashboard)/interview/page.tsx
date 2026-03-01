@@ -132,7 +132,7 @@ function InterviewSetupContent() {
       desc: "Type your answers in a chat interface",
       icon: Keyboard,
       gradient: "from-gray-500 to-zinc-600",
-      border: "border-white/[0.08]",
+      border: "border-white/8",
       activeBorder: "border-indigo-500",
     },
     {
@@ -141,7 +141,7 @@ function InterviewSetupContent() {
       desc: "Speak your answers naturally with AI voice",
       icon: Mic,
       gradient: "from-violet-500 to-purple-600",
-      border: "border-white/[0.08]",
+      border: "border-white/8",
       activeBorder: "border-violet-500",
     },
     {
@@ -150,7 +150,7 @@ function InterviewSetupContent() {
       desc: "Webcam + AI avatar with real-time feedback",
       icon: Video,
       gradient: "from-indigo-500 to-cyan-500",
-      border: "border-white/[0.08]",
+      border: "border-white/8",
       activeBorder: "border-indigo-500",
       isNew: true,
     },
@@ -206,7 +206,7 @@ function InterviewSetupContent() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 stagger"
+            className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 slide-up-stagger"
           >
             {INTERVIEW_TYPES.map((t) => {
               const Icon = iconMap[t.icon] || Code2;
@@ -214,17 +214,17 @@ function InterviewSetupContent() {
               return (
                 <div
                   key={t.id}
-                  className={`card-3d bg-[#111] border rounded-2xl p-5 cursor-pointer transition-all ${
+                  className={`card-3d premium-card bg-[#111] border rounded-2xl p-5 cursor-pointer transition-all ${
                     type === t.id
                       ? "border-indigo-500 shadow-lg shadow-indigo-500/10"
-                      : "border-white/[0.08] hover:border-white/[0.15]"
+                      : "border-white/8 hover:border-white/15"
                   } ${isLocked ? "opacity-60" : ""}`}
                   onClick={() => {
                     if (!isLocked) setType(t.id);
                   }}
                 >
                   <div
-                    className={`w-10 h-10 rounded-lg bg-gradient-to-br ${t.color} flex items-center justify-center mb-3`}
+                    className={`w-10 h-10 rounded-lg bg-linear-to-br ${t.color} flex items-center justify-center mb-3`}
                   >
                     <Icon className="w-5 h-5 text-white" />
                   </div>
@@ -232,7 +232,7 @@ function InterviewSetupContent() {
                     <h3 className="font-semibold text-sm">{t.name}</h3>
                     {isLocked && <Lock className="w-3 h-3 text-[#555]" />}
                     {t.free && (
-                      <Badge className="text-[10px] bg-white/[0.06] text-[#888] border-white/[0.08]">
+                      <Badge className="text-[10px] bg-white/6 text-[#888] border-white/8">
                         Free
                       </Badge>
                     )}
@@ -252,16 +252,16 @@ function InterviewSetupContent() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
           >
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 stagger">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 slide-up-stagger">
               <div
-                className={`card-3d bg-[#111] border rounded-2xl p-4 flex items-center gap-3 cursor-pointer transition-all ${
+                className={`card-3d premium-card bg-[#111] border rounded-2xl p-4 flex items-center gap-3 cursor-pointer transition-all ${
                   company === "general"
                     ? "border-indigo-500 shadow-lg shadow-indigo-500/10"
-                    : "border-white/[0.08] hover:border-white/[0.15]"
+                    : "border-white/8 hover:border-white/15"
                 }`}
                 onClick={() => setCompany("general")}
               >
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-500 to-zinc-600 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-linear-to-br from-gray-500 to-zinc-600 flex items-center justify-center">
                   <Building2 className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -278,10 +278,10 @@ function InterviewSetupContent() {
               {COMPANY_PACKS.map((c) => (
                 <div
                   key={c.id}
-                  className={`card-3d bg-[#111] border rounded-2xl p-4 flex items-center gap-3 cursor-pointer transition-all ${
+                  className={`card-3d premium-card bg-[#111] border rounded-2xl p-4 flex items-center gap-3 cursor-pointer transition-all ${
                     company === c.id
                       ? "border-indigo-500 shadow-lg shadow-indigo-500/10"
-                      : "border-white/[0.08] hover:border-white/[0.15]"
+                      : "border-white/8 hover:border-white/15"
                   }`}
                   onClick={() => setCompany(c.id)}
                 >
@@ -317,15 +317,15 @@ function InterviewSetupContent() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="grid sm:grid-cols-2 gap-4 max-w-2xl mx-auto stagger"
+            className="grid sm:grid-cols-2 gap-4 max-w-2xl mx-auto slide-up-stagger"
           >
             {difficulties.map((d) => (
               <div
                 key={d.id}
-                className={`card-3d bg-[#111] border rounded-2xl p-5 text-center cursor-pointer transition-all ${
+                className={`card-3d premium-card bg-[#111] border rounded-2xl p-5 text-center cursor-pointer transition-all ${
                   difficulty === d.id
                     ? "border-indigo-500 shadow-lg shadow-indigo-500/10"
-                    : "border-white/[0.08] hover:border-white/[0.15]"
+                    : "border-white/8 hover:border-white/15"
                 }`}
                 onClick={() => setDifficulty(d.id)}
               >
@@ -346,15 +346,15 @@ function InterviewSetupContent() {
             exit={{ opacity: 0, x: -20 }}
             className="max-w-lg mx-auto"
           >
-            <div className="bg-[#111] border border-white/[0.08] rounded-2xl p-8 space-y-6">
+            <div className="bg-[#111] border border-white/8 rounded-2xl p-8 space-y-6 premium-card glow-border">
               <div className="text-center">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/30">
+                <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-indigo-600 to-violet-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/30">
                   <Brain className="w-8 h-8 text-white" />
                 </div>
                 <h2 className="text-xl font-bold">Ready to Start!</h2>
               </div>
 
-              <div className="space-y-3 bg-[#0A0A0A] rounded-xl p-4 border border-white/[0.06]">
+              <div className="space-y-3 bg-[#0A0A0A] rounded-xl p-4 border border-white/6">
                 <div className="flex justify-between text-sm">
                   <span className="text-[#666]">Type</span>
                   <span className="font-medium capitalize">
@@ -382,8 +382,8 @@ function InterviewSetupContent() {
                       key={m.id}
                       className={`relative p-3 rounded-xl border cursor-pointer transition-all text-center ${
                         interviewMode === m.id
-                          ? `${m.activeBorder} bg-white/[0.03]`
-                          : `${m.border} hover:border-white/[0.15]`
+                          ? `${m.activeBorder} bg-white/3`
+                          : `${m.border} hover:border-white/15`
                       }`}
                       onClick={() => setInterviewMode(m.id)}
                     >
@@ -393,7 +393,7 @@ function InterviewSetupContent() {
                         </Badge>
                       )}
                       <div
-                        className={`w-8 h-8 rounded-lg bg-gradient-to-br ${m.gradient} flex items-center justify-center mx-auto mb-2`}
+                        className={`w-8 h-8 rounded-lg bg-linear-to-br ${m.gradient} flex items-center justify-center mx-auto mb-2`}
                       >
                         <m.icon className="w-4 h-4 text-white" />
                       </div>

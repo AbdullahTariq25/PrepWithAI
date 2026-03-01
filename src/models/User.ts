@@ -12,6 +12,8 @@ export interface IUser extends Document {
   username?: string;
   plan: "free" | "pro" | "team" | "enterprise";
   planExpiresAt?: Date;
+  proTrialStartedAt?: Date;
+  proTrialEndsAt?: Date;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   currentRole?: string;
@@ -56,6 +58,8 @@ const UserSchema = new Schema<IUser>(
       default: "free",
     },
     planExpiresAt: { type: Date },
+    proTrialStartedAt: { type: Date },
+    proTrialEndsAt: { type: Date },
     stripeCustomerId: { type: String },
     stripeSubscriptionId: { type: String },
     currentRole: { type: String },

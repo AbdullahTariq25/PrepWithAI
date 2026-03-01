@@ -83,7 +83,7 @@ Best regards,
           </div>
           AI Cover Letter Generator
         </h1>
-        <p className="text-gray-400 mt-1">
+        <p className="text-[#888] mt-1">
           Generate tailored cover letters for any job application
         </p>
       </div>
@@ -98,7 +98,7 @@ Best regards,
               Job Details
             </h3>
             <div>
-              <label className="text-sm text-gray-400 mb-1 block">
+              <label className="text-sm text-[#888] mb-1 block">
                 Company Name *
               </label>
               <input
@@ -110,7 +110,7 @@ Best regards,
               />
             </div>
             <div>
-              <label className="text-sm text-gray-400 mb-1 block">
+              <label className="text-sm text-[#888] mb-1 block">
                 Job Title *
               </label>
               <input
@@ -122,7 +122,7 @@ Best regards,
               />
             </div>
             <div>
-              <label className="text-sm text-gray-400 mb-1 block">
+              <label className="text-sm text-[#888] mb-1 block">
                 Job Description (optional)
               </label>
               <textarea
@@ -142,7 +142,7 @@ Best regards,
               Personalization
             </h3>
             <div>
-              <label className="text-sm text-gray-400 mb-1 block">
+              <label className="text-sm text-[#888] mb-1 block">
                 Key Skills to Highlight
               </label>
               <input
@@ -154,7 +154,7 @@ Best regards,
               />
             </div>
             <div>
-              <label className="text-sm text-gray-400 mb-1 block">
+              <label className="text-sm text-[#888] mb-1 block">
                 Why This Company?
               </label>
               <textarea
@@ -174,7 +174,7 @@ Best regards,
               Style
             </h3>
             <div>
-              <label className="text-sm text-gray-400 mb-2 block">Tone</label>
+              <label className="text-sm text-[#888] mb-2 block">Tone</label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {TONES.map((t) => (
                   <button
@@ -183,7 +183,7 @@ Best regards,
                     className={`p-2 rounded-lg border text-center text-sm transition-all ${
                       tone === t.id
                         ? "border-indigo-500 bg-indigo-500/10 text-white"
-                        : "border-white/10 text-gray-400 hover:border-white/20"
+                        : "border-white/10 text-[#888] hover:border-white/20"
                     }`}
                   >
                     <span className="block text-lg mb-1">{t.icon}</span>
@@ -193,7 +193,7 @@ Best regards,
               </div>
             </div>
             <div>
-              <label className="text-sm text-gray-400 mb-2 block">
+              <label className="text-sm text-[#888] mb-2 block">
                 Template
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -208,7 +208,7 @@ Best regards,
                     }`}
                   >
                     <p className="text-white text-sm font-medium">{t.name}</p>
-                    <p className="text-gray-500 text-xs">{t.description}</p>
+                    <p className="text-[#666] text-xs">{t.description}</p>
                   </button>
                 ))}
               </div>
@@ -252,20 +252,20 @@ Best regards,
                   <div className="flex gap-2">
                     <button
                       onClick={copyToClipboard}
-                      className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                      className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-[#888] hover:text-white transition-colors"
                       title="Copy"
                     >
                       <Copy className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setShowPreview(!showPreview)}
-                      className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                      className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-[#888] hover:text-white transition-colors"
                       title="Preview"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
-                      className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                      className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-[#888] hover:text-white transition-colors"
                       title="Download"
                     >
                       <Download className="w-4 h-4" />
@@ -276,12 +276,12 @@ Best regards,
                   value={generatedLetter}
                   onChange={(e) => setGeneratedLetter(e.target.value)}
                   rows={20}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-gray-300 text-sm leading-relaxed focus:border-indigo-500 focus:outline-none resize-none font-mono"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-[#ccc] text-sm leading-relaxed focus:border-indigo-500 focus:outline-none resize-none font-mono"
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={generateCoverLetter}
-                    className="flex items-center gap-2 px-4 py-2 bg-white/5 text-gray-400 rounded-lg hover:bg-white/10 hover:text-white transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-white/5 text-[#888] rounded-lg hover:bg-white/10 hover:text-white transition-colors"
                   >
                     <RotateCcw className="w-4 h-4" />
                     Regenerate
@@ -295,12 +295,12 @@ Best regards,
             ) : (
               <div className="flex flex-col items-center justify-center h-96 text-center">
                 <div className="p-4 bg-white/5 rounded-full mb-4">
-                  <Briefcase className="w-8 h-8 text-gray-600" />
+                  <Briefcase className="w-8 h-8 text-[#555]" />
                 </div>
                 <h3 className="text-white font-medium mb-2">
                   Your Cover Letter Will Appear Here
                 </h3>
-                <p className="text-gray-500 text-sm max-w-sm">
+                <p className="text-[#666] text-sm max-w-sm">
                   Fill in the job details on the left and click generate to
                   create a personalized cover letter.
                 </p>
@@ -314,7 +314,7 @@ Best regards,
               <Sparkles className="w-4 h-4 text-amber-400" />
               Cover Letter Tips
             </h4>
-            <ul className="space-y-2 text-sm text-gray-400">
+            <ul className="space-y-2 text-sm text-[#888]">
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-3 h-3 text-emerald-400 mt-1 shrink-0" />
                 Customize each letter for the specific company and role

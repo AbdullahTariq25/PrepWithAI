@@ -736,29 +736,33 @@ export const FREE_TIER_LIMITS = {
 
 // ─── Pricing Plans ──────────────────────────────
 
+export const FREE_TRIAL_DAYS = 14;
+
 export const PRICING_PLANS = [
   {
     id: "free" as const,
     name: "Free",
     price: 0,
     period: "",
-    description: "Get started with basic interview practice",
+    description: "Get started — includes 14-day Pro trial",
+    trialDays: 14,
     features: [
-      "3 mock interviews per day",
-      "DSA questions only",
+      "✨ 14-day free Pro trial (all features unlocked)",
+      "3 mock interviews per day after trial",
+      "DSA questions only after trial",
       "Basic AI feedback",
       "Code execution engine",
       "Daily challenge access",
       "Save last 5 sessions",
     ],
     limitations: [
-      "No voice mode",
-      "No system design / behavioral",
-      "No company prep packs",
-      "No resume personalization",
-      "No progress analytics",
+      "No voice mode (after trial)",
+      "No system design / behavioral (after trial)",
+      "No company prep packs (after trial)",
+      "No resume personalization (after trial)",
+      "No progress analytics (after trial)",
     ],
-    cta: "Start Free",
+    cta: "Start Free — 14-Day Pro Trial",
     popular: false,
     stripePriceId: "",
   },
@@ -768,10 +772,12 @@ export const PRICING_PLANS = [
     price: 9,
     period: "/month",
     description: "Everything you need to ace your interviews",
+    trialDays: 14,
     features: [
       "Unlimited interviews",
       "All 12 question types",
       "Voice mode — speak naturally",
+      "Video interview mode (NEW)",
       "20 company prep packs",
       "Code execution with test cases",
       "Detailed AI feedback with scoring",
@@ -783,7 +789,7 @@ export const PRICING_PLANS = [
       "Unlimited session history",
     ],
     limitations: [],
-    cta: "Start Pro — 7 Day Trial",
+    cta: "Start Pro — 14-Day Free Trial",
     popular: true,
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID || "",
   },
@@ -793,6 +799,7 @@ export const PRICING_PLANS = [
     price: 29,
     period: "/month",
     description: "Prepare your entire engineering team",
+    trialDays: 14,
     features: [
       "Everything in Pro",
       "5 team member seats",
@@ -804,7 +811,7 @@ export const PRICING_PLANS = [
       "Admin controls",
     ],
     limitations: [],
-    cta: "Start Team Trial",
+    cta: "Start Team — 14-Day Free Trial",
     popular: false,
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_TEAM_PRICE_ID || "",
   },
@@ -814,6 +821,7 @@ export const PRICING_PLANS = [
     price: 199,
     period: "/month",
     description: "For companies and universities at scale",
+    trialDays: 0,
     features: [
       "Everything in Team",
       "Unlimited seats",

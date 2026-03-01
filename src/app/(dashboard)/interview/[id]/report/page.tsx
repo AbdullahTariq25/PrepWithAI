@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
@@ -116,6 +116,7 @@ export default function InterviewReportPage() {
   const [loading, setLoading] = useState(true);
   const [expandedQ, setExpandedQ] = useState<number | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [displayScore, setDisplayScore] = useState(0);
 
   useEffect(() => {
     if (!sessionId) {
@@ -136,9 +137,25 @@ export default function InterviewReportPage() {
     loadReport();
   }, [sessionId]);
 
+  // Score count-up animation
+  useEffect(() => {
+    if (!report) return;
+    const target = report.overallScore;
+    const duration = 1200;
+    const start = performance.now();
+    const animate = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayScore(Math.round(eased * target));
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+  }, [report]);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-96">
+      <div className="flex items-center justify-center min-h-96 bg-[#080808]">
         <div className="text-center">
           <Brain className="w-12 h-12 text-indigo-500 mx-auto mb-4 animate-pulse" />
           <p className="text-[#888]">Generating your report...</p>
@@ -149,7 +166,7 @@ export default function InterviewReportPage() {
 
   if (!report) {
     return (
-      <div className="text-center py-20">
+      <div className="text-center py-20 bg-[#080808]">
         <p className="text-[#888]">Session not found</p>
         <Link href="/history">
           <Button variant="outline" className="mt-4">
@@ -165,7 +182,7 @@ export default function InterviewReportPage() {
   const eloLevel = report.newElo ? getEloLevel(report.newElo) : null;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 page-enter">
+    <div className="max-w-4xl mx-auto space-y-8 page-enter bg-[#080808]">
       <Link
         href="/history"
         className="inline-flex items-center gap-2 text-sm text-[#888] hover:text-white transition-colors"
@@ -215,7 +232,7 @@ export default function InterviewReportPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <div className="bg-[#111] border border-white/[0.08] rounded-2xl p-8">
+        <div className="bg-[#111] border border-white/8 rounded-2xl p-8">
           <div className="flex flex-col md:flex-row items-center gap-8">
             <div className="relative shrink-0">
               <svg className="w-32 h-32 -rotate-90" viewBox="0 0 120 120">
@@ -234,14 +251,14 @@ export default function InterviewReportPage() {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="8"
-                  strokeDasharray={`${(report.overallScore / 100) * 314} 314`}
+                  strokeDasharray={`${(displayScore / 100) * 314} 314`}
                   strokeLinecap="round"
                   className={scoreColor}
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-3xl font-bold tabular-nums">
-                  {report.overallScore}
+                  {displayScore}
                 </span>
                 <span className="text-xs text-[#555]">/100</span>
               </div>
@@ -275,7 +292,7 @@ export default function InterviewReportPage() {
               ].map((stat) => (
                 <div
                   key={stat.label}
-                  className="p-4 rounded-xl bg-white/[0.04] border border-white/[0.04]"
+                  className="p-4 rounded-xl bg-white/4 border border-white/4"
                 >
                   <div className="flex items-center gap-2 text-xs text-[#555] mb-1">
                     <stat.icon className={`w-3.5 h-3.5 ${stat.color}`} />{" "}
@@ -296,7 +313,7 @@ export default function InterviewReportPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
         >
-          <div className="bg-[#111] border border-white/[0.08] rounded-xl p-5">
+          <div className="bg-[#111] border border-white/8 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-5">
               <Zap className="w-5 h-5 text-indigo-400" />
               <h3 className="font-semibold text-sm">Performance Grades</h3>
@@ -332,7 +349,7 @@ export default function InterviewReportPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <div className="bg-[#111] border border-white/[0.08] rounded-xl p-5">
+          <div className="bg-[#111] border border-white/8 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-4">
               <Code2 className="w-5 h-5 text-emerald-400" />
               <h3 className="font-semibold text-sm">
@@ -343,9 +360,9 @@ export default function InterviewReportPage() {
               {report.codeSubmissions.map((sub, i) => (
                 <div
                   key={i}
-                  className="rounded-lg border border-white/[0.06] overflow-hidden"
+                  className="rounded-lg border border-white/6 overflow-hidden"
                 >
-                  <div className="flex items-center justify-between px-3 py-2 bg-white/[0.04]">
+                  <div className="flex items-center justify-between px-3 py-2 bg-white/4">
                     <Badge variant="secondary" className="text-xs">
                       {sub.language}
                     </Badge>
@@ -360,7 +377,7 @@ export default function InterviewReportPage() {
                       </Badge>
                     )}
                   </div>
-                  <pre className="p-3 text-xs font-mono overflow-x-auto max-h-48 bg-[#0A0A0A] text-gray-300">
+                  <pre className="p-3 text-xs font-mono overflow-x-auto max-h-48 bg-[#0A0A0A] text-[#ccc]">
                     {sub.code}
                   </pre>
                 </div>
@@ -382,10 +399,10 @@ export default function InterviewReportPage() {
           {report.questions.map((q, i) => (
             <div
               key={i}
-              className="bg-[#111] border border-white/[0.08] rounded-xl overflow-hidden"
+              className="bg-[#111] border border-white/8 rounded-xl overflow-hidden"
             >
               <button
-                className="w-full p-5 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors"
+                className="w-full p-5 flex items-center justify-between text-left hover:bg-white/2 transition-colors"
                 onClick={() => setExpandedQ(expandedQ === i ? null : i)}
               >
                 <div className="flex items-center gap-3">
@@ -410,7 +427,7 @@ export default function InterviewReportPage() {
                 )}
               </button>
               {expandedQ === i && q.feedback && (
-                <div className="px-5 pb-5 space-y-4 border-t border-white/[0.06] pt-4">
+                <div className="px-5 pb-5 space-y-4 border-t border-white/6 pt-4">
                   {q.feedback.strengths?.length > 0 && (
                     <div>
                       <div className="flex items-center gap-2 text-sm font-medium text-green-400 mb-2">
@@ -480,9 +497,9 @@ export default function InterviewReportPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
       >
-        <div className="bg-[#111] border border-white/[0.08] rounded-xl overflow-hidden">
+        <div className="bg-[#111] border border-white/8 rounded-xl overflow-hidden">
           <button
-            className="flex items-center justify-between w-full p-5 hover:bg-white/[0.02] transition-colors"
+            className="flex items-center justify-between w-full p-5 hover:bg-white/2 transition-colors"
             onClick={() => setShowTranscript(!showTranscript)}
           >
             <div className="flex items-center gap-2">
@@ -496,7 +513,7 @@ export default function InterviewReportPage() {
             )}
           </button>
           {showTranscript && (
-            <div className="px-5 pb-5 border-t border-white/[0.06] pt-4">
+            <div className="px-5 pb-5 border-t border-white/6 pt-4">
               <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                 {report.messages.map((msg, i) => (
                   <div
@@ -510,7 +527,7 @@ export default function InterviewReportPage() {
                       </div>
                     )}
                     <div
-                      className={`max-w-[80%] rounded-xl p-3 text-sm ${msg.role === "candidate" || msg.role === "user" ? "bg-indigo-600 text-white" : "bg-white/[0.04]"}`}
+                      className={`max-w-[80%] rounded-xl p-3 text-sm ${msg.role === "candidate" || msg.role === "user" ? "bg-indigo-600 text-white" : "bg-white/4"}`}
                     >
                       {msg.content}
                     </div>

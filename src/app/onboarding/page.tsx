@@ -107,7 +107,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center app-background px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-[#080808] px-4 py-12">
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-500/5 rounded-full blur-3xl" />
 
       <motion.div
@@ -157,9 +157,7 @@ export default function OnboardingPage() {
                   <CardContent className="p-6 text-center">
                     <div className="text-3xl mb-2">{level.icon}</div>
                     <h3 className="font-semibold">{level.title}</h3>
-                    <p className="text-sm text-[#888]">
-                      {level.desc}
-                    </p>
+                    <p className="text-sm text-[#888]">{level.desc}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -220,9 +218,7 @@ export default function OnboardingPage() {
                 >
                   <CardContent className="p-5">
                     <h3 className="font-semibold">{company.name}</h3>
-                    <p className="text-sm text-[#888]">
-                      {company.style}
-                    </p>
+                    <p className="text-sm text-[#888]">{company.style}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -268,4 +264,3 @@ export default function OnboardingPage() {
     </div>
   );
 }
-
