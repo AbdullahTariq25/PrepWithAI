@@ -32,90 +32,7 @@ interface DailyChallenge {
   isLocked: boolean;
 }
 
-const MOCK_CHALLENGES: DailyChallenge[] = [
-  {
-    id: "1",
-    title: "Two Sum",
-    description:
-      "Given an array of integers and a target, find two numbers that add up to the target.",
-    difficulty: "easy",
-    category: "Arrays & Hashing",
-    type: "coding",
-    timeLimit: 15,
-    points: 50,
-    completedBy: 1243,
-    isCompleted: false,
-    isLocked: false,
-  },
-  {
-    id: "2",
-    title: "Tell Me About Yourself",
-    description:
-      "Craft a compelling 2-minute response to this classic interview opener.",
-    difficulty: "easy",
-    category: "Behavioral",
-    type: "behavioral",
-    timeLimit: 10,
-    points: 30,
-    completedBy: 2891,
-    isCompleted: false,
-    isLocked: false,
-  },
-  {
-    id: "3",
-    title: "Design a URL Shortener",
-    description: "Design a scalable URL shortening service like bit.ly.",
-    difficulty: "medium",
-    category: "System Design",
-    type: "system-design",
-    timeLimit: 30,
-    points: 100,
-    completedBy: 456,
-    isCompleted: false,
-    isLocked: false,
-  },
-  {
-    id: "4",
-    title: "JavaScript Trivia",
-    description:
-      "Test your knowledge of JavaScript closures, prototypes, and async patterns.",
-    difficulty: "medium",
-    category: "JavaScript",
-    type: "quiz",
-    timeLimit: 5,
-    points: 40,
-    completedBy: 1567,
-    isCompleted: false,
-    isLocked: false,
-  },
-  {
-    id: "5",
-    title: "Binary Tree Level Order Traversal",
-    description: "Return the level order traversal of a binary tree as arrays.",
-    difficulty: "medium",
-    category: "Trees",
-    type: "coding",
-    timeLimit: 20,
-    points: 75,
-    completedBy: 789,
-    isCompleted: false,
-    isLocked: true,
-  },
-  {
-    id: "6",
-    title: "Design a Chat System",
-    description:
-      "Design a real-time messaging platform supporting 1:1 and group chats.",
-    difficulty: "hard",
-    category: "System Design",
-    type: "system-design",
-    timeLimit: 45,
-    points: 150,
-    completedBy: 234,
-    isCompleted: false,
-    isLocked: true,
-  },
-];
+const MOCK_CHALLENGES: DailyChallenge[] = [];
 
 const difficultyConfig = {
   easy: {
@@ -143,11 +60,51 @@ const typeIcons: Record<string, React.ReactNode> = {
 };
 
 export default function DailyChallengePage() {
-  const [challenges] = useState<DailyChallenge[]>(MOCK_CHALLENGES);
+  const [challenges, setChallenges] =
+    useState<DailyChallenge[]>(MOCK_CHALLENGES);
+  const [loading, setLoading] = useState(true);
   const [selectedChallenge, setSelectedChallenge] =
     useState<DailyChallenge | null>(null);
-  const [streak] = useState(7);
+  const [streak, setStreak] = useState(0);
   const [timeLeft, setTimeLeft] = useState("");
+
+  useEffect(() => {
+    const fetchChallenges = async () => {
+      try {
+        const res = await fetch("/api/daily");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.data?.challenges?.length) {
+            setChallenges(data.data.challenges);
+          }
+        }
+      } catch {
+        // keep empty state
+      }
+      setLoading(false);
+    };
+
+    const fetchStreak = async () => {
+      try {
+        const res = await fetch("/api/progress");
+        if (res.ok) {
+          const data = await res.json();
+          setStreak(
+            data.data?.currentStreak ||
+              data.data?.streak ||
+              data.currentStreak ||
+              data.streak ||
+              0,
+          );
+        }
+      } catch {
+        // keep 0
+      }
+    };
+
+    fetchChallenges();
+    fetchStreak();
+  }, []);
 
   useEffect(() => {
     const updateCountdown = () => {
@@ -235,7 +192,7 @@ export default function DailyChallengePage() {
             <Star className="w-4 h-4" />
             <span className="text-sm">Best Streak</span>
           </div>
-          <p className="text-2xl font-bold text-white">21 days</p>
+          <p className="text-2xl font-bold text-white">{streak} days</p>
           <p className="text-xs text-[#666] mt-1">Personal record</p>
         </div>
       </div>
@@ -269,93 +226,110 @@ export default function DailyChallengePage() {
       </div>
 
       {/* Challenge Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {challenges.map((challenge, index) => {
-          const diff = difficultyConfig[challenge.difficulty];
-          return (
-            <motion.div
-              key={challenge.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className={`bg-white/5 rounded-xl border border-white/10 p-5 hover:border-white/20 transition-all group premium-card ${
-                challenge.isLocked ? "opacity-60" : "cursor-pointer"
-              } ${challenge.isCompleted ? "border-emerald-500/30" : ""}`}
-              onClick={() =>
-                !challenge.isLocked && setSelectedChallenge(challenge)
-              }
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className={`p-2 rounded-lg ${diff.bg}`}>
-                  {challenge.isLocked ? (
-                    <Lock className={`w-4 h-4 ${diff.color}`} />
-                  ) : challenge.isCompleted ? (
-                    <CheckCircle className="w-4 h-4 text-emerald-400" />
-                  ) : (
-                    typeIcons[challenge.type]
-                  )}
+      {loading ? (
+        <div className="flex items-center justify-center py-24">
+          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : challenges.length === 0 ? (
+        <div className="bg-white/5 rounded-xl border border-white/10 p-12 text-center">
+          <Flame className="w-12 h-12 text-orange-400/30 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-white mb-2">
+            No challenges available today
+          </h3>
+          <p className="text-[#888] text-sm max-w-sm mx-auto">
+            Daily challenges are generated from our question bank. Check back
+            soon as new questions are added.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {challenges.map((challenge, index) => {
+            const diff = difficultyConfig[challenge.difficulty];
+            return (
+              <motion.div
+                key={challenge.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className={`bg-white/5 rounded-xl border border-white/10 p-5 hover:border-white/20 transition-all group premium-card ${
+                  challenge.isLocked ? "opacity-60" : "cursor-pointer"
+                } ${challenge.isCompleted ? "border-emerald-500/30" : ""}`}
+                onClick={() =>
+                  !challenge.isLocked && setSelectedChallenge(challenge)
+                }
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`p-2 rounded-lg ${diff.bg}`}>
+                    {challenge.isLocked ? (
+                      <Lock className={`w-4 h-4 ${diff.color}`} />
+                    ) : challenge.isCompleted ? (
+                      <CheckCircle className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      typeIcons[challenge.type]
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${diff.bg} ${diff.color}`}
+                    >
+                      {challenge.difficulty}
+                    </span>
+                    <span className="text-xs text-indigo-400 font-medium">
+                      +{challenge.points}pts
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+
+                <h3 className="text-white font-semibold mb-1 group-hover:text-indigo-400 transition-colors">
+                  {challenge.title}
+                </h3>
+                <p className="text-[#888] text-sm mb-3 line-clamp-2">
+                  {challenge.description}
+                </p>
+
+                <div className="flex items-center justify-between text-xs text-[#666]">
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1">
+                      <Timer className="w-3 h-3" />
+                      {challenge.timeLimit}m
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3 h-3" />
+                      {challenge.completedBy.toLocaleString()}
+                    </span>
+                  </div>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${diff.bg} ${diff.color}`}
+                    className={`px-2 py-0.5 rounded-full ${diff.bg} ${diff.color}`}
                   >
-                    {challenge.difficulty}
-                  </span>
-                  <span className="text-xs text-indigo-400 font-medium">
-                    +{challenge.points}pts
+                    {challenge.category}
                   </span>
                 </div>
-              </div>
 
-              <h3 className="text-white font-semibold mb-1 group-hover:text-indigo-400 transition-colors">
-                {challenge.title}
-              </h3>
-              <p className="text-[#888] text-sm mb-3 line-clamp-2">
-                {challenge.description}
-              </p>
+                {!challenge.isLocked && !challenge.isCompleted && (
+                  <button className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-indigo-500/20 text-indigo-400 rounded-lg text-sm hover:bg-indigo-500/30 transition-colors">
+                    <Play className="w-3 h-3" />
+                    Start Challenge
+                  </button>
+                )}
 
-              <div className="flex items-center justify-between text-xs text-[#666]">
-                <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1">
-                    <Timer className="w-3 h-3" />
-                    {challenge.timeLimit}m
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    {challenge.completedBy.toLocaleString()}
-                  </span>
-                </div>
-                <span
-                  className={`px-2 py-0.5 rounded-full ${diff.bg} ${diff.color}`}
-                >
-                  {challenge.category}
-                </span>
-              </div>
+                {challenge.isCompleted && (
+                  <div className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-emerald-500/10 text-emerald-400 rounded-lg text-sm">
+                    <CheckCircle className="w-3 h-3" />
+                    Completed
+                  </div>
+                )}
 
-              {!challenge.isLocked && !challenge.isCompleted && (
-                <button className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-indigo-500/20 text-indigo-400 rounded-lg text-sm hover:bg-indigo-500/30 transition-colors">
-                  <Play className="w-3 h-3" />
-                  Start Challenge
-                </button>
-              )}
-
-              {challenge.isCompleted && (
-                <div className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-emerald-500/10 text-emerald-400 rounded-lg text-sm">
-                  <CheckCircle className="w-3 h-3" />
-                  Completed
-                </div>
-              )}
-
-              {challenge.isLocked && (
-                <div className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-white/5 text-[#666] rounded-lg text-sm">
-                  <Lock className="w-3 h-3" />
-                  Complete previous to unlock
-                </div>
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
+                {challenge.isLocked && (
+                  <div className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-white/5 text-[#666] rounded-lg text-sm">
+                    <Lock className="w-3 h-3" />
+                    Complete previous to unlock
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Challenge Detail Modal */}
       <AnimatePresence>

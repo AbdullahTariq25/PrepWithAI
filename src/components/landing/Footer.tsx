@@ -3,14 +3,33 @@
 import Link from "next/link";
 import { Linkedin, Github, Twitter } from "lucide-react";
 
-const productLinks = ["Features", "Pricing", "Companies", "Question Bank", "Daily Challenge"];
-const companyLinks = ["About", "Blog", "Changelog", "Privacy", "Terms"];
-const communityLinks = ["LinkedIn", "GitHub", "Twitter", "Discord", "Product Hunt"];
+const productLinks = [
+    { label: "Features", href: "/features" },
+    { label: "Pricing", href: "/pricing" },
+    { label: "Companies", href: "/companies" },
+    { label: "Question Bank", href: "/questions" },
+    { label: "Daily Challenge", href: "/daily" },
+];
+const companyLinks = [
+    { label: "About", href: "/about" },
+    { label: "Blog", href: "/blog" },
+    { label: "Changelog", href: "/changelog" },
+    { label: "Privacy", href: "/privacy" },
+    { label: "Terms", href: "/terms" },
+];
+const communityLinks = [
+    { label: "LinkedIn", href: "https://www.linkedin.com/in/abdullah-bin-tariq-25at" },
+    { label: "GitHub", href: "https://github.com/AbdullahTariq25" },
+    { label: "Twitter/X", href: "https://twitter.com/2Abdullah_tariq" },
+    { label: "Instagram", href: "https://www.instagram.com/abdullah_tariq25/" },
+    { label: "Facebook", href: "https://www.facebook.com/profile.php?id=100076329862957" },
+    { label: "Product Hunt", href: "https://www.producthunt.com" },
+];
 
 const socialIcons = [
-    { icon: Linkedin, href: "#" },
-    { icon: Github, href: "#" },
-    { icon: Twitter, href: "#" },
+    { icon: Linkedin, href: "https://www.linkedin.com/in/abdullah-bin-tariq-25at" },
+    { icon: Github, href: "https://github.com/AbdullahTariq25" },
+    { icon: Twitter, href: "https://twitter.com/2Abdullah_tariq" },
 ];
 
 export default function Footer() {
@@ -95,9 +114,11 @@ export default function Footer() {
                             </h4>
                             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                                 {col.links.map((link) => (
-                                    <Link
-                                        key={link}
-                                        href="#"
+                                    <a
+                                        key={link.label}
+                                        href={link.href}
+                                        target={link.href.startsWith("http") ? "_blank" : undefined}
+                                        rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
                                         style={{
                                             fontSize: 14,
                                             color: "#A0A0B0",
@@ -107,8 +128,8 @@ export default function Footer() {
                                         onMouseEnter={(e) => (e.currentTarget.style.color = "white")}
                                         onMouseLeave={(e) => (e.currentTarget.style.color = "#A0A0B0")}
                                     >
-                                        {link}
-                                    </Link>
+                                        {link.label}
+                                    </a>
                                 ))}
                             </div>
                         </div>

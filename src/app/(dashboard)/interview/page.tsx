@@ -111,6 +111,8 @@ function InterviewSetupContent() {
       if (data.sessionId) {
         if (interviewMode === "video") {
           router.push(`/interview/${data.sessionId}/video`);
+        } else if (interviewMode === "voice") {
+          router.push(`/interview/${data.sessionId}/voice`);
         } else {
           router.push(`/interview/${data.sessionId}`);
         }

@@ -19,27 +19,36 @@ import {
   Loader2,
   Volume2,
   VolumeOff,
+  Copy,
+  Check,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import "./interview-session.css";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
   loading: () => (
-    <div className="flex items-center justify-center h-full bg-[#1e1e1e] rounded-lg">
-      <Loader2 className="w-6 h-6 animate-spin text-[#888]" />
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100%",
+        background: "#1e1e1e",
+        borderRadius: 12,
+      }}
+    >
+      <Loader2 style={{ width: 24, height: 24, color: "#666" }} />
     </div>
   ),
 });
 
+// ─── Types ──────────────────────────────────────
 interface Message {
   id: string;
   role: "assistant" | "user";
   content: string;
   timestamp: Date;
 }
-
 interface CodeExecResult {
   stdout: string;
   stderr: string;
@@ -47,13 +56,13 @@ interface CodeExecResult {
   executionTime: number;
 }
 
+// ─── Constants ──────────────────────────────────
 const CODE_LANGUAGES = [
   { id: "javascript", label: "JavaScript", monacoId: "javascript" },
   { id: "python", label: "Python", monacoId: "python" },
   { id: "java", label: "Java", monacoId: "java" },
   { id: "cpp", label: "C++", monacoId: "cpp" },
 ];
-
 const DEFAULT_CODE: Record<string, string> = {
   javascript:
     '// Write your solution here\nfunction solve(input) {\n  \n}\n\nconsole.log(solve("test"));',
@@ -63,6 +72,90 @@ const DEFAULT_CODE: Record<string, string> = {
   cpp: "#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}",
 };
 
+// ─── SSE Stream Consumer ────────────────────────
+async function consumeSSE(
+  response: Response,
+  onChunk: (text: string) => void,
+  onMeta?: (meta: Record<string, unknown>) => void,
+  onDone?: (fullContent: string) => void,
+  onError?: (msg: string) => void,
+) {
+  const reader = response.body?.getReader();
+  if (!reader) return;
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      try {
+        const data = JSON.parse(line.slice(6));
+        if (data.meta) {
+          onMeta?.(data);
+        } else if (data.done) {
+          onDone?.(data.fullContent || "");
+        } else if (data.error) {
+          onError?.(data.error);
+        } else if (data.content) {
+          onChunk(data.content);
+        }
+      } catch {
+        // Skip malformed SSE
+      }
+    }
+  }
+}
+
+// ─── Code Block Renderer ────────────────────────
+function renderMessageContent(
+  content: string,
+  onCopy: (t: string) => void,
+  copied: string | null,
+) {
+  const parts = content.split(/(```[\s\S]*?```)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("```") && part.endsWith("```")) {
+      const nl = part.indexOf("\n");
+      const lang = part.slice(3, nl > 0 ? nl : 3).trim();
+      const codeText = part.slice(nl > 0 ? nl + 1 : 3, -3).trim();
+      const isCopied = copied === codeText;
+      return (
+        <div key={i} className="iv-codeblock">
+          <div className="iv-codeblock-header">
+            <span className="iv-codeblock-lang">{lang || "code"}</span>
+            <button
+              onClick={() => onCopy(codeText)}
+              className={`iv-codeblock-copy ${isCopied ? "iv-codeblock-copy--copied" : "iv-codeblock-copy--idle"}`}
+            >
+              {isCopied ? (
+                <Check style={{ width: 12, height: 12 }} />
+              ) : (
+                <Copy style={{ width: 12, height: 12 }} />
+              )}
+              {isCopied ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <pre>{codeText}</pre>
+        </div>
+      );
+    }
+    return (
+      <span key={i} style={{ whiteSpace: "pre-wrap" }}>
+        {part}
+      </span>
+    );
+  });
+}
+
+// ─── Main Page Component ────────────────────────
 export default function InterviewSessionPage() {
   const params = useParams();
   const router = useRouter();
@@ -71,9 +164,12 @@ export default function InterviewSessionPage() {
     ? sessionParam[0]
     : (sessionParam ?? "");
 
+  // ─── State ─────────────────────────────────────
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingContent, setStreamingContent] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [sessionInfo, setSessionInfo] = useState<{
     type: string;
@@ -91,19 +187,23 @@ export default function InterviewSessionPage() {
   const [runningCode, setRunningCode] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
 
+  // ─── Refs ──────────────────────────────────────
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ─── Helpers ───────────────────────────────────
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, scrollToBottom]);
+  }, [messages, streamingContent, scrollToBottom]);
 
   useEffect(() => {
     timerRef.current = setInterval(() => setElapsed((p) => p + 1), 1000);
@@ -112,6 +212,108 @@ export default function InterviewSessionPage() {
     };
   }, []);
 
+  const formatTime = (s: number) =>
+    `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+
+  // ─── TTS (Text-to-Speech) ─────────────────────
+  const speakText = useCallback(
+    (text: string) => {
+      if (!sessionInfo?.voiceMode || !ttsEnabled) return;
+      window.speechSynthesis.cancel();
+      const clean = text
+        .replace(/```[\s\S]*?```/g, "code block")
+        .replace(/[*_#`]/g, "");
+      const u = new SpeechSynthesisUtterance(clean);
+      u.rate = 0.95;
+      u.onstart = () => setIsSpeaking(true);
+      u.onend = () => setIsSpeaking(false);
+      const voices = window.speechSynthesis.getVoices();
+      const pref = voices.find(
+        (v) => v.name.includes("Google") && v.lang.startsWith("en"),
+      );
+      if (pref) u.voice = pref;
+      window.speechSynthesis.speak(u);
+    },
+    [sessionInfo?.voiceMode, ttsEnabled],
+  );
+
+  useEffect(() => {
+    if (!sessionInfo?.voiceMode || messages.length === 0) return;
+    const last = messages[messages.length - 1];
+    if (last.role === "assistant") speakText(last.content);
+  }, [messages, sessionInfo?.voiceMode, speakText]);
+
+  // ─── Streaming Helper ─────────────────────────
+  const handleStreamingRequest = useCallback(
+    async (
+      body: Record<string, unknown>,
+      opts?: { onMeta?: (meta: Record<string, unknown>) => void },
+    ) => {
+      if (!sessionId) return;
+      setIsLoading(true);
+      setIsStreaming(true);
+      setStreamingContent("");
+
+      try {
+        const res = await fetch(`/api/interview/${sessionId}/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          console.error("Chat error:", errData);
+          setIsLoading(false);
+          setIsStreaming(false);
+          return;
+        }
+
+        let fullText = "";
+
+        await consumeSSE(
+          res,
+          // onChunk
+          (chunk) => {
+            fullText += chunk;
+            setStreamingContent(fullText);
+          },
+          // onMeta
+          (meta) => {
+            opts?.onMeta?.(meta);
+          },
+          // onDone
+          () => {
+            const finalMsg: Message = {
+              id: `msg-${Date.now()}-ai`,
+              role: "assistant",
+              content: fullText,
+              timestamp: new Date(),
+            };
+            setMessages((p) => [...p, finalMsg]);
+            setStreamingContent("");
+            setIsStreaming(false);
+            setIsLoading(false);
+          },
+          // onError
+          (errMsg) => {
+            console.error("Stream error:", errMsg);
+            setStreamingContent("");
+            setIsStreaming(false);
+            setIsLoading(false);
+          },
+        );
+      } catch (err) {
+        console.error("Fetch error:", err);
+        setStreamingContent("");
+        setIsStreaming(false);
+        setIsLoading(false);
+      }
+    },
+    [sessionId],
+  );
+
+  // ─── Load Session ──────────────────────────────
   useEffect(() => {
     if (!sessionId) return;
     const load = async () => {
@@ -145,36 +347,23 @@ export default function InterviewSessionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
+  // ─── Interview Actions ─────────────────────────
   const doStartInterview = async () => {
-    if (!sessionId) return;
-    setIsLoading(true);
-    try {
-      const res = await fetch(`/api/interview/${sessionId}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "start" }),
-      });
-      const data = await res.json();
-      if (data.message) {
-        setMessages([
-          {
-            id: `msg-${Date.now()}`,
-            role: "assistant",
-            content: data.message,
-            timestamp: new Date(),
-          },
-        ]);
-      }
-    } catch (err) {
-      console.error("Start error:", err);
-    } finally {
-      setIsLoading(false);
-    }
+    await handleStreamingRequest(
+      { action: "start" },
+      {
+        onMeta: (meta) => {
+          if (meta.newQuestion) setQuestionNum(1);
+        },
+      },
+    );
   };
 
   const sendMessage = async () => {
     const text = input.trim();
     if (!text || isLoading || !sessionId) return;
+
+    // Optimistic update — show user message immediately
     setMessages((p) => [
       ...p,
       {
@@ -185,31 +374,15 @@ export default function InterviewSessionPage() {
       },
     ]);
     setInput("");
-    setIsLoading(true);
-    try {
-      const res = await fetch(`/api/interview/${sessionId}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "message", content: text }),
-      });
-      const data = await res.json();
-      if (data.message) {
-        setMessages((p) => [
-          ...p,
-          {
-            id: `msg-${Date.now()}-ai`,
-            role: "assistant",
-            content: data.message,
-            timestamp: new Date(),
-          },
-        ]);
-        if (data.newQuestion) setQuestionNum((p) => p + 1);
-      }
-    } catch (err) {
-      console.error("Send error:", err);
-    } finally {
-      setIsLoading(false);
-    }
+
+    await handleStreamingRequest(
+      { action: "message", content: text },
+      {
+        onMeta: (meta) => {
+          if (meta.newQuestion) setQuestionNum((p) => p + 1);
+        },
+      },
+    );
   };
 
   const sendCodeWithMessage = async () => {
@@ -219,6 +392,7 @@ export default function InterviewSessionPage() {
       ? "\n\nOutput:\n" + (codeOutput.stdout || codeOutput.stderr)
       : "";
     const text = "Here is my code solution:\n" + codeBlock + outputBlock;
+
     setMessages((p) => [
       ...p,
       {
@@ -228,30 +402,8 @@ export default function InterviewSessionPage() {
         timestamp: new Date(),
       },
     ]);
-    setIsLoading(true);
-    try {
-      const res = await fetch(`/api/interview/${sessionId}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "message", content: text }),
-      });
-      const data = await res.json();
-      if (data.message) {
-        setMessages((p) => [
-          ...p,
-          {
-            id: `msg-${Date.now()}-ai`,
-            role: "assistant",
-            content: data.message,
-            timestamp: new Date(),
-          },
-        ]);
-      }
-    } catch (err) {
-      console.error("Code submit error:", err);
-    } finally {
-      setIsLoading(false);
-    }
+
+    await handleStreamingRequest({ action: "message", content: text });
   };
 
   const runCode = async () => {
@@ -277,61 +429,26 @@ export default function InterviewSessionPage() {
   };
 
   const requestHint = async () => {
-    if (!sessionId) return;
-    setIsLoading(true);
-    try {
-      const res = await fetch(`/api/interview/${sessionId}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "hint" }),
-      });
-      const data = await res.json();
-      if (data.message) {
-        setHintsUsed((p) => p + 1);
-        setMessages((p) => [
-          ...p,
-          {
-            id: `msg-${Date.now()}`,
-            role: "assistant",
-            content: data.message,
-            timestamp: new Date(),
-          },
-        ]);
-      }
-    } catch (err) {
-      console.error("Hint error:", err);
-    } finally {
-      setIsLoading(false);
-    }
+    await handleStreamingRequest(
+      { action: "hint" },
+      {
+        onMeta: (meta) => {
+          if (typeof meta.hintsUsed === "number") setHintsUsed(meta.hintsUsed as number);
+          else setHintsUsed((p) => p + 1);
+        },
+      },
+    );
   };
 
   const skipQuestion = async () => {
-    if (!sessionId) return;
-    setIsLoading(true);
-    try {
-      const res = await fetch(`/api/interview/${sessionId}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "skip" }),
-      });
-      const data = await res.json();
-      if (data.message) {
-        setQuestionNum((p) => p + 1);
-        setMessages((p) => [
-          ...p,
-          {
-            id: `msg-${Date.now()}`,
-            role: "assistant",
-            content: data.message,
-            timestamp: new Date(),
-          },
-        ]);
-      }
-    } catch (err) {
-      console.error("Skip error:", err);
-    } finally {
-      setIsLoading(false);
-    }
+    await handleStreamingRequest(
+      { action: "skip" },
+      {
+        onMeta: (meta) => {
+          if (meta.newQuestion) setQuestionNum((p) => p + 1);
+        },
+      },
+    );
   };
 
   const endInterview = async () => {
@@ -351,33 +468,7 @@ export default function InterviewSessionPage() {
     }
   };
 
-  const speakText = useCallback(
-    (text: string) => {
-      if (!sessionInfo?.voiceMode || !ttsEnabled) return;
-      window.speechSynthesis.cancel();
-      const clean = text
-        .replace(/```[\s\S]*?```/g, "code block")
-        .replace(/[*_#`]/g, "");
-      const u = new SpeechSynthesisUtterance(clean);
-      u.rate = 0.95;
-      u.onstart = () => setIsSpeaking(true);
-      u.onend = () => setIsSpeaking(false);
-      const voices = window.speechSynthesis.getVoices();
-      const pref = voices.find(
-        (v) => v.name.includes("Google") && v.lang.startsWith("en"),
-      );
-      if (pref) u.voice = pref;
-      window.speechSynthesis.speak(u);
-    },
-    [sessionInfo?.voiceMode, ttsEnabled],
-  );
-
-  useEffect(() => {
-    if (!sessionInfo?.voiceMode || messages.length === 0) return;
-    const last = messages[messages.length - 1];
-    if (last.role === "assistant") speakText(last.content);
-  }, [messages, sessionInfo?.voiceMode, speakText]);
-
+  // ─── STT (Speech-to-Text) ─────────────────────
   const toggleRecording = () => {
     if (isRecording) {
       recognitionRef.current?.stop();
@@ -402,8 +493,8 @@ export default function InterviewSessionPage() {
     recognition.interimResults = true;
     recognition.lang = "en-US";
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let f = "",
-        im = "";
+      let f = "";
+      let im = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) f += event.results[i][0].transcript;
         else im += event.results[i][0].transcript;
@@ -417,50 +508,52 @@ export default function InterviewSessionPage() {
     setIsRecording(true);
   };
 
-  const formatTime = (s: number) =>
-    `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+  // ─── Keyboard ──────────────────────────────────
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
   };
+
+  const handleCopyCode = (ct: string) => {
+    navigator.clipboard.writeText(ct);
+    setCopiedCode(ct);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
   const needsCodeEditor =
     sessionInfo?.type &&
     ["dsa", "frontend", "backend", "full_stack", "full_loop"].includes(
       sessionInfo.type,
     );
 
+  // ─── Render ────────────────────────────────────
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col bg-[#080808]">
-      {/* Top bar */}
-      <div className="flex items-center justify-between py-3 px-4 border-b border-white/6 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-linear-to-br from-indigo-600 to-violet-600 flex items-center justify-center">
-            <Brain className="w-4 h-4 text-white" />
+    <div className="iv-container">
+      {/* ═══ Top Bar ═══ */}
+      <div className="iv-topbar">
+        <div className="iv-topbar-left">
+          <div className="iv-topbar-icon">
+            <Brain style={{ width: 18, height: 18, color: "#fff" }} />
           </div>
           <div>
-            <div className="text-sm font-medium capitalize">
+            <div className="iv-topbar-title">
               {sessionInfo?.type?.replace(/_/g, " ")} Interview
             </div>
-            <div className="text-xs text-[#888] capitalize">
-              {sessionInfo?.company} &bull; {sessionInfo?.difficulty}
+            <div className="iv-topbar-subtitle">
+              {sessionInfo?.company} · {sessionInfo?.difficulty}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+
+        <div className="iv-topbar-right">
           {sessionInfo?.voiceMode && (
             <>
-              <Badge
-                variant="secondary"
-                className="gap-1 bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
-              >
-                <Mic className="w-3 h-3" /> Voice
-              </Badge>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
+              <span className="iv-pill iv-pill--accent">
+                <Mic style={{ width: 11, height: 11 }} /> Voice
+              </span>
+              <button
                 onClick={() => {
                   setTtsEnabled(!ttsEnabled);
                   if (isSpeaking) {
@@ -468,188 +561,230 @@ export default function InterviewSessionPage() {
                     setIsSpeaking(false);
                   }
                 }}
+                className="iv-btn iv-btn--tts"
+                style={{ color: ttsEnabled ? "#ccc" : "#555" }}
               >
                 {ttsEnabled ? (
-                  <Volume2 className="w-4 h-4" />
+                  <Volume2 style={{ width: 14, height: 14 }} />
                 ) : (
-                  <VolumeOff className="w-4 h-4 text-[#888]" />
+                  <VolumeOff style={{ width: 14, height: 14 }} />
                 )}
-              </Button>
+              </button>
             </>
           )}
           {needsCodeEditor && (
-            <Button
-              variant={showCode ? "default" : "outline"}
-              size="sm"
-              className="gap-1 h-7 text-xs"
+            <button
               onClick={() => setShowCode(!showCode)}
+              className={`iv-btn ${showCode ? "iv-btn--active" : ""}`}
             >
-              <Code2 className="w-3 h-3" /> Code
-            </Button>
+              <Code2 style={{ width: 12, height: 12 }} /> Code
+            </button>
           )}
-          <Badge variant="outline" className="gap-1">
-            <Clock className="w-3 h-3" /> {formatTime(elapsed)}
-          </Badge>
-          <Badge variant="outline">Q{questionNum}</Badge>
+          <span className="iv-pill iv-pill--default">
+            <Clock style={{ width: 11, height: 11 }} /> {formatTime(elapsed)}
+          </span>
+          <span className="iv-pill iv-pill--default">Q{questionNum}</span>
           {hintsUsed > 0 && (
-            <Badge variant="secondary">{hintsUsed} hints</Badge>
+            <span className="iv-pill iv-pill--accent">{hintsUsed} hints</span>
           )}
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={endInterview}
-            className="gap-1 h-7 text-xs"
+          <button
+            onClick={() => setShowEndConfirm(true)}
+            className="iv-btn iv-btn--end"
           >
-            <Square className="w-3 h-3" /> End
-          </Button>
+            <Square style={{ width: 10, height: 10 }} /> End
+          </button>
         </div>
       </div>
 
-      {/* Main area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Chat panel */}
+      {/* ═══ Main Content ═══ */}
+      <div className="iv-main">
+        {/* Chat Panel */}
         <div
-          className={`flex flex-col ${showCode ? "w-1/2 border-r border-white/6" : "w-full max-w-4xl mx-auto"}`}
+          className={`iv-chat-area ${showCode ? "iv-chat-area--split" : "iv-chat-area--full"}`}
         >
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+          {/* Messages */}
+          <div className="iv-messages">
             <AnimatePresence>
               {messages.map((msg) => (
                 <motion.div
                   key={msg.id}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  className={`iv-msg-row ${msg.role === "user" ? "iv-msg-row--user" : "iv-msg-row--ai"}`}
                 >
                   {msg.role === "assistant" && (
-                    <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
-                      <Brain className="w-4 h-4 text-white" />
+                    <div className="iv-msg-avatar">
+                      <Brain
+                        style={{ width: 16, height: 16, color: "#fff" }}
+                      />
                     </div>
                   )}
                   <div
-                    className={`max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed whitespace-pre-wrap ${msg.role === "user" ? "bg-indigo-600 text-white rounded-tr-sm" : "bg-[#1A1A1A] rounded-tl-sm"}`}
+                    className={`iv-msg-bubble ${msg.role === "user" ? "iv-msg-bubble--user" : "iv-msg-bubble--ai"}`}
                   >
-                    {msg.content}
+                    {renderMessageContent(
+                      msg.content,
+                      handleCopyCode,
+                      copiedCode,
+                    )}
+                    <div className="iv-msg-time">
+                      {msg.timestamp.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </div>
                   </div>
                   {msg.role === "user" && (
-                    <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center shrink-0">
-                      <span className="text-xs text-white">You</span>
+                    <div
+                      className="iv-msg-avatar"
+                      style={{
+                        background: "rgba(255,255,255,0.08)",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "#888",
+                      }}
+                    >
+                      You
                     </div>
                   )}
                 </motion.div>
               ))}
             </AnimatePresence>
-            {isLoading && (
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
-                  <Brain className="w-4 h-4 text-white" />
+
+            {/* Streaming AI Response */}
+            {isStreaming && streamingContent && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="iv-msg-row iv-msg-row--ai"
+              >
+                <div className="iv-msg-avatar">
+                  <Brain style={{ width: 16, height: 16, color: "#fff" }} />
                 </div>
-                <div className="bg-[#1A1A1A] rounded-2xl rounded-tl-sm p-4">
-                  <div className="flex gap-1">
-                    <span
-                      className="w-2 h-2 bg-[#666] rounded-full animate-bounce"
-                      style={{ animationDelay: "0ms" }}
-                    />
-                    <span
-                      className="w-2 h-2 bg-[#666] rounded-full animate-bounce"
-                      style={{ animationDelay: "150ms" }}
-                    />
-                    <span
-                      className="w-2 h-2 bg-[#666] rounded-full animate-bounce"
-                      style={{ animationDelay: "300ms" }}
-                    />
-                  </div>
+                <div className="iv-msg-bubble iv-msg-bubble--ai iv-streaming-cursor">
+                  {renderMessageContent(
+                    streamingContent,
+                    handleCopyCode,
+                    copiedCode,
+                  )}
                 </div>
-              </div>
+              </motion.div>
             )}
+
+            {/* Typing Indicator (before stream starts) */}
+            {isLoading && !isStreaming && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="iv-typing"
+              >
+                <div className="iv-msg-avatar">
+                  <Brain style={{ width: 16, height: 16, color: "#fff" }} />
+                </div>
+                <div className="iv-typing-bubble">
+                  <span className="iv-typing-dot" />
+                  <span className="iv-typing-dot" />
+                  <span className="iv-typing-dot" />
+                </div>
+              </motion.div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Hint/Skip bar */}
-          <div className="border-t border-white/6 p-2 flex items-center gap-2 justify-center shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={requestHint}
-              disabled={isLoading}
-              className="gap-1 h-7 text-xs"
-            >
-              <Lightbulb className="w-3 h-3" /> Hint
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={skipQuestion}
-              disabled={isLoading}
-              className="gap-1 h-7 text-xs"
-            >
-              <SkipForward className="w-3 h-3" /> Skip
-            </Button>
-          </div>
-
-          {/* Input area */}
-          <div className="border-t border-white/6 p-3 shrink-0">
-            <div className="flex items-end gap-3">
+          {/* Input Area */}
+          <div className="iv-input-area">
+            <div className="iv-input-wrap">
               {sessionInfo?.voiceMode && (
                 <button
                   onClick={toggleRecording}
-                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all shrink-0 relative ${isRecording ? "bg-red-500 scale-110 shadow-lg shadow-red-500/30" : "bg-[#1A1A1A] border border-white/8 hover:border-indigo-500/30"}`}
+                  className={`iv-input-btn ${isRecording ? "iv-input-btn--mic-active" : "iv-input-btn--mic"}`}
                 >
-                  {isRecording && (
-                    <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-30" />
-                  )}
                   {isRecording ? (
-                    <MicOff className="w-5 h-5 text-white relative z-10" />
+                    <MicOff style={{ width: 18, height: 18 }} />
                   ) : (
-                    <Mic className="w-5 h-5 text-[#888]" />
+                    <Mic style={{ width: 18, height: 18 }} />
                   )}
                 </button>
               )}
+
               {isRecording ? (
-                <div className="flex items-center gap-2 flex-1 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3">
-                  <div className="flex items-center gap-1">
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "4px 0",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
                     {[...Array(5)].map((_, i) => (
                       <div
                         key={i}
-                        className="w-1 bg-red-400 rounded-full animate-pulse"
                         style={{
-                          height: `${8 + Math.random() * 16}px`,
-                          animationDelay: `${i * 100}ms`,
+                          width: 3,
+                          borderRadius: 99,
+                          background: "#F87171",
+                          height: 12 + Math.random() * 8,
+                          animation: `iv-dot-wave 0.8s ease-in-out infinite`,
+                          animationDelay: `${i * 80}ms`,
                         }}
                       />
                     ))}
                   </div>
-                  <span className="text-sm text-red-400 ml-2">
+                  <span style={{ fontSize: 12, color: "#F87171", fontWeight: 500 }}>
                     Listening...
                   </span>
                 </div>
               ) : (
-                <Textarea
+                <textarea
                   ref={textareaRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Type your answer... (Shift+Enter for new line)"
-                  className="flex-1 min-h-11 max-h-40 resize-none"
+                  className="iv-input-textarea"
                   rows={1}
                 />
               )}
-              <Button
-                onClick={sendMessage}
-                disabled={!input.trim() || isLoading}
-                size="icon"
-                className="shrink-0"
-              >
-                <Send className="w-5 h-5" />
-              </Button>
+
+              <div className="iv-input-actions">
+                <button
+                  onClick={requestHint}
+                  disabled={isLoading}
+                  className="iv-input-btn iv-input-btn--hint"
+                  title="Get a hint"
+                >
+                  <Lightbulb style={{ width: 16, height: 16 }} />
+                </button>
+                <button
+                  onClick={skipQuestion}
+                  disabled={isLoading}
+                  className="iv-input-btn iv-input-btn--skip"
+                  title="Skip question"
+                >
+                  <SkipForward style={{ width: 16, height: 16 }} />
+                </button>
+                <button
+                  onClick={sendMessage}
+                  disabled={!input.trim() || isLoading}
+                  className="iv-input-btn iv-input-btn--send"
+                  title="Send message"
+                >
+                  <Send style={{ width: 16, height: 16 }} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Code editor panel */}
+        {/* ═══ Code Editor Panel ═══ */}
         {showCode && (
-          <div className="w-1/2 flex flex-col bg-[#1e1e1e]">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
-              <div className="flex items-center gap-1">
+          <div className="iv-code-panel">
+            <div className="iv-code-header">
+              <div className="iv-code-lang-select">
                 {CODE_LANGUAGES.map((lang) => (
                   <button
                     key={lang.id}
@@ -658,38 +793,37 @@ export default function InterviewSessionPage() {
                       setCode(DEFAULT_CODE[lang.id] || "");
                       setCodeOutput(null);
                     }}
-                    className={`text-xs px-2.5 py-1 rounded transition-colors ${codeLang === lang.id ? "bg-indigo-600 text-white" : "text-[#888] hover:text-white hover:bg-white/10"}`}
+                    className={`iv-code-lang-btn ${codeLang === lang.id ? "iv-code-lang-btn--active" : ""}`}
                   >
                     {lang.label}
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1 h-7 text-xs border-white/10 text-[#ccc] hover:text-white"
+              <div className="iv-code-actions">
+                <button
                   onClick={runCode}
                   disabled={runningCode}
+                  className="iv-btn"
+                  style={{ opacity: runningCode ? 0.5 : 1 }}
                 >
                   {runningCode ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <Loader2 style={{ width: 12, height: 12 }} />
                   ) : (
-                    <Play className="w-3 h-3" />
+                    <Play style={{ width: 12, height: 12 }} />
                   )}{" "}
                   Run
-                </Button>
-                <Button
-                  size="sm"
-                  className="gap-1 h-7 text-xs bg-indigo-600 hover:bg-indigo-700"
+                </button>
+                <button
                   onClick={sendCodeWithMessage}
                   disabled={isLoading}
+                  className="iv-btn iv-btn--active"
+                  style={{ opacity: isLoading ? 0.5 : 1 }}
                 >
-                  <MessageSquare className="w-3 h-3" /> Submit
-                </Button>
+                  <MessageSquare style={{ width: 12, height: 12 }} /> Submit
+                </button>
               </div>
             </div>
-            <div className="flex-1">
+            <div className="iv-code-editor">
               <MonacoEditor
                 height="100%"
                 language={
@@ -712,36 +846,93 @@ export default function InterviewSessionPage() {
               />
             </div>
             {codeOutput && (
-              <div className="border-t border-white/10 max-h-40 overflow-y-auto">
-                <div className="px-3 py-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] uppercase tracking-wider text-[#666]">
-                      Output
+              <div className="iv-code-output">
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <span className="iv-codeblock-lang">Output</span>
+                  <span
+                    className={`iv-pill ${codeOutput.exitCode === 0 ? "iv-pill--success" : "iv-pill--destructive"}`}
+                  >
+                    {codeOutput.exitCode === 0 ? "OK" : "Error"}
+                  </span>
+                  {codeOutput.executionTime > 0 && (
+                    <span style={{ fontSize: 10, color: "#666" }}>
+                      {codeOutput.executionTime.toFixed(0)}ms
                     </span>
-                    {codeOutput.exitCode === 0 ? (
-                      <Badge className="text-[9px] bg-emerald-500/20 text-emerald-400 border-0">
-                        OK
-                      </Badge>
-                    ) : (
-                      <Badge className="text-[9px] bg-red-500/20 text-red-400 border-0">
-                        Error
-                      </Badge>
-                    )}
-                    {codeOutput.executionTime > 0 && (
-                      <span className="text-[10px] text-[#666]">
-                        {codeOutput.executionTime.toFixed(0)}ms
-                      </span>
-                    )}
-                  </div>
-                  <pre className="text-xs text-[#ccc] font-mono whitespace-pre-wrap">
-                    {codeOutput.stdout || codeOutput.stderr || "No output"}
-                  </pre>
+                  )}
                 </div>
+                <pre
+                  style={{
+                    fontSize: 12,
+                    color: "#ccc",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    whiteSpace: "pre-wrap",
+                    margin: 0,
+                  }}
+                >
+                  {codeOutput.stdout || codeOutput.stderr || "No output"}
+                </pre>
               </div>
             )}
           </div>
         )}
       </div>
+
+      {/* ═══ End Confirmation Modal ═══ */}
+      <AnimatePresence>
+        {showEndConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="iv-end-overlay"
+            onClick={() => setShowEndConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="iv-end-modal"
+            >
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: "rgba(239,68,68,0.12)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 16px",
+                }}
+              >
+                <Square style={{ width: 24, height: 24, color: "#F87171" }} />
+              </div>
+              <h3>End Interview?</h3>
+              <p>
+                Your progress will be saved and you&apos;ll receive a detailed
+                performance report.
+              </p>
+              <div className="iv-end-modal-actions">
+                <button
+                  onClick={() => setShowEndConfirm(false)}
+                  className="iv-end-modal-btn iv-end-modal-btn--cancel"
+                  style={{ flex: 1 }}
+                >
+                  Continue
+                </button>
+                <button
+                  onClick={endInterview}
+                  className="iv-end-modal-btn iv-end-modal-btn--confirm"
+                  style={{ flex: 1 }}
+                >
+                  End Interview
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

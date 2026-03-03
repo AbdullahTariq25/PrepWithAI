@@ -1,469 +1,631 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
 import {
-  BarChart3,
   TrendingUp,
-  Flame,
-  Clock,
-  Target,
-  Brain,
   Trophy,
-  Zap,
+  Target,
+  Flame,
   Calendar,
+  Clock,
+  Loader2,
+  Zap,
 } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
-import { getEloLevel } from "@/lib/utils";
 import {
-  LineChart,
-  Line,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
 } from "recharts";
-
+import { formatDuration, getScoreColor, getEloLevel } from "@/lib/utils";
 interface ProgressData {
   totalSessions: number;
-  avgScore: number;
-  streak: number;
-  maxStreak: number;
-  totalTime: number;
+  averageScore: number;
+  currentStreak: number;
+  totalPracticeTime: number;
   eloRating: number;
-  skillScores: Record<string, number>;
-  categoryScores: Record<string, number>;
-  dailyScores: { date: string; score: number }[];
+  bestScore: number;
   weeklyGoal: number;
-  sessionsThisWeek: number;
+  weeklyCompleted: number;
+  skillBreakdown: { skill: string; score: number }[];
+  scoreHistory: { date: string; score: number }[];
+  recentScores: number[];
+  activityHeatmap: { date: string; count: number }[];
 }
 
-const skillLabels: Record<string, string> = {
-  problemSolving: "Problem Solving",
-  communication: "Communication",
-  codeQuality: "Code Quality",
-  edgeCases: "Edge Cases",
-  timeManagement: "Time Management",
-};
-
-const categoryLabels: Record<string, string> = {
-  dsa: "DSA",
-  systemDesign: "System Design",
-  behavioral: "Behavioral",
-  frontend: "Frontend",
-  backend: "Backend",
-};
-
 export default function ProgressPage() {
-  const [stats, setStats] = useState<ProgressData | null>(null);
+  const [progress, setProgress] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadProgress = async () => {
+    const load = async () => {
       try {
         const res = await fetch("/api/progress");
-        if (res.ok) {
-          const data = await res.json();
-          setStats(data);
-        }
-      } catch (error) {
-        console.error("Failed to load progress:", error);
+        const data = await res.json();
+        setProgress(data);
+      } catch {
+        console.error("Failed to load progress");
       } finally {
         setLoading(false);
       }
     };
-    loadProgress();
+    load();
   }, []);
 
-  const eloRating = stats?.eloRating ?? 1200;
-  const eloLevel = useMemo(() => getEloLevel(eloRating), [eloRating]);
-  const skills = stats?.skillScores ?? {};
-  const categories = stats?.categoryScores ?? {};
+  const eloInfo = useMemo(() => {
+    if (!progress) return { name: "Beginner", color: "#6b7280", emoji: "🌱" };
+    const info = getEloLevel(progress.eloRating);
+    const emojiMap: Record<string, string> = {
+      Beginner: "🌱",
+      Apprentice: "🌿",
+      Intermediate: "⚡",
+      Advanced: "🔥",
+      Expert: "💎",
+      Master: "👑",
+      Grandmaster: "🏆",
+    };
+    return { ...info, emoji: emojiMap[info.name] || "🌱" };
+  }, [progress]);
 
-  const radarData = useMemo(
-    () =>
-      Object.entries(skills).map(([key, value]) => ({
-        subject: skillLabels[key] || key,
-        score: value,
-        fullMark: 100,
-      })),
-    [skills],
-  );
+  const radarData = useMemo(() => {
+    if (!progress?.skillBreakdown) return [];
+    return progress.skillBreakdown.map((s) => ({
+      skill: s.skill.replace(/_/g, " "),
+      value: s.score,
+      fullMark: 100,
+    }));
+  }, [progress]);
 
-  const chartData = useMemo(
-    () =>
-      (stats?.dailyScores ?? []).slice(-30).map((d) => ({
-        date: new Date(d.date).toLocaleDateString(undefined, {
-          month: "short",
-          day: "numeric",
-        }),
-        score: d.score,
-      })),
-    [stats?.dailyScores],
-  );
+  const chartData = useMemo(() => {
+    if (!progress?.scoreHistory) return [];
+    return progress.scoreHistory.slice(-30).map((d) => ({
+      date: new Date(d.date).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      }),
+      score: d.score,
+    }));
+  }, [progress]);
 
-  const heatmapData = useMemo(() => {
-    const cells: { date: string; count: number; level: number }[] = [];
-    const dailyMap = new Map<string, number>();
-    for (const s of stats?.dailyScores ?? []) {
-      const day = s.date.split("T")[0];
-      dailyMap.set(day, (dailyMap.get(day) || 0) + 1);
+  // Generate heatmap (last 12 weeks)
+  const heatmapWeeks = useMemo(() => {
+    const weeks: { date: Date; count: number }[][] = [];
+    const today = new Date();
+    const actMap = new Map<string, number>();
+    progress?.activityHeatmap?.forEach((a) =>
+      actMap.set(a.date.split("T")[0], a.count),
+    );
+
+    for (let w = 11; w >= 0; w--) {
+      const week: { date: Date; count: number }[] = [];
+      for (let d = 0; d < 7; d++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - (w * 7 + (6 - d)));
+        const key = date.toISOString().split("T")[0];
+        week.push({ date, count: actMap.get(key) || 0 });
+      }
+      weeks.push(week);
     }
-    for (let i = 83; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().split("T")[0];
-      const count = dailyMap.get(key) || 0;
-      cells.push({
-        date: key,
-        count,
-        level:
-          count === 0
-            ? 0
-            : count <= 1
-              ? 1
-              : count <= 2
-                ? 2
-                : count <= 3
-                  ? 3
-                  : 4,
-      });
-    }
-    return cells;
-  }, [stats?.dailyScores]);
-
-  const heatmapColors = [
-    "bg-white/4",
-    "bg-indigo-500/30",
-    "bg-indigo-500/50",
-    "bg-indigo-500/70",
-    "bg-indigo-500",
-  ];
+    return weeks;
+  }, [progress]);
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto space-y-6 bg-[#080808]">
-        <div className="skeleton h-10 w-48 rounded-lg" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="skeleton h-24 rounded-lg" />
-          ))}
-        </div>
-        <div className="grid lg:grid-cols-2 gap-6">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="skeleton h-64 rounded-lg" />
-          ))}
-        </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: 400,
+        }}
+      >
+        <Loader2
+          style={{
+            width: 32,
+            height: 32,
+            animation: "spin 1s linear infinite",
+            color: "#6366F1",
+          }}
+        />
       </div>
     );
   }
 
-  const statCards = [
-    {
-      label: "Total Sessions",
-      value: String(stats?.totalSessions ?? 0),
-      icon: Brain,
-      color: "text-blue-400",
-      bg: "bg-blue-500/10",
-    },
-    {
-      label: "Average Score",
-      value: stats?.avgScore ? `${stats.avgScore}%` : "\u2014",
-      icon: TrendingUp,
-      color: "text-emerald-400",
-      bg: "bg-emerald-500/10",
-    },
-    {
-      label: "Day Streak",
-      value: `${stats?.streak ?? 0}d`,
-      icon: Flame,
-      color: "text-orange-400",
-      bg: "bg-orange-500/10",
-    },
-    {
-      label: "Total Time",
-      value: `${Math.round((stats?.totalTime ?? 0) / 60)}m`,
-      icon: Clock,
-      color: "text-indigo-400",
-      bg: "bg-indigo-500/10",
-    },
-  ];
+  if (!progress) return null;
+
+  const weeklyPct =
+    progress.weeklyGoal > 0
+      ? Math.min(
+          100,
+          Math.round((progress.weeklyCompleted / progress.weeklyGoal) * 100),
+        )
+      : 0;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 page-enter bg-[#080808]">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <h1 className="text-3xl font-bold tracking-tight">Progress</h1>
-        <p className="text-[#888] text-sm mt-1">
-          Track your improvement over time
+    <div
+      className="animate-fade-up"
+      style={{ maxWidth: 1100, margin: "0 auto" }}
+    >
+      {/* Header */}
+      <div style={{ marginBottom: 32 }}>
+        <h1 className="text-display" style={{ marginBottom: 8 }}>
+          Your Progress
+        </h1>
+        <p className="text-body" style={{ color: "var(--text-secondary)" }}>
+          Track your growth and identify areas for improvement
         </p>
-      </motion.div>
+      </div>
 
-      {/* ELO banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
+      {/* Top Stats */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 12,
+          marginBottom: 32,
+        }}
       >
-        <div className="bg-linear-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-500/20 rounded-2xl p-6 flex items-center gap-6">
-          <div className="elo-glow flex items-center justify-center w-20 h-20 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 shrink-0">
-            <div className="text-center">
-              <Zap className="w-6 h-6 text-indigo-400 mx-auto" />
-              <div className="text-2xl font-bold text-indigo-400 tabular-nums">
-                {eloRating}
-              </div>
-            </div>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div
-              className="text-lg font-bold"
-              style={{ color: eloLevel.color }}
-            >
-              {eloLevel.name}
-            </div>
-            <p className="text-sm text-[#888]">
-              Your competitive ELO rating. Win interviews to climb.
-            </p>
-            <div className="mt-2">
-              <Progress
-                value={Math.min(((eloRating - 800) / 1200) * 100, 100)}
-                className="h-2"
-              />
-              <div className="flex justify-between text-xs text-[#555] mt-1">
-                <span>800</span>
-                <span>2000+</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Stats */}
-      <motion.div
-        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
-        {statCards.map((stat) => (
+        {[
+          {
+            label: "ELO Rating",
+            value: progress.eloRating,
+            sub: `${eloInfo.emoji} ${eloInfo.name}`,
+            icon: Zap,
+            color: "#6366F1",
+          },
+          {
+            label: "Average Score",
+            value: `${progress.averageScore}%`,
+            icon: Target,
+            color: "#22C55E",
+          },
+          {
+            label: "Total Sessions",
+            value: progress.totalSessions,
+            icon: Trophy,
+            color: "#F59E0B",
+          },
+          {
+            label: "Current Streak",
+            value: `${progress.currentStreak}d`,
+            icon: Flame,
+            color: "#EF4444",
+          },
+          {
+            label: "Practice Time",
+            value: formatDuration(progress.totalPracticeTime),
+            icon: Clock,
+            color: "#3B82F6",
+          },
+          {
+            label: "Best Score",
+            value: `${progress.bestScore}%`,
+            icon: TrendingUp,
+            color: "#8B5CF6",
+          },
+        ].map((stat, i) => (
           <div
-            key={stat.label}
-            className="bg-[#111] border border-white/8 rounded-xl p-4 flex items-center gap-3 card-3d premium-card"
+            key={i}
+            className={`stagger-${i + 1}`}
+            style={{
+              padding: "16px 20px",
+              borderRadius: 14,
+              backgroundColor: "var(--bg-surface)",
+              border: "1px solid var(--border-default)",
+            }}
           >
             <div
-              className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center shrink-0`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 8,
+              }}
             >
-              <stat.icon className={`w-5 h-5 ${stat.color}`} />
-            </div>
-            <div>
-              <p className="text-2xl font-bold tabular-nums">{stat.value}</p>
-              <p className="text-[10px] text-[#555] uppercase tracking-wider">
-                {stat.label}
-              </p>
-            </div>
-          </div>
-        ))}
-      </motion.div>
-
-      {/* Activity Heatmap */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-      >
-        <div className="bg-[#111] border border-white/8 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Calendar className="w-5 h-5 text-indigo-400" />
-            <h3 className="font-semibold text-sm">Activity Heatmap</h3>
-          </div>
-          <div className="flex gap-0.75 flex-wrap">
-            {heatmapData.map((cell) => (
               <div
-                key={cell.date}
-                className={`w-3 h-3 rounded-xs heatmap-cell ${heatmapColors[cell.level]}`}
-                title={`${cell.date}: ${cell.count} sessions`}
-              />
-            ))}
-          </div>
-          <div className="flex items-center gap-2 mt-3 text-xs text-[#555]">
-            <span>Less</span>
-            {heatmapColors.map((c, i) => (
-              <div key={i} className={`w-3 h-3 rounded-xs ${c}`} />
-            ))}
-            <span>More</span>
-          </div>
-        </div>
-      </motion.div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Score Trend Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <div className="bg-[#111] border border-white/8 rounded-xl p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart3 className="w-5 h-5 text-indigo-400" />
-              <h3 className="font-semibold text-sm">Score Trend</h3>
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
+                  backgroundColor: `${stat.color}15`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <stat.icon
+                  style={{ width: 14, height: 14, color: stat.color }}
+                />
+              </div>
+              <span
+                className="text-caption"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {stat.label}
+              </span>
             </div>
-            {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={chartData}>
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 11, fill: "#555" }}
-                    axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    tick={{ fontSize: 11, fill: "#555" }}
-                    axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: "#1A1A1A",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      borderRadius: 8,
-                      color: "#fff",
-                      fontSize: 12,
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="score"
-                    stroke="#6366f1"
-                    strokeWidth={2}
-                    dot={{ fill: "#6366f1", r: 3 }}
-                    activeDot={{ r: 5, fill: "#818cf8" }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-64 flex flex-col items-center justify-center text-center">
-                <Trophy className="w-10 h-10 text-[#333] mb-3" />
-                <p className="text-sm text-[#555]">
-                  Complete sessions to see your score trend
-                </p>
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                color: "var(--text-primary)",
+              }}
+            >
+              {stat.value}
+            </div>
+            {stat.sub && (
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-secondary)",
+                  marginTop: 2,
+                }}
+              >
+                {stat.sub}
               </div>
             )}
           </div>
-        </motion.div>
+        ))}
+      </div>
 
-        {/* Skill Radar Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
+      {/* Weekly Target */}
+      <div
+        style={{
+          marginBottom: 32,
+          padding: "16px 20px",
+          borderRadius: 14,
+          backgroundColor: "var(--bg-surface)",
+          border: "1px solid var(--border-default)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 8,
+          }}
         >
-          <div className="bg-[#111] border border-white/8 rounded-xl p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Target className="w-5 h-5 text-indigo-400" />
-              <h3 className="font-semibold text-sm">Skill Radar</h3>
-            </div>
-            {(stats?.totalSessions ?? 0) > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <RadarChart data={radarData}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Calendar style={{ width: 16, height: 16, color: "#6366F1" }} />
+            <span
+              className="text-label"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Weekly Target
+            </span>
+          </div>
+          <span
+            className="font-code"
+            style={{ fontSize: 13, color: "var(--text-primary)" }}
+          >
+            {progress.weeklyCompleted} / {progress.weeklyGoal} sessions
+          </span>
+        </div>
+        <div
+          style={{
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: "rgba(99,102,241,0.1)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${weeklyPct}%`,
+              borderRadius: 3,
+              background: "linear-gradient(90deg, #6366F1, #818CF8)",
+              transition: "width 600ms ease",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Charts Row */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 16,
+          marginBottom: 32,
+        }}
+      >
+        {/* Score Trend */}
+        <div
+          style={{
+            padding: 20,
+            borderRadius: 16,
+            backgroundColor: "var(--bg-surface)",
+            border: "1px solid var(--border-default)",
+          }}
+        >
+          <h3
+            className="text-label"
+            style={{ color: "var(--text-secondary)", marginBottom: 16 }}
+          >
+            Score Trend (30 Days)
+          </h3>
+          <div style={{ height: 220 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="progressGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#6366F1" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#6366F1" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10, fill: "#666" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fontSize: 10, fill: "#666" }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={30}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#1A1A1A",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                  labelStyle={{ color: "#888" }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#6366F1"
+                  fill="url(#progressGrad)"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Radar Chart */}
+        <div
+          style={{
+            padding: 20,
+            borderRadius: 16,
+            backgroundColor: "var(--bg-surface)",
+            border: "1px solid var(--border-default)",
+          }}
+        >
+          <h3
+            className="text-label"
+            style={{ color: "var(--text-secondary)", marginBottom: 16 }}
+          >
+            Skill Breakdown
+          </h3>
+          <div style={{ height: 220 }}>
+            {radarData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart
+                  data={radarData}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius="70%"
+                >
                   <PolarGrid stroke="rgba(255,255,255,0.06)" />
                   <PolarAngleAxis
-                    dataKey="subject"
+                    dataKey="skill"
                     tick={{ fontSize: 10, fill: "#888" }}
                   />
                   <PolarRadiusAxis
+                    angle={90}
                     domain={[0, 100]}
                     tick={false}
                     axisLine={false}
                   />
                   <Radar
-                    dataKey="score"
-                    stroke="#6366f1"
-                    fill="#6366f1"
-                    fillOpacity={0.15}
+                    name="Score"
+                    dataKey="value"
+                    stroke="#6366F1"
+                    fill="#6366F1"
+                    fillOpacity={0.2}
+                    strokeWidth={2}
                   />
                 </RadarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-64 flex flex-col items-center justify-center text-center">
-                <Target className="w-10 h-10 text-[#333] mb-3" />
-                <p className="text-sm text-[#555]">
-                  Complete interviews to build your skill radar
-                </p>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: "100%",
+                  color: "var(--text-muted)",
+                  fontSize: 13,
+                }}
+              >
+                Complete more sessions to see your skill radar
               </div>
             )}
           </div>
-        </motion.div>
+        </div>
       </div>
 
-      {/* Category Scores */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+      {/* Activity Heatmap */}
+      <div
+        style={{
+          padding: 20,
+          borderRadius: 16,
+          backgroundColor: "var(--bg-surface)",
+          border: "1px solid var(--border-default)",
+          marginBottom: 32,
+        }}
       >
-        <div className="bg-[#111] border border-white/8 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-5">
-            <Target className="w-5 h-5 text-indigo-400" />
-            <h3 className="font-semibold text-sm">Category Breakdown</h3>
-          </div>
-          <div className="space-y-4">
-            {Object.entries(categories).map(([key, value]) => (
-              <div key={key} className="space-y-1.5">
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#ccc]">
-                    {categoryLabels[key] || key}
-                  </span>
-                  <span className="text-[#888] tabular-nums">{value}/100</span>
-                </div>
-                <Progress value={value} className="h-2" />
-              </div>
-            ))}
-            {Object.keys(categories).length === 0 && (
-              <p className="text-sm text-[#555] text-center py-4">
-                Complete interviews to build your category scores
-              </p>
-            )}
-          </div>
+        <h3
+          className="text-label"
+          style={{ color: "var(--text-secondary)", marginBottom: 16 }}
+        >
+          Activity (Last 12 Weeks)
+        </h3>
+        <div style={{ display: "flex", gap: 3, justifyContent: "center" }}>
+          {heatmapWeeks.map((week, wi) => (
+            <div
+              key={wi}
+              style={{ display: "flex", flexDirection: "column", gap: 3 }}
+            >
+              {week.map((day, di) => {
+                const intensity = Math.min(4, day.count);
+                const colors = [
+                  "rgba(255,255,255,0.04)",
+                  "rgba(99,102,241,0.2)",
+                  "rgba(99,102,241,0.4)",
+                  "rgba(99,102,241,0.6)",
+                  "rgba(99,102,241,0.9)",
+                ];
+                return (
+                  <div
+                    key={di}
+                    title={`${day.date.toLocaleDateString()} — ${day.count} sessions`}
+                    style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: 3,
+                      backgroundColor: colors[intensity],
+                      transition: "background-color 200ms ease",
+                    }}
+                  />
+                );
+              })}
+            </div>
+          ))}
         </div>
-      </motion.div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            gap: 4,
+            marginTop: 8,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 10,
+              color: "var(--text-disabled)",
+              marginRight: 4,
+            }}
+          >
+            Less
+          </span>
+          {[
+            "rgba(255,255,255,0.04)",
+            "rgba(99,102,241,0.2)",
+            "rgba(99,102,241,0.4)",
+            "rgba(99,102,241,0.6)",
+            "rgba(99,102,241,0.9)",
+          ].map((c, i) => (
+            <div
+              key={i}
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 2,
+                backgroundColor: c,
+              }}
+            />
+          ))}
+          <span
+            style={{
+              fontSize: 10,
+              color: "var(--text-disabled)",
+              marginLeft: 4,
+            }}
+          >
+            More
+          </span>
+        </div>
+      </div>
 
-      {/* Skill Breakdown */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35 }}
-      >
-        <div className="bg-[#111] border border-white/8 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-5">
-            <Brain className="w-5 h-5 text-indigo-400" />
-            <h3 className="font-semibold text-sm">Skill Breakdown</h3>
-          </div>
-          <div className="space-y-4">
-            {Object.entries(skills).map(([key, value]) => (
-              <div key={key} className="space-y-1.5">
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#ccc]">{skillLabels[key] || key}</span>
-                  <span className="text-[#888] tabular-nums">{value}/100</span>
-                </div>
-                <Progress value={value} className="h-2" />
-              </div>
-            ))}
-            {Object.keys(skills).length === 0 && (
-              <p className="text-sm text-[#555] text-center py-4">
-                Complete interviews to build your skill profile
-              </p>
-            )}
+      {/* Skill Details */}
+      {progress.skillBreakdown.length > 0 && (
+        <div
+          style={{
+            padding: 20,
+            borderRadius: 16,
+            backgroundColor: "var(--bg-surface)",
+            border: "1px solid var(--border-default)",
+          }}
+        >
+          <h3
+            className="text-label"
+            style={{ color: "var(--text-secondary)", marginBottom: 16 }}
+          >
+            Skill Details
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {progress.skillBreakdown
+              .sort((a, b) => b.score - a.score)
+              .map((skill, i) => {
+                const color = getScoreColor(skill.score);
+                return (
+                  <div key={i}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 500,
+                          color: "var(--text-primary)",
+                          textTransform: "capitalize",
+                        }}
+                      >
+                        {skill.skill.replace(/_/g, " ")}
+                      </span>
+                      <span
+                        className="font-code"
+                        style={{ fontSize: 13, fontWeight: 600, color }}
+                      >
+                        {skill.score}%
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        height: 4,
+                        borderRadius: 2,
+                        backgroundColor: "rgba(255,255,255,0.06)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${skill.score}%`,
+                          borderRadius: 2,
+                          backgroundColor: color,
+                          transition: "width 600ms ease",
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </div>
-      </motion.div>
+      )}
     </div>
   );
 }

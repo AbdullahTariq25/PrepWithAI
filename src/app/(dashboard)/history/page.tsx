@@ -1,318 +1,418 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { motion } from "framer-motion";
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Clock,
   Trophy,
-  Lightbulb,
-  Brain,
-  Code2,
-  Network,
-  MessageSquare,
-  Layout,
-  Server,
-  Search,
-  ArrowRight,
   TrendingUp,
-  Flame,
+  Calendar,
+  ChevronRight,
+  Loader2,
+  Filter,
+  Mic,
+  Video,
+  MessageSquare,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { formatDuration, getScoreColor } from "@/lib/utils";
 
-interface SessionItem {
+interface Session {
   _id: string;
   type: string;
   company: string;
   difficulty: string;
-  overallScore: number;
-  duration: number;
-  hintsUsed: number;
-  completed: boolean;
+  score?: number;
+  duration?: number;
   createdAt: string;
-}
-
-const typeIcons: Record<string, typeof Code2> = {
-  dsa: Code2,
-  system_design: Network,
-  behavioral: MessageSquare,
-  frontend: Layout,
-  backend: Server,
-  full_loop: Trophy,
-};
-
-const typeColors: Record<string, string> = {
-  dsa: "from-blue-500 to-cyan-500",
-  system_design: "from-purple-500 to-indigo-500",
-  behavioral: "from-green-500 to-emerald-500",
-  frontend: "from-orange-500 to-amber-500",
-  backend: "from-red-500 to-pink-500",
-  full_loop: "from-indigo-500 to-violet-500",
-};
-
-function timeAgo(dateStr: string) {
-  const now = new Date();
-  const date = new Date(dateStr);
-  const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
-  if (diff < 60) return "just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  voiceMode?: boolean;
+  mode?: string;
+  questionsAnswered?: number;
 }
 
 export default function HistoryPage() {
-  const [sessions, setSessions] = useState<SessionItem[]>([]);
+  const router = useRouter();
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
-  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | "text" | "voice" | "video">(
+    "all",
+  );
 
   useEffect(() => {
-    const loadSessions = async () => {
+    const load = async () => {
       try {
         const res = await fetch("/api/sessions");
         const data = await res.json();
         setSessions(data.sessions || []);
-      } catch (error) {
-        console.error("Failed to load sessions:", error);
+      } catch {
+        console.error("Failed to load sessions");
       } finally {
         setLoading(false);
       }
     };
-    loadSessions();
+    load();
   }, []);
 
-  const filteredSessions = sessions.filter((s) => {
-    if (filter !== "all" && s.type !== filter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return (
-        s.type.toLowerCase().includes(q) ||
-        s.company.toLowerCase().includes(q) ||
-        s.difficulty.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
+  const filtered = useMemo(() => {
+    if (filter === "all") return sessions;
+    return sessions.filter((s) => {
+      if (filter === "voice") return s.voiceMode && s.mode !== "video";
+      if (filter === "video") return s.mode === "video";
+      return !s.voiceMode && s.mode !== "video";
+    });
+  }, [sessions, filter]);
 
-  const totalCompleted = sessions.filter((s) => s.completed).length;
-  const avgScore =
-    totalCompleted > 0
-      ? Math.round(
-          sessions
-            .filter((s) => s.completed)
-            .reduce((a, s) => a + s.overallScore, 0) / totalCompleted,
-        )
-      : 0;
-  const bestScore =
-    sessions.length > 0
-      ? Math.max(...sessions.map((s) => s.overallScore || 0))
-      : 0;
+  const stats = useMemo(() => {
+    const total = sessions.length;
+    const scored = sessions.filter((s) => s.score != null);
+    const avgScore =
+      scored.length > 0
+        ? scored.reduce((sum, s) => sum + (s.score || 0), 0) / scored.length
+        : 0;
+    const totalTime = sessions.reduce((sum, s) => sum + (s.duration || 0), 0);
+    const best =
+      scored.length > 0 ? Math.max(...scored.map((s) => s.score || 0)) : 0;
+    return { total, avgScore: Math.round(avgScore), totalTime, best };
+  }, [sessions]);
+
+  const getModeIcon = (s: Session) => {
+    if (s.mode === "video") return <Video style={{ width: 14, height: 14 }} />;
+    if (s.voiceMode) return <Mic style={{ width: 14, height: 14 }} />;
+    return <MessageSquare style={{ width: 14, height: 14 }} />;
+  };
+
+  const getModeLabel = (s: Session) => {
+    if (s.mode === "video") return "Video";
+    if (s.voiceMode) return "Voice";
+    return "Text";
+  };
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: 400,
+        }}
+      >
+        <Loader2
+          style={{
+            width: 32,
+            height: 32,
+            animation: "spin 1s linear infinite",
+            color: "#6366F1",
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 page-enter bg-[#080808]">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <h1 className="text-3xl font-bold tracking-tight">Session History</h1>
-        <p className="text-[#888] text-sm mt-1">
-          Review your past interviews and track improvement
+    <div
+      className="animate-fade-up"
+      style={{ maxWidth: 1000, margin: "0 auto" }}
+    >
+      {/* Header */}
+      <div style={{ marginBottom: 32 }}>
+        <h1 className="text-display" style={{ marginBottom: 8 }}>
+          Session History
+        </h1>
+        <p className="text-body" style={{ color: "var(--text-secondary)" }}>
+          Review your past interview sessions and track improvement
         </p>
-      </motion.div>
+      </div>
 
-      {/* Mini stats */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="grid grid-cols-3 gap-4"
+      {/* Stats Row */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 12,
+          marginBottom: 32,
+        }}
       >
         {[
           {
-            label: "Completed",
-            value: totalCompleted,
-            icon: MessageSquare,
-            color: "text-blue-400",
-            bg: "bg-blue-500/10",
+            label: "Total Sessions",
+            value: stats.total,
+            icon: Calendar,
+            color: "#6366F1",
           },
           {
             label: "Avg Score",
-            value: `${avgScore}%`,
+            value: `${stats.avgScore}%`,
             icon: TrendingUp,
-            color: "text-emerald-400",
-            bg: "bg-emerald-500/10",
+            color: "#22C55E",
           },
           {
             label: "Best Score",
-            value: `${bestScore}%`,
+            value: `${stats.best}%`,
             icon: Trophy,
-            color: "text-amber-400",
-            bg: "bg-amber-500/10",
+            color: "#F59E0B",
           },
-        ].map((stat) => (
+          {
+            label: "Total Time",
+            value: formatDuration(stats.totalTime),
+            icon: Clock,
+            color: "#3B82F6",
+          },
+        ].map((stat, i) => (
           <div
-            key={stat.label}
-            className="bg-[#111] border border-white/8 rounded-xl p-4 flex items-center gap-3 premium-card"
+            key={i}
+            className={`stagger-${i + 1}`}
+            style={{
+              padding: "16px 20px",
+              borderRadius: 14,
+              backgroundColor: "var(--bg-surface)",
+              border: "1px solid var(--border-default)",
+            }}
           >
             <div
-              className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 8,
+              }}
             >
-              <stat.icon className={`w-5 h-5 ${stat.color}`} />
-            </div>
-            <div>
-              <p className="text-xl font-bold tabular-nums">{stat.value}</p>
-              <p className="text-[10px] text-[#555] uppercase tracking-wider">
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
+                  backgroundColor: `${stat.color}15`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <stat.icon
+                  style={{ width: 14, height: 14, color: stat.color }}
+                />
+              </div>
+              <span
+                className="text-caption"
+                style={{ color: "var(--text-muted)" }}
+              >
                 {stat.label}
-              </p>
+              </span>
+            </div>
+            <div
+              style={{
+                fontSize: 24,
+                fontWeight: 700,
+                color: "var(--text-primary)",
+              }}
+            >
+              {stat.value}
             </div>
           </div>
         ))}
-      </motion.div>
+      </div>
 
-      {/* Search & Filters */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex flex-col sm:flex-row gap-3"
+      {/* Mode Filter */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 20,
+        }}
       >
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555]" />
-          <Input
-            placeholder="Search by type, company, or difficulty..."
-            className="pl-10"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {[
-            "all",
-            "dsa",
-            "system_design",
-            "behavioral",
-            "frontend",
-            "backend",
-          ].map((f) => (
-            <Button
-              key={f}
-              variant={filter === f ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter(f)}
-              className="capitalize text-xs"
+        <Filter style={{ width: 14, height: 14, color: "var(--text-muted)" }} />
+        {(["all", "text", "voice", "video"] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            style={{
+              padding: "5px 14px",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 500,
+              backgroundColor:
+                filter === f
+                  ? "rgba(99,102,241,0.15)"
+                  : "rgba(255,255,255,0.04)",
+              border: `1px solid ${filter === f ? "rgba(99,102,241,0.3)" : "var(--border-subtle)"}`,
+              color: filter === f ? "#818CF8" : "var(--text-secondary)",
+              cursor: "pointer",
+              textTransform: "capitalize",
+            }}
+          >
+            {f === "all" ? `All (${sessions.length})` : f}
+          </button>
+        ))}
+      </div>
+
+      {/* Session List */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {filtered.map((session, i) => {
+          const score = session.score ?? 0;
+          const scoreColor = getScoreColor(score);
+          const date = new Date(session.createdAt);
+          const timeAgo = getTimeAgo(date);
+
+          return (
+            <div
+              key={session._id}
+              onClick={() => router.push(`/interview/${session._id}/report`)}
+              className={`stagger-${Math.min(i + 1, 8)}`}
+              style={{
+                padding: "14px 20px",
+                borderRadius: 14,
+                backgroundColor: "var(--bg-surface)",
+                border: "1px solid var(--border-default)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                transition: "all 200ms ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--bg-elevated)";
+                e.currentTarget.style.borderColor = "var(--border-hover)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--bg-surface)";
+                e.currentTarget.style.borderColor = "var(--border-default)";
+              }}
             >
-              {f === "all" ? "All" : f.replace("_", " ")}
-            </Button>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Sessions list */}
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <Brain className="w-10 h-10 text-indigo-500 animate-pulse" />
-          <p className="text-sm text-[#555]">Loading your sessions...</p>
-        </div>
-      ) : filteredSessions.length === 0 ? (
-        <div className="bg-[#111] border border-white/8 rounded-2xl p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-white/4 flex items-center justify-center mx-auto mb-4">
-            <Brain className="w-8 h-8 text-[#555]" />
-          </div>
-          <h3 className="font-semibold mb-1">No sessions yet</h3>
-          <p className="text-sm text-[#666] mb-4">
-            Start your first interview to build your history
-          </p>
-          <Link href="/interview">
-            <Button variant="glow" className="gap-2">
-              <Flame className="w-4 h-4" /> Start Interview
-            </Button>
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredSessions.map((s, i) => {
-            const Icon = typeIcons[s.type] || Code2;
-            const gradient = typeColors[s.type] || "from-zinc-500 to-zinc-600";
-
-            return (
-              <motion.div
-                key={s._id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
+              {/* Score circle */}
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: "50%",
+                  border: `2px solid ${scoreColor}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
               >
-                <Link href={`/interview/${s._id}/report`}>
-                  <div className="bg-[#111] border border-white/8 rounded-xl p-5 hover:border-white/14 hover:bg-[#131313] transition-all duration-200 cursor-pointer group premium-card">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-10 h-10 rounded-lg bg-linear-to-br ${gradient} flex items-center justify-center shrink-0`}
-                        >
-                          <Icon className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium capitalize text-sm">
-                              {s.type.replace("_", " ")}
-                            </span>
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] capitalize"
-                            >
-                              {s.company}
-                            </Badge>
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px] capitalize"
-                            >
-                              {s.difficulty}
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-[#555] flex items-center gap-3 mt-1.5">
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />{" "}
-                              {formatDuration(s.duration)}
-                            </span>
-                            {s.hintsUsed > 0 && (
-                              <span className="flex items-center gap-1">
-                                <Lightbulb className="w-3 h-3" /> {s.hintsUsed}{" "}
-                                hints
-                              </span>
-                            )}
-                            <span>{timeAgo(s.createdAt)}</span>
-                          </div>
-                        </div>
-                      </div>
+                <span
+                  className="font-code"
+                  style={{ fontSize: 13, fontWeight: 700, color: scoreColor }}
+                >
+                  {score > 0 ? score : "—"}
+                </span>
+              </div>
 
-                      <div className="flex items-center gap-3">
-                        {s.completed ? (
-                          <div
-                            className={`text-2xl font-bold tabular-nums ${getScoreColor(s.overallScore)}`}
-                          >
-                            {s.overallScore}
-                            <span className="text-xs text-[#555] font-normal ml-0.5">
-                              /100
-                            </span>
-                          </div>
-                        ) : (
-                          <Badge variant="secondary" className="text-xs">
-                            In Progress
-                          </Badge>
-                        )}
-                        <ArrowRight className="w-4 h-4 text-[#555] opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+              {/* Session info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 4,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "var(--text-primary)",
+                      textTransform: "capitalize",
+                    }}
+                  >
+                    {session.type.replace(/_/g, " ")}
+                  </span>
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 3,
+                      fontSize: 11,
+                      padding: "1px 6px",
+                      borderRadius: 4,
+                      backgroundColor: "rgba(255,255,255,0.05)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {getModeIcon(session)} {getModeLabel(session)}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    fontSize: 12,
+                    color: "var(--text-muted)",
+                  }}
+                >
+                  <span style={{ textTransform: "capitalize" }}>
+                    {session.company}
+                  </span>
+                  <span>·</span>
+                  <span style={{ textTransform: "capitalize" }}>
+                    {session.difficulty}
+                  </span>
+                  {session.duration && (
+                    <>
+                      <span>·</span>
+                      <span>{formatDuration(session.duration)}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Time */}
+              <span
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-disabled)",
+                  flexShrink: 0,
+                }}
+              >
+                {timeAgo}
+              </span>
+
+              <ChevronRight
+                style={{
+                  width: 16,
+                  height: 16,
+                  color: "var(--text-disabled)",
+                  flexShrink: 0,
+                }}
+              />
+            </div>
+          );
+        })}
+
+        {filtered.length === 0 && (
+          <div style={{ textAlign: "center", padding: "48px 0" }}>
+            <Clock
+              style={{
+                width: 32,
+                height: 32,
+                color: "var(--text-disabled)",
+                margin: "0 auto 12px",
+              }}
+            />
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
+              No sessions yet
+            </div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+              Start an interview to see your history here
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
+}
+
+function getTimeAgo(date: Date): string {
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }

@@ -6,10 +6,10 @@ import { motion } from "framer-motion";
 import { Menu, X, ArrowRight } from "lucide-react";
 
 const navLinks = [
-    { label: "Features", href: "#features" },
-    { label: "Companies", href: "#companies" },
-    { label: "Pricing", href: "#pricing" },
-    { label: "Blog", href: "#" },
+    { label: "Features", href: "/features" },
+    { label: "Companies", href: "/companies" },
+    { label: "Pricing", href: "/pricing" },
+    { label: "Blog", href: "/blog" },
 ];
 
 export default function Navbar() {

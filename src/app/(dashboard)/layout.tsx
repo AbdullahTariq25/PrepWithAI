@@ -78,6 +78,10 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
+  // Immersive mode — full-screen for video/voice call pages
+  const isImmersive =
+    /\/interview\/[^/]+\/(video|voice)/.test(currentPath);
+
   const user = session?.user;
   const initials = user?.name
     ? user.name
@@ -89,6 +93,15 @@ export default function DashboardLayout({
 
   const eloRating = user?.eloRating || 1200;
   const streak = user?.currentStreak || 0;
+
+  // Immersive mode: render children without sidebar/header
+  if (isImmersive) {
+    return (
+      <div style={{ minHeight: "100vh", backgroundColor: "#050505" }}>
+        {children}
+      </div>
+    );
+  }
 
   const renderNavSection = (
     items: typeof primaryNav,

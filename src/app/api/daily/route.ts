@@ -1,54 +1,64 @@
-import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import connectDB from '@/lib/mongodb';
-import Question from '@/models/Question';
+// ===========================================
+// PrepWithAI — Daily Challenge Route
+// GET /api/daily
+// Returns 6 random questions as daily challenges
+// (2 easy, 3 medium, 1 hard)
+// Built by Abdullah Tariq, Lahore Pakistan
+// ===========================================
 
-export async function GET() {
+import { withAuth } from "@/lib/withAuth";
+import { success, serverError } from "@/lib/response";
+import Question from "@/models/Question";
+
+async function handler() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    await connectDB();
-
-    // Get 6 random questions as daily challenges
-    // Mix of difficulties and categories
-    const easyQuestions = await Question.aggregate([
-      { $match: { difficulty: 'easy' } },
-      { $sample: { size: 2 } },
+    const [easyQuestions, mediumQuestions, hardQuestions] = await Promise.all([
+      Question.aggregate([
+        { $match: { difficulty: "easy", isActive: { $ne: false } } },
+        { $sample: { size: 2 } },
+      ]),
+      Question.aggregate([
+        { $match: { difficulty: "medium", isActive: { $ne: false } } },
+        { $sample: { size: 3 } },
+      ]),
+      Question.aggregate([
+        { $match: { difficulty: "hard", isActive: { $ne: false } } },
+        { $sample: { size: 1 } },
+      ]),
     ]);
 
-    const mediumQuestions = await Question.aggregate([
-      { $match: { difficulty: 'medium' } },
-      { $sample: { size: 3 } },
-    ]);
-
-    const hardQuestions = await Question.aggregate([
-      { $match: { difficulty: 'hard' } },
-      { $sample: { size: 1 } },
-    ]);
-
-    const challenges = [...easyQuestions, ...mediumQuestions, ...hardQuestions].map((q) => ({
+    const challenges = [
+      ...easyQuestions,
+      ...mediumQuestions,
+      ...hardQuestions,
+    ].map((q) => ({
       id: q._id.toString(),
       title: q.title,
       description: q.description,
       difficulty: q.difficulty,
       category: q.category,
-      type: q.category === 'behavioral' ? 'behavioral' : q.category === 'system-design' ? 'system-design' : 'coding',
+      type:
+        q.category === "behavioral"
+          ? "behavioral"
+          : q.category === "system-design"
+            ? "system-design"
+            : "coding",
       timeLimit: q.timeLimit || 20,
-      points: q.difficulty === 'easy' ? 30 : q.difficulty === 'medium' ? 75 : 150,
-      completedBy: Math.floor(Math.random() * 2000) + 100,
+      points:
+        q.difficulty === "easy"
+          ? 30
+          : q.difficulty === "medium"
+            ? 75
+            : 150,
+      completedBy: q.solvedCount || 0,
       isCompleted: false,
       isLocked: false,
     }));
 
-    return NextResponse.json({ challenges });
+    return success({ challenges });
   } catch (error) {
-    console.error('Daily challenge error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch daily challenges' },
-      { status: 500 }
-    );
+    return serverError("Failed to fetch daily challenges", error);
   }
 }
+
+export const GET = withAuth(handler);

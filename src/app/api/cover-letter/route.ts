@@ -1,32 +1,49 @@
-import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import Groq from 'groq-sdk';
+// ===========================================
+// PrepWithAI — Cover Letter Generator API
+// AI-powered cover letter generation via Groq
+// Built by Abdullah Tariq, Lahore Pakistan
+// ===========================================
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+import { NextRequest } from "next/server";
+import { withAuth, AuthContext } from "@/lib/withAuth";
+import { success, badRequest, serverError } from "@/lib/response";
+import { validateBody, coverLetterSchema } from "@/lib/validation";
+import { generateInterviewResponse, checkApiLimit } from "@/lib/groq";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { tooManyRequests } from "@/lib/response";
 
-export async function POST(request: Request) {
+// ─── POST Generate Cover Letter ─────────────────────
+
+async function handler(req: NextRequest, ctx: AuthContext) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { companyName, jobTitle, jobDescription, tone, keySkills, whyCompany } = await request.json();
-
-    if (!companyName || !jobTitle) {
-      return NextResponse.json(
-        { error: 'Company name and job title are required' },
-        { status: 400 }
+    // Rate limit: 10 cover letters per hour
+    const rl = checkRateLimit(`cover:${ctx.user.id}`, 10, 60 * 60 * 1000);
+    if (!rl.allowed) {
+      return tooManyRequests(
+        "Cover letter limit reached. Try again later.",
+        Math.ceil((rl.resetAt - Date.now()) / 1000)
       );
     }
+
+    // Check API limit
+    const apiLimit = await checkApiLimit(ctx.user.id);
+    if (!apiLimit.allowed) {
+      return tooManyRequests("Daily AI limit reached. Upgrade for more.");
+    }
+
+    const validated = await validateBody(req, coverLetterSchema);
+    if (validated.error || !validated.data) return badRequest(validated.error || "Invalid input");
+
+    const { companyName, jobTitle, jobDescription, tone, keySkills, whyCompany } =
+      validated.data;
 
     const prompt = `Generate a professional cover letter for the following:
 Company: ${companyName}
 Job Title: ${jobTitle}
-${jobDescription ? `Job Description: ${jobDescription}` : ''}
-${keySkills ? `Key Skills to Highlight: ${keySkills}` : ''}
-${whyCompany ? `Why This Company: ${whyCompany}` : ''}
-Tone: ${tone || 'professional'}
+${jobDescription ? `Job Description: ${jobDescription}` : ""}
+${keySkills ? `Key Skills to Highlight: ${keySkills}` : ""}
+${whyCompany ? `Why This Company: ${whyCompany}` : ""}
+Tone: ${tone}
 
 Write a compelling, ATS-friendly cover letter that:
 1. Opens with a strong hook
@@ -38,27 +55,29 @@ Write a compelling, ATS-friendly cover letter that:
 
 Return ONLY the letter text, no subject line or headers.`;
 
-    const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
+    const { content } = await generateInterviewResponse(
+      [
         {
-          role: 'system',
-          content: 'You are an expert career coach who writes compelling, personalized cover letters for software engineers. Write in a natural, authentic voice.',
+          role: "system",
+          content:
+            "You are an expert career coach who writes compelling, personalized cover letters for software engineers. Write in a natural, authentic voice.",
         },
-        { role: 'user', content: prompt },
+        { role: "user", content: prompt },
       ],
-      temperature: 0.7,
-      max_tokens: 1024,
-    });
-
-    const letter = completion.choices[0]?.message?.content || '';
-
-    return NextResponse.json({ letter });
-  } catch (error) {
-    console.error('Cover letter generation error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate cover letter' },
-      { status: 500 }
+      {
+        temperature: 0.7,
+        maxTokens: 1024,
+        userId: ctx.user.id,
+        endpoint: "cover-letter",
+      }
     );
+
+    return success({ letter: content });
+  } catch (error) {
+    return serverError("Failed to generate cover letter", error);
   }
 }
+
+// ─── Export ─────────────────────────────────────────
+
+export const POST = withAuth(handler);

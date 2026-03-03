@@ -1,305 +1,538 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Search,
+  Filter,
   Code2,
-  Network,
-  MessageSquare,
+  Brain,
+  Users,
   Layout,
   Server,
+  Target,
   ChevronRight,
-  ArrowRight,
+  Loader2,
+  X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 
-const categories = [
-  {
-    id: "arrays",
-    name: "Arrays & Strings",
-    count: 45,
-    icon: Code2,
-    gradient: "from-blue-500 to-cyan-500",
-  },
-  {
-    id: "trees",
-    name: "Trees & Graphs",
-    count: 38,
-    icon: Network,
-    gradient: "from-purple-500 to-indigo-500",
-  },
-  {
-    id: "dp",
-    name: "Dynamic Programming",
-    count: 32,
-    icon: Code2,
-    gradient: "from-green-500 to-emerald-500",
-  },
-  {
-    id: "system-design",
-    name: "System Design",
-    count: 25,
-    icon: Network,
-    gradient: "from-orange-500 to-amber-500",
-  },
-  {
-    id: "behavioral",
-    name: "Behavioral",
-    count: 40,
-    icon: MessageSquare,
-    gradient: "from-pink-500 to-rose-500",
-  },
-  {
-    id: "frontend",
-    name: "Frontend",
-    count: 30,
-    icon: Layout,
-    gradient: "from-cyan-500 to-teal-500",
-  },
-  {
-    id: "backend",
-    name: "Backend & APIs",
-    count: 28,
-    icon: Server,
-    gradient: "from-red-500 to-pink-500",
-  },
-  {
-    id: "sorting",
-    name: "Sorting & Searching",
-    count: 22,
-    icon: Code2,
-    gradient: "from-indigo-500 to-violet-500",
-  },
-  {
-    id: "linked-lists",
-    name: "Linked Lists",
-    count: 18,
-    icon: Code2,
-    gradient: "from-yellow-500 to-orange-500",
-  },
-  {
-    id: "stacks-queues",
-    name: "Stacks & Queues",
-    count: 15,
-    icon: Code2,
-    gradient: "from-emerald-500 to-green-500",
-  },
-  {
-    id: "math",
-    name: "Math & Logic",
-    count: 20,
-    icon: Code2,
-    gradient: "from-indigo-500 to-blue-500",
-  },
-  {
-    id: "concurrency",
-    name: "Concurrency",
-    count: 12,
-    icon: Server,
-    gradient: "from-rose-500 to-red-500",
-  },
-];
+interface Question {
+  _id: string;
+  title: string;
+  type: string;
+  difficulty: "junior" | "mid" | "senior" | "staff";
+  company?: string;
+  tags?: string[];
+  frequency?: number;
+}
 
-const sampleQuestions = [
-  {
-    title: "Two Sum",
-    category: "Arrays",
-    difficulty: "Easy",
-    companies: ["Google", "Amazon", "Meta"],
-  },
-  {
-    title: "LRU Cache",
-    category: "Design",
-    difficulty: "Medium",
-    companies: ["Amazon", "Microsoft"],
-  },
-  {
-    title: "Merge K Sorted Lists",
-    category: "Linked Lists",
-    difficulty: "Hard",
-    companies: ["Google", "Meta"],
-  },
-  {
-    title: "Design a URL Shortener",
-    category: "System Design",
-    difficulty: "Medium",
-    companies: ["Stripe", "Meta"],
-  },
-  {
-    title: "Tell me about a time you disagreed with your manager",
-    category: "Behavioral",
-    difficulty: "Medium",
-    companies: ["Amazon"],
-  },
-  {
-    title: "Implement Virtual DOM Diffing",
-    category: "Frontend",
-    difficulty: "Hard",
-    companies: ["Meta", "Google"],
-  },
-];
-
-const difficultyBorder: Record<string, string> = {
-  Easy: "border-l-green-500",
-  Medium: "border-l-amber-500",
-  Hard: "border-l-red-500",
+const TYPE_CONFIG: Record<
+  string,
+  { label: string; icon: typeof Code2; color: string }
+> = {
+  dsa: { label: "DSA", icon: Code2, color: "#22C55E" },
+  system_design: { label: "System Design", icon: Server, color: "#6366F1" },
+  behavioral: { label: "Behavioral", icon: Users, color: "#F59E0B" },
+  frontend: { label: "Frontend", icon: Layout, color: "#3B82F6" },
+  backend: { label: "Backend", icon: Server, color: "#8B5CF6" },
+  ml_ai: { label: "ML / AI", icon: Brain, color: "#EC4899" },
+  product: { label: "Product", icon: Target, color: "#14B8A6" },
 };
 
-const difficultyText: Record<string, string> = {
-  Easy: "text-green-400 bg-green-500/10",
-  Medium: "text-amber-400 bg-amber-500/10",
-  Hard: "text-red-400 bg-red-500/10",
+const DIFFICULTY_CONFIG: Record<
+  string,
+  { label: string; color: string; bg: string; border: string }
+> = {
+  junior: {
+    label: "Junior",
+    color: "#22C55E",
+    bg: "rgba(34,197,94,0.08)",
+    border: "rgba(34,197,94,0.2)",
+  },
+  mid: {
+    label: "Mid",
+    color: "#F59E0B",
+    bg: "rgba(245,158,11,0.08)",
+    border: "rgba(245,158,11,0.2)",
+  },
+  senior: {
+    label: "Senior",
+    color: "#EF4444",
+    bg: "rgba(239,68,68,0.08)",
+    border: "rgba(239,68,68,0.2)",
+  },
+  staff: {
+    label: "Staff+",
+    color: "#8B5CF6",
+    bg: "rgba(139,92,246,0.08)",
+    border: "rgba(139,92,246,0.2)",
+  },
 };
 
 export default function QuestionsPage() {
+  const router = useRouter();
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState(false);
 
-  const filtered = sampleQuestions.filter((q) => {
-    if (search) {
-      const s = search.toLowerCase();
-      return (
-        q.title.toLowerCase().includes(s) ||
-        q.category.toLowerCase().includes(s)
-      );
-    }
-    if (selectedCategory) {
-      return q.category.toLowerCase().includes(selectedCategory.toLowerCase());
-    }
-    return true;
-  });
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch("/api/questions");
+        const data = await res.json();
+        setQuestions(data.questions || []);
+      } catch {
+        console.error("Failed to load questions");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const filtered = useMemo(() => {
+    return questions.filter((q) => {
+      if (search && !q.title.toLowerCase().includes(search.toLowerCase()))
+        return false;
+      if (typeFilter !== "all" && q.type !== typeFilter) return false;
+      if (difficultyFilter !== "all" && q.difficulty !== difficultyFilter)
+        return false;
+      return true;
+    });
+  }, [questions, search, typeFilter, difficultyFilter]);
+
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    questions.forEach((q) => {
+      counts[q.type] = (counts[q.type] || 0) + 1;
+    });
+    return counts;
+  }, [questions]);
+
+  const activeFilters =
+    (typeFilter !== "all" ? 1 : 0) + (difficultyFilter !== "all" ? 1 : 0);
+
+  const startPractice = (q: Question) => {
+    router.push(`/interview?type=${q.type}&company=general`);
+  };
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: 400,
+        }}
+      >
+        <Loader2
+          style={{
+            width: 32,
+            height: 32,
+            animation: "spin 1s linear infinite",
+            color: "#6366F1",
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 page-enter bg-[#080808]">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <h1 className="text-3xl font-bold tracking-tight">Question Bank</h1>
-        <p className="text-[#888] text-sm mt-1">
-          Browse 500+ curated interview questions
+    <div
+      className="animate-fade-up"
+      style={{ maxWidth: 1200, margin: "0 auto" }}
+    >
+      {/* Header */}
+      <div style={{ marginBottom: 32 }}>
+        <h1 className="text-display" style={{ marginBottom: 8 }}>
+          Question Bank
+        </h1>
+        <p className="text-body" style={{ color: "var(--text-secondary)" }}>
+          {questions.length} curated questions across{" "}
+          {Object.keys(typeCounts).length} categories
         </p>
-      </motion.div>
+      </div>
 
-      {/* Search */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
+      {/* Search & Filter Bar */}
+      <div
+        style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}
       >
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555]" />
-          <Input
-            placeholder="Search questions by title or category..."
-            className="pl-10"
+        <div style={{ flex: 1, minWidth: 240, position: "relative" }}>
+          <Search
+            style={{
+              position: "absolute",
+              left: 14,
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: 16,
+              height: 16,
+              color: "var(--text-muted)",
+            }}
+          />
+          <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search questions..."
+            style={{
+              width: "100%",
+              padding: "10px 14px 10px 40px",
+              borderRadius: 12,
+              backgroundColor: "var(--bg-surface)",
+              border: "1px solid var(--border-default)",
+              color: "var(--text-primary)",
+              fontSize: 14,
+              outline: "none",
+            }}
           />
         </div>
-      </motion.div>
-
-      {/* Categories grid */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
-        <h2 className="text-lg font-semibold mb-3">Categories</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {categories.map((cat, i) => (
-            <motion.div
-              key={cat.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + i * 0.03 }}
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "10px 16px",
+            borderRadius: 12,
+            backgroundColor:
+              activeFilters > 0 ? "rgba(99,102,241,0.1)" : "var(--bg-surface)",
+            border: `1px solid ${activeFilters > 0 ? "rgba(99,102,241,0.3)" : "var(--border-default)"}`,
+            color: activeFilters > 0 ? "#818CF8" : "var(--text-secondary)",
+            fontSize: 14,
+            cursor: "pointer",
+          }}
+        >
+          <Filter style={{ width: 16, height: 16 }} />
+          Filters
+          {activeFilters > 0 && (
+            <span
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: "50%",
+                backgroundColor: "#6366F1",
+                color: "white",
+                fontSize: 10,
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              <div
-                className={`bg-[#111] border rounded-xl p-4 flex items-center gap-3 cursor-pointer transition-all duration-200 hover:bg-[#131313] group premium-card ${
-                  selectedCategory === cat.id
-                    ? "border-indigo-500/50 bg-indigo-500/5"
-                    : "border-white/8 hover:border-white/14"
-                }`}
-                onClick={() =>
-                  setSelectedCategory(
-                    selectedCategory === cat.id ? null : cat.id,
-                  )
-                }
+              {activeFilters}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <div
+          className="animate-fade-up"
+          style={{
+            marginBottom: 24,
+            padding: 20,
+            borderRadius: 16,
+            backgroundColor: "var(--bg-surface)",
+            border: "1px solid var(--border-default)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 16,
+            }}
+          >
+            <span
+              className="text-label"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Filters
+            </span>
+            {activeFilters > 0 && (
+              <button
+                onClick={() => {
+                  setTypeFilter("all");
+                  setDifficultyFilter("all");
+                }}
+                style={{
+                  fontSize: 12,
+                  color: "#818CF8",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
               >
+                Clear all
+              </button>
+            )}
+          </div>
+
+          {/* Type filters */}
+          <div style={{ marginBottom: 16 }}>
+            <div
+              className="text-caption"
+              style={{ color: "var(--text-muted)", marginBottom: 8 }}
+            >
+              TYPE
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <FilterChip
+                label="All"
+                active={typeFilter === "all"}
+                onClick={() => setTypeFilter("all")}
+              />
+              {Object.entries(TYPE_CONFIG).map(([key, conf]) => (
+                <FilterChip
+                  key={key}
+                  label={`${conf.label} (${typeCounts[key] || 0})`}
+                  active={typeFilter === key}
+                  onClick={() => setTypeFilter(key)}
+                  color={conf.color}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Difficulty filters */}
+          <div>
+            <div
+              className="text-caption"
+              style={{ color: "var(--text-muted)", marginBottom: 8 }}
+            >
+              DIFFICULTY
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <FilterChip
+                label="All"
+                active={difficultyFilter === "all"}
+                onClick={() => setDifficultyFilter("all")}
+              />
+              {Object.entries(DIFFICULTY_CONFIG).map(([key, conf]) => (
+                <FilterChip
+                  key={key}
+                  label={conf.label}
+                  active={difficultyFilter === key}
+                  onClick={() => setDifficultyFilter(key)}
+                  color={conf.color}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Results count */}
+      <div
+        style={{ marginBottom: 16, fontSize: 13, color: "var(--text-muted)" }}
+      >
+        Showing {filtered.length} of {questions.length} questions
+      </div>
+
+      {/* Question Cards */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {filtered.map((q, i) => {
+          const diff = DIFFICULTY_CONFIG[q.difficulty] || DIFFICULTY_CONFIG.mid;
+          const typeConf = TYPE_CONFIG[q.type];
+          const TypeIcon = typeConf?.icon || Code2;
+
+          return (
+            <div
+              key={q._id}
+              onClick={() => startPractice(q)}
+              className={`stagger-${Math.min(i + 1, 8)}`}
+              style={{
+                padding: "16px 20px",
+                borderRadius: 14,
+                backgroundColor: "var(--bg-surface)",
+                border: "1px solid var(--border-default)",
+                borderLeft: `3px solid ${diff.color}`,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                transition: "all 200ms ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = diff.border;
+                e.currentTarget.style.backgroundColor = "var(--bg-elevated)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--border-default)";
+                e.currentTarget.style.backgroundColor = "var(--bg-surface)";
+              }}
+            >
+              {/* Type icon */}
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  backgroundColor: `${typeConf?.color || "#666"}15`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <TypeIcon
+                  style={{
+                    width: 18,
+                    height: 18,
+                    color: typeConf?.color || "#666",
+                  }}
+                />
+              </div>
+
+              {/* Question info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div
-                  className={`w-9 h-9 rounded-lg bg-linear-to-br ${cat.gradient} flex items-center justify-center shrink-0`}
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "var(--text-primary)",
+                    marginBottom: 4,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
                 >
-                  <cat.icon className="w-4 h-4 text-white" />
+                  {q.title}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm">{cat.name}</div>
-                  <div className="text-xs text-[#555]">
-                    {cat.count} questions
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-[#555] opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Questions list */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <h2 className="text-lg font-semibold mb-3">Popular Questions</h2>
-        <div className="space-y-2">
-          {filtered.map((q, i) => (
-            <motion.div
-              key={q.title}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 + i * 0.04 }}
-            >
-              <div
-                className={`bg-[#111] border border-white/8 rounded-xl p-4 flex items-center gap-4 hover:border-white/14 hover:bg-[#131313] transition-all duration-200 cursor-pointer group border-l-2 ${difficultyBorder[q.difficulty] || "border-l-white/10"}`}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="font-medium text-sm">{q.title}</span>
-                    <Badge
-                      className={`text-[10px] ${difficultyText[q.difficulty] || ""}`}
-                      variant="outline"
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: typeConf?.color || "var(--text-muted)",
+                    }}
+                  >
+                    {typeConf?.label || q.type}
+                  </span>
+                  {q.company && q.company !== "general" && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        padding: "1px 6px",
+                        borderRadius: 4,
+                        backgroundColor: "rgba(255,255,255,0.05)",
+                        color: "var(--text-muted)",
+                        textTransform: "capitalize",
+                      }}
                     >
-                      {q.difficulty}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-[10px]">
-                      {q.category}
-                    </Badge>
-                    {q.companies.slice(0, 3).map((c) => (
-                      <span
-                        key={c}
-                        className="text-[10px] text-[#555] px-1.5 py-0.5 rounded bg-white/4"
-                      >
-                        {c}
-                      </span>
-                    ))}
-                  </div>
+                      {q.company}
+                    </span>
+                  )}
+                  {q.tags?.slice(0, 3).map((tag) => (
+                    <span
+                      key={tag}
+                      style={{
+                        fontSize: 10,
+                        padding: "1px 6px",
+                        borderRadius: 4,
+                        backgroundColor: "rgba(255,255,255,0.04)",
+                        color: "var(--text-disabled)",
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity gap-1 text-xs"
-                >
-                  Practice <ArrowRight className="w-3 h-3" />
-                </Button>
               </div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
+
+              {/* Difficulty badge */}
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "3px 10px",
+                  borderRadius: 8,
+                  backgroundColor: diff.bg,
+                  color: diff.color,
+                  border: `1px solid ${diff.border}`,
+                  flexShrink: 0,
+                }}
+              >
+                {diff.label}
+              </span>
+
+              <ChevronRight
+                style={{
+                  width: 16,
+                  height: 16,
+                  color: "var(--text-disabled)",
+                  flexShrink: 0,
+                }}
+              />
+            </div>
+          );
+        })}
+
+        {filtered.length === 0 && (
+          <div style={{ textAlign: "center", padding: "48px 0" }}>
+            <X
+              style={{
+                width: 32,
+                height: 32,
+                color: "var(--text-disabled)",
+                margin: "0 auto 12px",
+              }}
+            />
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
+              No questions found
+            </div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+              Try adjusting your filters
+            </div>
+          </div>
+        )}
+      </div>
     </div>
+  );
+}
+
+function FilterChip({
+  label,
+  active,
+  onClick,
+  color,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  color?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: "5px 12px",
+        borderRadius: 8,
+        fontSize: 12,
+        fontWeight: 500,
+        backgroundColor: active
+          ? color
+            ? `${color}20`
+            : "rgba(99,102,241,0.15)"
+          : "rgba(255,255,255,0.04)",
+        border: `1px solid ${active ? (color || "#6366F1") + "40" : "var(--border-subtle)"}`,
+        color: active ? color || "#818CF8" : "var(--text-secondary)",
+        cursor: "pointer",
+        transition: "all 150ms ease",
+      }}
+    >
+      {label}
+    </button>
   );
 }

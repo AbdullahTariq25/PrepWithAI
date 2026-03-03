@@ -1,36 +1,33 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import connectDB from "@/lib/mongodb";
+// ===========================================
+// PrepWithAI — Get Interview Session
+// GET /api/interview/[id]
+// Returns full session data for the owner
+// Built by Abdullah Tariq, Lahore Pakistan
+// ===========================================
+
+import { NextRequest } from "next/server";
+import { withAuth, AuthContext } from "@/lib/withAuth";
+import { notFound, forbidden, serverError } from "@/lib/response";
 import Session from "@/models/Session";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+async function handler(_req: NextRequest, { user, params }: AuthContext) {
   try {
-    const userSession = await auth();
-    if (!userSession?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { id } = params;
 
-    const { id } = await params;
-    await connectDB();
-
-    const session = await Session.findOne({
-      _id: id,
-      userId: userSession.user.id,
-    });
-
+    const session = await Session.findById(id).lean();
     if (!session) {
-      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+      return notFound("Session not found");
     }
 
-    return NextResponse.json({ session });
+    // Ownership check
+    if (session.userId.toString() !== user.id) {
+      return forbidden("You do not have access to this session");
+    }
+
+    return Response.json({ session });
   } catch (error) {
-    console.error("Get session error:", error);
-    return NextResponse.json(
-      { error: "Failed to get session" },
-      { status: 500 }
-    );
+    return serverError("Failed to get session", error);
   }
 }
+
+export const GET = withAuth(handler);

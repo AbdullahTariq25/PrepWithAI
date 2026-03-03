@@ -1,190 +1,342 @@
-﻿import { NextRequest, NextResponse } from "next/server";
-import Groq from "groq-sdk";
-import { auth } from "@/lib/auth";
-import connectDB from "@/lib/mongodb";
+// ===========================================
+// PrepWithAI — Chat Route (MOST CRITICAL)
+// POST /api/interview/[id]/chat
+// Handles all interview actions: start, message,
+// hint, skip, end — with Groq AI + SSE streaming
+// Built by Abdullah Tariq, Lahore Pakistan
+// ===========================================
+
+import { NextRequest } from "next/server";
+import { withAuth, AuthContext } from "@/lib/withAuth";
+import { chatMessageSchema, validateBody } from "@/lib/validation";
+import { badRequest, notFound, forbidden, serverError } from "@/lib/response";
+import { tooManyRequests } from "@/lib/response";
+import {
+  generateInterviewResponse,
+  generateInterviewResponseStream,
+  checkApiLimit,
+} from "@/lib/groq";
+import { getSystemPrompt, getEndInterviewPrompt } from "@/lib/prompts";
+import { rateLimitChat } from "@/lib/rateLimit";
 import Session from "@/models/Session";
-import { COMPANY_PACKS } from "@/lib/constants";
-import { trackApiCall, checkApiLimit } from "@/lib/api-usage";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+// Helper: build conversation history from session
+function buildConversationHistory(
+  session: { type: string; company: string; difficulty: string; messages: { role: string; content: string }[] }
+) {
+  const systemPrompt = getSystemPrompt(
+    session.type,
+    session.company,
+    session.difficulty
+  );
+  const history: {
+    role: "system" | "user" | "assistant";
+    content: string;
+  }[] = [{ role: "system", content: systemPrompt }];
 
-function getSystemPrompt(type: string, company: string, difficulty: string): string {
-  const companyConfig = COMPANY_PACKS.find((c) => c.id === company);
-  const companyPersonality = companyConfig?.personality || "";
-  const companyContext = companyConfig
-    ? `\n\nCOMPANY CONTEXT: You are interviewing for ${companyConfig.name}. ${companyPersonality}\nCulture: ${companyConfig.culture || ""}`
-    : "";
+  // Limit to last 30 messages to save tokens, but keep system prompt
+  const msgs = session.messages;
+  const recent = msgs.length > 30 ? msgs.slice(-30) : msgs;
 
-  const difficultyMap: Record<string, string> = {
-    easy: "entry-level/new grad. Ask straightforward questions, be encouraging.",
-    medium: "mid-level (2-5 years). Ask moderately challenging questions with follow-ups.",
-    hard: "senior-level (5+ years). Ask complex questions, expect optimal solutions and trade-off discussions.",
-    expert: "staff+ level (10+ years). Ask system-level questions, expect deep architectural thinking.",
-  };
+  for (const msg of recent) {
+    history.push({
+      role: msg.role === "interviewer" ? "assistant" : "user",
+      content: msg.content,
+    });
+  }
 
-  const typePrompts: Record<string, string> = {
-    dsa: "You are conducting a Data Structures & Algorithms interview. Present coding problems one at a time. Ask the candidate to explain their approach before coding. Push for optimal time/space complexity. Ask about edge cases. Give follow-up questions.",
-    system_design: "You are conducting a System Design interview. Present a system to design. Guide through: requirements gathering, high-level design, detailed component design, scalability, and trade-offs. Ask probing questions about design choices.",
-    behavioral: "You are conducting a Behavioral interview. Ask STAR-method questions about past experiences. Probe for specific examples, metrics, and outcomes. Focus on leadership, conflict resolution, and impact.",
-    frontend: "You are conducting a Frontend Engineering interview. Ask about React/Vue concepts, CSS layout, JavaScript fundamentals, performance optimization, accessibility, and state management. Mix conceptual with practical.",
-    backend: "You are conducting a Backend Engineering interview. Ask about API design, database modeling, caching, microservices, message queues, authentication, and system reliability.",
-    full_stack: "You are conducting a Full Stack interview. Cover both frontend and backend topics. Ask about end-to-end feature implementation, API integration, database design, and deployment strategies.",
-    full_loop: "You are conducting a full interview loop. Cycle through: 1) A coding/DSA question, 2) System design discussion, 3) Behavioral questions. Transition naturally between sections like a real on-site.",
-    machine_learning: "You are conducting a Machine Learning interview. Ask about model selection, feature engineering, training/evaluation, MLOps, and deploying ML models to production. Test both theory and practical application.",
-    mobile: "You are conducting a Mobile Development interview. Ask about iOS/Android development, React Native/Flutter, mobile architecture patterns, performance optimization, offline-first design, and app lifecycle.",
-    devops: "You are conducting a DevOps/SRE interview. Ask about CI/CD pipelines, containerization, Kubernetes, monitoring/observability, incident response, infrastructure as code, and reliability engineering.",
-    data_engineering: "You are conducting a Data Engineering interview. Ask about ETL pipelines, data warehousing, streaming vs batch processing, data modeling, Spark/Kafka, and data quality.",
-    security: "You are conducting a Security Engineering interview. Ask about OWASP top 10, authentication/authorization, encryption, security architecture, threat modeling, and incident response.",
-  };
-
-  return `You are PrepWithAI, an expert technical interviewer.${companyContext}
-
-${typePrompts[type] || typePrompts.dsa}
-
-Difficulty level: ${difficultyMap[difficulty] || difficultyMap.medium}
-
-RULES:
-- Ask ONE question at a time
-- Wait for the candidate's response before proceeding
-- Provide brief, constructive feedback after each answer
-- If the candidate is stuck, offer gentle guidance (but note it as a hint)
-- Be professional but friendly
-- After receiving an answer, internally evaluate it and move to the next question or follow-up
-- Keep responses concise (under 200 words unless explaining a complex concept)
-- Use markdown formatting for code blocks
-- Do NOT reveal the full solution unless the candidate has attempted first`;
+  return history;
 }
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+// Helper: create streaming response with DB save after completion
+function createStreamingResponse(
+  session: ReturnType<typeof Object>,
+  conversationHistory: { role: "system" | "user" | "assistant"; content: string }[],
+  userId: string,
+  endpoint: string,
+  extraMeta?: { newQuestion?: boolean; hintsUsed?: number }
 ) {
+  const { stream, fullContent } = generateInterviewResponseStream(
+    conversationHistory,
+    { userId, endpoint }
+  );
+
+  // Save complete message to DB after stream finishes
+  fullContent
+    .then(async (aiMessage) => {
+      session.messages.push({
+        id: `msg-${Date.now()}-ai`,
+        role: "interviewer",
+        content: aiMessage,
+        timestamp: new Date(),
+        isVoice: false,
+      });
+      await session.save();
+    })
+    .catch((err: unknown) => {
+      console.error("Failed to save streamed message:", err);
+    });
+
+  // Send metadata in the first SSE event
+  const encoder = new TextEncoder();
+  const metaStream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const meta = {
+        meta: true,
+        ...(extraMeta || {}),
+      };
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify(meta)}\n\n`)
+      );
+      controller.close();
+    },
+  });
+
+  // Combine meta + AI stream
+  const combined = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      // Send meta first
+      const metaReader = metaStream.getReader();
+      while (true) {
+        const { done, value } = await metaReader.read();
+        if (done) break;
+        controller.enqueue(value);
+      }
+
+      // Then pipe AI stream
+      const aiReader = stream.getReader();
+      while (true) {
+        const { done, value } = await aiReader.read();
+        if (done) break;
+        controller.enqueue(value);
+      }
+      controller.close();
+    },
+  });
+
+  return new Response(combined, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}
+
+async function handler(req: NextRequest, { user, params }: AuthContext) {
   try {
-    const userSession = await auth();
-    if (!userSession?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Rate limit per user
+    const rateCheck = rateLimitChat(user.id);
+    if (!rateCheck.allowed) {
+      return tooManyRequests("Slow down! Please wait before sending another message.", 5);
     }
 
-    const { id } = await params;
-    const { action, content } = await req.json();
+    // Validate input
+    const { data, error } = await validateBody(req, chatMessageSchema);
+    if (error || !data) {
+      return badRequest(error || "Invalid input");
+    }
 
-    // Check API rate limit before making Groq call
-    const apiLimit = await checkApiLimit();
+    const { id } = params;
+    const { action, content } = data;
+
+    // Check daily API limit
+    const apiLimit = await checkApiLimit(user.id);
     if (!apiLimit.allowed) {
-      return NextResponse.json(
-        {
-          error: "AI responses are temporarily limited due to high usage. Please try again shortly.",
-          rateLimited: true,
-          remaining: apiLimit.remaining,
-        },
-        { status: 429 }
+      return tooManyRequests(
+        "AI responses are temporarily limited due to high usage. Please try again shortly."
       );
     }
 
-    await connectDB();
-    const session = await Session.findOne({ _id: id, userId: userSession.user.id });
+    // Fetch session
+    const session = await Session.findById(id);
     if (!session) {
-      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+      return notFound("Session not found");
+    }
+    if (session.userId.toString() !== user.id) {
+      return forbidden("You do not have access to this session");
+    }
+    if (session.completed && action !== "end") {
+      return badRequest("This interview session has already ended");
     }
 
-    const systemPrompt = getSystemPrompt(session.type, session.company, session.difficulty);
-    const conversationHistory: { role: "system" | "user" | "assistant"; content: string }[] = [
-      { role: "system", content: systemPrompt },
-    ];
+    // Build conversation history (with 30-message window)
+    const conversationHistory = buildConversationHistory(session);
 
-    for (const msg of session.messages) {
-      conversationHistory.push({
-        role: msg.role === "interviewer" ? "assistant" : "user",
-        content: msg.content,
-      });
-    }
-
-    let userMessage = "";
-    let newQuestion = false;
+    // ─── Handle Actions ─────────────────────────────
 
     switch (action) {
-      case "start":
-        conversationHistory.push({ role: "user", content: "Please start the interview. Introduce yourself briefly and ask the first question." });
-        break;
-      case "message":
-        userMessage = content;
-        conversationHistory.push({ role: "user", content });
-        break;
-      case "hint":
-        conversationHistory.push({ role: "user", content: "I'm stuck. Can you give me a small hint without revealing the full solution?" });
-        session.hintsUsed = (session.hintsUsed || 0) + 1;
-        break;
-      case "skip":
-        conversationHistory.push({ role: "user", content: "I'd like to skip this question. Please briefly explain the optimal approach, then move to the next question." });
-        newQuestion = true;
-        break;
-      case "end": {
+      case "start": {
         conversationHistory.push({
           role: "user",
-          content: `The interview is over. Provide a final assessment as JSON:
-{
-  "score": <0-100>,
-  "grades": { "problemSolving": <0-100>, "communication": <0-100>, "codeQuality": <0-100>, "edgeCases": <0-100>, "timeManagement": <0-100> },
-  "strengths": ["..."],
-  "weaknesses": ["..."],
-  "tip": "one senior-level tip"
-}`,
+          content:
+            "Please start the interview. Introduce yourself briefly and ask the first question.",
         });
 
-        const endCompletion = await groq.chat.completions.create({
-          model: "llama-3.3-70b-versatile",
-          messages: conversationHistory,
-          temperature: 0.4,
-          max_tokens: 800,
+        return createStreamingResponse(
+          session,
+          conversationHistory,
+          user.id,
+          "chat-start",
+          { newQuestion: true }
+        );
+      }
+
+      case "message": {
+        if (!content?.trim()) {
+          return badRequest("Message content cannot be empty");
+        }
+
+        // Add user message to DB immediately
+        session.messages.push({
+          id: `msg-${Date.now()}-user`,
+          role: "candidate",
+          content: content.trim(),
+          timestamp: new Date(),
+          isVoice: false,
+        });
+        await session.save();
+
+        conversationHistory.push({ role: "user", content: content.trim() });
+
+        return createStreamingResponse(
+          session,
+          conversationHistory,
+          user.id,
+          "chat-message",
+          { newQuestion: false }
+        );
+      }
+
+      case "hint": {
+        conversationHistory.push({
+          role: "user",
+          content:
+            "I'm stuck. Can you give me a small hint without revealing the full solution?",
         });
 
-        await trackApiCall(endCompletion.usage?.total_tokens || 0);
+        session.hintsUsed = (session.hintsUsed || 0) + 1;
+        await session.save();
 
-        const endMessage = endCompletion.choices[0]?.message?.content || "";
+        return createStreamingResponse(
+          session,
+          conversationHistory,
+          user.id,
+          "chat-hint",
+          { hintsUsed: session.hintsUsed }
+        );
+      }
+
+      case "skip": {
+        conversationHistory.push({
+          role: "user",
+          content:
+            "I'd like to skip this question. Please briefly explain the optimal approach, then move to the next question.",
+        });
+
+        return createStreamingResponse(
+          session,
+          conversationHistory,
+          user.id,
+          "chat-skip",
+          { newQuestion: true }
+        );
+      }
+
+      case "end": {
+        // End remains non-streaming — needs full JSON parsing
+        conversationHistory.push({
+          role: "user",
+          content: getEndInterviewPrompt(),
+        });
+
+        const { content: endMessage } = await generateInterviewResponse(
+          conversationHistory,
+          {
+            temperature: 0.4,
+            maxTokens: 1000,
+            userId: user.id,
+            endpoint: "chat-end",
+          }
+        );
+
+        // Parse scores from AI response
         let overallScore = 0;
-        let grades = { problemSolving: 0, communication: 0, codeQuality: 0, edgeCases: 0, timeManagement: 0 };
+        let grades = {
+          problemSolving: 0,
+          communication: 0,
+          codeQuality: 0,
+          edgeCases: 0,
+          timeManagement: 0,
+        };
+        let strengths: string[] = [];
+        let weaknesses: string[] = [];
+        let summary = "";
+        let seniorTip = "";
+
         try {
           const jsonMatch = endMessage.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0]);
             overallScore = parsed.score || 0;
             if (parsed.grades) grades = { ...grades, ...parsed.grades };
+            strengths = parsed.strengths || [];
+            weaknesses = parsed.weaknesses || [];
+            summary = parsed.summary || "";
+            seniorTip = parsed.tip || "";
           }
-        } catch { /* parsing failed */ }
+        } catch {
+          // JSON parsing failed — use defaults
+        }
 
+        // Calculate duration
+        const duration =
+          session.messages.length > 0
+            ? Math.floor(
+              (Date.now() -
+                new Date(session.createdAt).getTime()) /
+              1000
+            )
+            : 0;
+
+        // Update session
         session.completed = true;
         session.overallScore = overallScore;
         session.grades = grades;
-        session.messages.push({ id: `msg-${Date.now()}`, role: "interviewer", content: endMessage, timestamp: new Date(), isVoice: false });
+        session.duration = duration;
+        session.strengths = strengths;
+        session.improvements = weaknesses;
+        session.summary = summary;
+        session.seniorTip = seniorTip;
+        session.messages.push({
+          id: `msg-${Date.now()}-end`,
+          role: "interviewer",
+          content: endMessage,
+          timestamp: new Date(),
+          isVoice: false,
+        });
         await session.save();
 
-        return NextResponse.json({ message: endMessage, completed: true, score: overallScore, grades });
+        return Response.json({
+          message: endMessage,
+          completed: true,
+          score: overallScore,
+          grades,
+          duration,
+          strengths,
+          weaknesses,
+          summary,
+          seniorTip,
+        });
       }
+
       default:
-        return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+        return badRequest(`Invalid action: ${action}`);
     }
-
-    const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: conversationHistory,
-      temperature: 0.7,
-      max_tokens: 800,
-    });
-
-    await trackApiCall(completion.usage?.total_tokens || 0);
-
-    const aiMessage = completion.choices[0]?.message?.content || "I apologize, I encountered an issue. Could you repeat that?";
-
-    if (action === "message" && userMessage) {
-      session.messages.push({ id: `msg-${Date.now()}-user`, role: "candidate", content: userMessage, timestamp: new Date(), isVoice: false });
-    }
-    session.messages.push({ id: `msg-${Date.now()}-ai`, role: "interviewer", content: aiMessage, timestamp: new Date(), isVoice: false });
-    await session.save();
-
-    return NextResponse.json({ message: aiMessage, newQuestion });
   } catch (error) {
-    console.error("Chat error:", error);
-    await trackApiCall(0, true);
-    return NextResponse.json({ error: "Failed to process message" }, { status: 500 });
+    return serverError("Failed to process message", error);
   }
 }
+
+export const POST = withAuth(handler);

@@ -1,38 +1,49 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import connectDB from "@/lib/mongodb";
+// ===========================================
+// PrepWithAI — Create Interview Session
+// POST /api/interview/create
+// Creates a new session with type, company,
+// difficulty, and mode configuration
+// Built by Abdullah Tariq, Lahore Pakistan
+// ===========================================
+
+import { NextRequest } from "next/server";
+import { withAuth, AuthContext } from "@/lib/withAuth";
+import { createInterviewSchema, validateBody } from "@/lib/validation";
+import { created, badRequest, serverError } from "@/lib/response";
 import Session from "@/models/Session";
 
-export async function POST(req: NextRequest) {
+async function handler(req: NextRequest, { user }: AuthContext) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { data, error } = await validateBody(req, createInterviewSchema);
+    if (error || !data) {
+      return badRequest(error || "Invalid input");
     }
 
-    const { type, company, difficulty, voiceMode } = await req.json();
-
-    const sessionType = (type || "dsa").replace("-", "_");
-
-    await connectDB();
+    const sessionType = data.type.replace(/-/g, "_");
 
     const newSession = await Session.create({
-      userId: session.user.id,
+      userId: user.id,
       type: sessionType,
-      company: company || "general",
-      difficulty: difficulty || "mid",
-      voiceMode: voiceMode || false,
+      company: (data.company || "general").toLowerCase(),
+      difficulty: data.difficulty || "mid",
+      voiceMode: data.voiceMode || false,
+      videoMode: data.videoMode || false,
       messages: [],
       questions: [],
       completed: false,
     });
 
-    return NextResponse.json({ sessionId: newSession._id.toString() });
+    return created({
+      sessionId: newSession._id.toString(),
+      type: sessionType,
+      company: newSession.company,
+      difficulty: newSession.difficulty,
+      voiceMode: newSession.voiceMode,
+      videoMode: newSession.videoMode,
+    });
   } catch (error) {
-    console.error("Create session error:", error);
-    return NextResponse.json(
-      { error: "Failed to create session" },
-      { status: 500 }
-    );
+    return serverError("Failed to create interview session", error);
   }
 }
+
+export const POST = withAuth(handler);

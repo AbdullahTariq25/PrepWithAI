@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -10,13 +10,14 @@ import {
   PhoneOff,
   Volume2,
   VolumeX,
-  Maximize2,
-  Minimize2,
-  MessageSquare,
+  Keyboard,
+  Lightbulb,
   Clock,
   AlertTriangle,
+  Send,
 } from "lucide-react";
 import { useVoiceInterview } from "@/hooks/useVoiceInterview";
+import "./video-call.css";
 
 interface Message {
   id: string;
@@ -34,16 +35,21 @@ export default function VideoInterviewPage() {
     : (sessionParam ?? "");
 
   const userVideoRef = useRef<HTMLVideoElement>(null);
+  const transcriptPanelRef = useRef<HTMLDivElement>(null);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevTranscriptRef = useRef("");
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animFrameRef = useRef<number>(0);
+
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [aiSpeaking, setAiSpeaking] = useState(false);
+  const [aiThinking, setAiThinking] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [callDuration, setCallDuration] = useState(0);
-  const [connectionQuality] = useState<"good" | "fair" | "poor">("good");
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showTranscript, setShowTranscript] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [showCaptions, setShowCaptions] = useState(true);
   const [sessionInfo, setSessionInfo] = useState<{
     type: string;
     company: string;
@@ -51,10 +57,16 @@ export default function VideoInterviewPage() {
   } | null>(null);
   const [questionNumber, setQuestionNumber] = useState(0);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const [hintsRemaining, setHintsRemaining] = useState(3);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [textInput, setTextInput] = useState("");
+  const [waveformData, setWaveformData] = useState<number[]>(
+    new Array(20).fill(4),
+  );
 
   const {
     isListening,
-    isSpeaking,
     transcript,
     interimTranscript,
     fillerCount,
@@ -64,9 +76,10 @@ export default function VideoInterviewPage() {
     speakText,
     stopSpeaking,
     resetTranscript,
+    isSupported,
   } = useVoiceInterview();
 
-  // Start webcam
+  // ─── Camera & Audio Setup ──────────────────────
   useEffect(() => {
     navigator.mediaDevices
       .getUserMedia({ video: true, audio: true })
@@ -75,7 +88,6 @@ export default function VideoInterviewPage() {
         if (userVideoRef.current) userVideoRef.current.srcObject = s;
       })
       .catch(() => setCamOn(false));
-
     return () => {
       stream?.getTracks().forEach((t) => t.stop());
     };
@@ -88,7 +100,67 @@ export default function VideoInterviewPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Load session info
+  // Auto-scroll transcript
+  useEffect(() => {
+    if (transcriptPanelRef.current)
+      transcriptPanelRef.current.scrollTop =
+        transcriptPanelRef.current.scrollHeight;
+  }, [messages]);
+
+  // Audio visualization
+  useEffect(() => {
+    if (isListening) setupAudioVisualization();
+    else {
+      cleanupAudioVisualization();
+      setWaveformData(new Array(20).fill(4));
+    }
+    return () => cleanupAudioVisualization();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isListening]);
+
+  const setupAudioVisualization = async () => {
+    try {
+      const audioStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      const audioCtx = new AudioContext();
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 64;
+      audioCtx.createMediaStreamSource(audioStream).connect(analyser);
+      audioContextRef.current = audioCtx;
+      analyserRef.current = analyser;
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const update = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteFrequencyData(dataArray);
+        const bars: number[] = [];
+        const bucketSize = Math.floor(bufferLength / 20);
+        for (let i = 0; i < 20; i++) {
+          let sum = 0;
+          for (let j = 0; j < bucketSize; j++)
+            sum += dataArray[i * bucketSize + j] || 0;
+          bars.push(Math.max(4, Math.min(48, (sum / bucketSize / 255) * 48)));
+        }
+        setWaveformData(bars);
+        animFrameRef.current = requestAnimationFrame(update);
+      };
+      animFrameRef.current = requestAnimationFrame(update);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const cleanupAudioVisualization = () => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    if (audioContextRef.current)
+      audioContextRef.current.close().catch(() => { });
+    audioContextRef.current = null;
+    analyserRef.current = null;
+  };
+
+  // ─── Load Session ──────────────────────────────
   useEffect(() => {
     if (!sessionId) return;
     const load = async () => {
@@ -101,120 +173,226 @@ export default function VideoInterviewPage() {
             company: data.session.company,
             difficulty: data.session.difficulty,
           });
-          // Start the interview
           startInterviewChat();
         }
       } catch {
-        console.error("Failed to load session");
+        /* ignore */
       }
     };
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
+  // ─── Silence Detection ─────────────────────────
+  useEffect(() => {
+    if (transcript !== prevTranscriptRef.current && transcript.length > 0) {
+      prevTranscriptRef.current = transcript;
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = setTimeout(() => {
+        if (isListening && transcript.trim().length > 5) submitAnswer();
+      }, 2500);
+    }
+    return () => {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transcript, isListening]);
+
+  // ─── SSE Stream Consumer ───────────────────────
+  const consumeSSEResponse = async (
+    res: Response,
+    onComplete: (fullText: string) => void,
+  ) => {
+    const reader = res.body?.getReader();
+    if (!reader) return;
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let accumulated = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n\n");
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.content) accumulated += data.content;
+          if (data.done) onComplete(accumulated);
+        } catch {
+          /* skip */
+        }
+      }
+    }
+    if (accumulated) onComplete(accumulated);
+  };
+
+  // ─── Interview Actions ─────────────────────────
   const startInterviewChat = async () => {
     if (!sessionId) return;
+    setAiThinking(true);
     try {
       const res = await fetch(`/api/interview/${sessionId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "start" }),
       });
-      const data = await res.json();
-      if (data.message) {
-        const msg: Message = {
-          id: `msg-${Date.now()}`,
-          role: "interviewer",
-          content: data.message,
-          timestamp: new Date(),
-        };
-        setMessages([msg]);
+      await consumeSSEResponse(res, (aiMessage) => {
+        setMessages([
+          {
+            id: `msg-${Date.now()}`,
+            role: "interviewer",
+            content: aiMessage,
+            timestamp: new Date(),
+          },
+        ]);
         setQuestionNumber(1);
-        // AI speaks the first question
+        setAiThinking(false);
         setAiSpeaking(true);
-        speakText(data.message, () => setAiSpeaking(false));
-      }
+        speakText(aiMessage, () => {
+          setAiSpeaking(false);
+          if (micOn) startListening();
+        });
+      });
     } catch {
-      console.error("Failed to start interview");
+      setAiThinking(false);
     }
   };
 
   const submitAnswer = useCallback(async () => {
-    if (!transcript.trim() || isProcessing || !sessionId) return;
+    if (!transcript.trim() || !sessionId) return;
     stopListening();
-    setIsProcessing(true);
-
-    const userMsg: Message = {
-      id: `msg-user-${Date.now()}`,
-      role: "user",
-      content: transcript,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
-
+    setAiThinking(true);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `msg-user-${Date.now()}`,
+        role: "user",
+        content: transcript,
+        timestamp: new Date(),
+      },
+    ]);
+    const userText = transcript;
+    resetTranscript();
+    prevTranscriptRef.current = "";
     try {
       const res = await fetch(`/api/interview/${sessionId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "message", content: transcript }),
+        body: JSON.stringify({ action: "message", content: userText }),
       });
-      const data = await res.json();
-      if (data.message) {
-        const aiMsg: Message = {
-          id: `msg-ai-${Date.now()}`,
-          role: "interviewer",
-          content: data.message,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, aiMsg]);
-        if (data.newQuestion) setQuestionNumber((p) => p + 1);
-        resetTranscript();
-        // AI speaks
+      await consumeSSEResponse(res, (aiMessage) => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `msg-ai-${Date.now()}`,
+            role: "interviewer",
+            content: aiMessage,
+            timestamp: new Date(),
+          },
+        ]);
+        setAiThinking(false);
         setAiSpeaking(true);
-        speakText(data.message, () => setAiSpeaking(false));
-      }
+        speakText(aiMessage, () => {
+          setAiSpeaking(false);
+          if (micOn) startListening();
+        });
+      });
     } catch {
-      console.error("Failed to send message");
-    } finally {
-      setIsProcessing(false);
+      setAiThinking(false);
     }
   }, [
     transcript,
-    isProcessing,
     sessionId,
     stopListening,
     resetTranscript,
     speakText,
+    startListening,
+    micOn,
   ]);
 
-  const endInterview = async () => {
+  const handleHint = async () => {
+    if (hintsRemaining <= 0 || !sessionId) return;
+    setHintsRemaining((p) => p - 1);
     stopListening();
-    stopSpeaking();
-    stream?.getTracks().forEach((t) => t.stop());
-
-    if (sessionId) {
-      try {
-        await fetch(`/api/interview/${sessionId}/feedback`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fillerCount,
-            wordsPerMinute,
-            duration: callDuration,
-            mode: "video",
-          }),
+    setAiThinking(true);
+    try {
+      const res = await fetch(`/api/interview/${sessionId}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "hint" }),
+      });
+      await consumeSSEResponse(res, (hint) => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `msg-hint-${Date.now()}`,
+            role: "interviewer",
+            content: `💡 ${hint}`,
+            timestamp: new Date(),
+          },
+        ]);
+        setAiThinking(false);
+        setAiSpeaking(true);
+        speakText(hint, () => {
+          setAiSpeaking(false);
+          if (micOn) startListening();
         });
-      } catch {
-        // Continue anyway
-      }
+      });
+    } catch {
+      setAiThinking(false);
     }
-    router.push(`/interview/${sessionId}/report`);
+  };
+
+  const handleTextSubmit = () => {
+    if (!textInput.trim()) return;
+    stopListening();
+    setAiThinking(true);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `msg-user-${Date.now()}`,
+        role: "user",
+        content: textInput.trim(),
+        timestamp: new Date(),
+      },
+    ]);
+    const text = textInput.trim();
+    setTextInput("");
+
+    fetch(`/api/interview/${sessionId}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "message", content: text }),
+    })
+      .then((res) =>
+        consumeSSEResponse(res, (aiMessage) => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `msg-ai-${Date.now()}`,
+              role: "interviewer",
+              content: aiMessage,
+              timestamp: new Date(),
+            },
+          ]);
+          setAiThinking(false);
+          setAiSpeaking(true);
+          speakText(aiMessage, () => {
+            setAiSpeaking(false);
+            if (micOn) startListening();
+          });
+        }),
+      )
+      .catch(() => setAiThinking(false));
   };
 
   const toggleMic = () => {
     setMicOn(!micOn);
     stream?.getAudioTracks().forEach((t) => (t.enabled = !micOn));
     if (micOn && isListening) stopListening();
+    if (!micOn) startListening();
   };
 
   const toggleCam = () => {
@@ -222,19 +400,30 @@ export default function VideoInterviewPage() {
     stream?.getVideoTracks().forEach((t) => (t.enabled = !camOn));
   };
 
-  const toggleRecord = () => {
-    if (isListening) {
-      stopListening();
-      // After stopping, submit the answer
-      if (transcript.trim()) {
-        submitAnswer();
-      }
-    } else {
-      resetTranscript();
-      startListening();
-    }
+  const toggleMute = () => {
+    if (!isMuted) stopSpeaking();
+    setIsMuted(!isMuted);
   };
 
+  const endInterview = async () => {
+    stopListening();
+    stopSpeaking();
+    stream?.getTracks().forEach((t) => t.stop());
+    if (sessionId) {
+      try {
+        await fetch(`/api/interview/${sessionId}/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "end" }),
+        });
+      } catch {
+        /* ok */
+      }
+    }
+    router.push(`/interview/${sessionId}/report`);
+  };
+
+  // ─── Helpers ───────────────────────────────────
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)
       .toString()
@@ -243,377 +432,366 @@ export default function VideoInterviewPage() {
   const companyName = sessionInfo?.company
     ? sessionInfo.company.charAt(0).toUpperCase() + sessionInfo.company.slice(1)
     : "Company";
-  const interviewTitle = `${companyName} — ${sessionInfo?.type?.replace(/_/g, " ") || "Interview"}`;
 
+  const lastAiMessage =
+    messages.filter((m) => m.role === "interviewer").slice(-1)[0]?.content || "";
+
+  const aiStatus = aiThinking
+    ? "thinking"
+    : aiSpeaking
+      ? "speaking"
+      : isListening
+        ? "listening"
+        : "idle";
+
+  // ─── Render ────────────────────────────────────
   return (
-    <div className="h-screen bg-[#050505] flex flex-col overflow-hidden">
-      {/* TOP BAR */}
-      <div className="flex items-center justify-between px-6 h-14 border-b border-white/6 bg-[#080808] shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-sm text-white font-medium capitalize">
-            {interviewTitle}
+    <div className="vc-root">
+      {/* ═══ Top Bar ═══ */}
+      <div className="vc-topbar">
+        <div className="vc-topbar-left">
+          <div className="vc-topbar-dot" />
+          <span className="vc-topbar-title">
+            {companyName} — {sessionInfo?.type?.replace(/_/g, " ") || "Interview"}
           </span>
           {sessionInfo?.difficulty && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/6 text-[#888] capitalize">
-              {sessionInfo.difficulty}
+            <span className="vc-topbar-badge">{sessionInfo.difficulty}</span>
+          )}
+        </div>
+        <div className="vc-topbar-center">
+          <span className="vc-topbar-stat">Q{questionNumber}</span>
+          {wordsPerMinute > 0 && (
+            <span className="vc-topbar-stat">{wordsPerMinute} WPM</span>
+          )}
+          {fillerCount > 0 && (
+            <span className="vc-topbar-stat vc-topbar-stat--warn">
+              <AlertTriangle style={{ width: 12, height: 12 }} /> {fillerCount}
             </span>
           )}
-        </div>
-        <div className="flex items-center gap-4">
-          {/* Connection quality */}
-          <div className="flex items-center gap-1.5">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className={`w-1 rounded-full ${
-                  connectionQuality === "good"
-                    ? "bg-green-500"
-                    : i <= 2
-                      ? "bg-amber-500"
-                      : "bg-white/10"
-                }`}
-                style={{ height: `${6 + i * 3}px` }}
-              />
-            ))}
-          </div>
-          {/* Question counter */}
-          <span className="text-xs text-[#555]">Q{questionNumber}</span>
-          {/* Timer */}
-          <div className="text-sm font-mono text-white/60">
+          <span className="vc-topbar-timer">
+            <Clock style={{ width: 12, height: 12 }} />
             {formatTime(callDuration)}
-          </div>
+          </span>
         </div>
       </div>
 
-      {/* MAIN VIDEO AREA */}
-      <div className="flex-1 relative flex overflow-hidden">
-        {/* AI INTERVIEWER (left, main) */}
-        <div className="flex-1 relative bg-[#0A0A0A] flex items-center justify-center">
-          {/* Subtle grid background */}
-          <div className="absolute inset-0 hero-grid opacity-30" />
-
-          {/* AI Avatar */}
-          <div className="flex flex-col items-center gap-6 z-10">
-            <div
-              className={`relative w-36 h-36 rounded-full border-4 ${
-                aiSpeaking
-                  ? "border-indigo-500 shadow-xl shadow-indigo-500/30"
-                  : "border-white/10"
-              } transition-all duration-300`}
-            >
-              {/* Pulse rings */}
-              {aiSpeaking && (
-                <>
-                  <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20 animate-ping" />
-                  <div
-                    className="absolute -inset-3 rounded-full border border-indigo-500/10 animate-ping"
-                    style={{ animationDelay: "0.3s" }}
-                  />
-                </>
-              )}
-
-              {/* Avatar */}
-              <div className="w-full h-full rounded-full bg-linear-to-br from-indigo-600 via-indigo-700 to-violet-800 flex items-center justify-center overflow-hidden">
-                <div className="relative w-full h-full flex items-center justify-center">
-                  <span className="text-5xl font-bold text-white/90">AI</span>
-                  {/* Waveform when speaking */}
-                  {aiSpeaking && (
-                    <div className="absolute bottom-7 left-1/2 -translate-x-1/2 flex items-center gap-0.5">
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <div
-                          key={i}
-                          className="w-1.5 bg-white/80 rounded-full wave-bar"
-                          style={{ animationDelay: `${i * 0.1}s` }}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="text-center">
-              <p className="text-white font-medium text-lg">AI Interviewer</p>
-              <p className="text-white/40 text-sm capitalize">
-                {companyName} ·{" "}
-                {sessionInfo?.type?.replace(/_/g, " ") || "Interview"}
-              </p>
-              {aiSpeaking && (
-                <div className="flex items-center gap-2 mt-2 justify-center">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-xs text-green-400">Speaking...</span>
-                </div>
-              )}
-              {isProcessing && (
-                <div className="flex items-center gap-2 mt-2 justify-center">
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  <span className="text-xs text-amber-400">Thinking...</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Current question overlay */}
-          {messages.filter((m) => m.role === "interviewer").length > 0 && (
-            <div className="absolute bottom-6 left-6 right-6">
-              <div className="bg-black/80 backdrop-blur-xl rounded-xl p-4 border border-white/10">
-                <p className="text-[10px] text-white/40 mb-1 uppercase tracking-wider font-medium">
-                  Current Question · Q{questionNumber}
-                </p>
-                <p className="text-sm text-white/90 leading-relaxed">
-                  {
-                    messages
-                      .filter((m) => m.role === "interviewer")
-                      .slice(-1)[0]?.content
-                  }
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Stats overlay (top-left) */}
-          <div className="absolute top-4 left-4 flex items-center gap-3">
-            <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-1.5 flex items-center gap-2">
-              <Clock className="w-3 h-3 text-white/40" />
-              <span className="text-xs text-white/60 font-mono">
-                {formatTime(callDuration)}
-              </span>
-            </div>
-            {wordsPerMinute > 0 && (
-              <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-1.5">
-                <span className="text-xs text-white/60">
-                  {wordsPerMinute} WPM
-                </span>
-              </div>
-            )}
-            {fillerCount > 0 && (
-              <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-1.5 flex items-center gap-1.5">
-                <AlertTriangle className="w-3 h-3 text-amber-400" />
-                <span className="text-xs text-amber-400">
-                  {fillerCount} fillers
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* USER WEBCAM (right, smaller) */}
-        <div
-          className={`${
-            showTranscript ? "w-[320px]" : "w-[240px]"
-          } border-l border-white/6 relative bg-[#080808] flex flex-col transition-all duration-200`}
-        >
-          {/* User video */}
-          <div className="relative flex-1 bg-[#0D0D0D] overflow-hidden min-h-[200px]">
-            {camOn ? (
-              <video
-                ref={userVideoRef}
-                autoPlay
-                muted
-                playsInline
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="w-20 h-20 rounded-full bg-[#1A1A1A] border border-white/10 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-white/40">You</span>
-                </div>
-              </div>
-            )}
-
-            {/* Recording indicator */}
+      {/* ═══ Main Area ═══ */}
+      <div className="vc-main">
+        {/* AI Panel (left/major) */}
+        <div className="vc-ai-panel">
+          <div className="vc-ai-avatar-container">
+            {/* Waveform (shown when user is speaking) */}
             {isListening && (
-              <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-[10px] text-white/70">REC</span>
+              <div className="vc-waveform">
+                {waveformData.map((h, i) => (
+                  <div
+                    key={i}
+                    className={`vc-waveform-bar ${isListening ? "vc-waveform-bar--active" : "vc-waveform-bar--idle"}`}
+                    style={{ height: h }}
+                  />
+                ))}
               </div>
             )}
 
-            {/* Mic level indicator */}
-            {micOn && isListening && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
-                <div className="flex items-end gap-0.5 h-5">
-                  {[1, 2, 3, 4, 5, 4, 3, 2, 1].map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-1 bg-green-500 rounded-full wave-bar"
-                      style={{ animationDelay: `${i * 80}ms` }}
-                    />
-                  ))}
-                </div>
+            {/* AI Avatar */}
+            <div style={{ position: "relative" }}>
+              {aiSpeaking &&
+                [0, 1, 2].map((i) => <div key={i} className="vc-ai-ring" />)}
+              <div
+                className={`vc-ai-avatar ${aiSpeaking ? "vc-ai-avatar--speaking" : ""}`}
+              >
+                <span className="vc-ai-avatar-letter">AI</span>
+                {aiSpeaking && (
+                  <div className="vc-ai-soundwave">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div key={i} className="vc-ai-soundwave-bar" />
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Live transcript panel */}
-          {showTranscript && (
-            <div className="h-[200px] p-4 overflow-y-auto border-t border-white/6">
-              <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2 font-medium">
-                Your Answer (Live)
-              </p>
-              <p className="text-xs text-white/70 leading-relaxed">
-                {transcript}
-                {interimTranscript && (
-                  <span className="text-white/30 italic">
-                    {" "}
-                    {interimTranscript}
+            {/* AI Info */}
+            <div style={{ textAlign: "center" }}>
+              <div className="vc-ai-name">AI Interviewer</div>
+              <div className="vc-ai-role">
+                Senior Engineer · {companyName}
+              </div>
+
+              <div className="vc-ai-status">
+                {aiStatus === "thinking" && (
+                  <>
+                    <div className="vc-thinking-dots">
+                      <span className="vc-thinking-dot" />
+                      <span className="vc-thinking-dot" />
+                      <span className="vc-thinking-dot" />
+                    </div>
+                    <span className="vc-ai-status-text vc-ai-status-text--thinking">
+                      Thinking...
+                    </span>
+                  </>
+                )}
+                {aiStatus === "speaking" && (
+                  <>
+                    <div className="vc-ai-status-dot vc-ai-status-dot--speaking" />
+                    <span className="vc-ai-status-text vc-ai-status-text--speaking">
+                      Speaking...
+                    </span>
+                  </>
+                )}
+                {aiStatus === "listening" && (
+                  <>
+                    <div className="vc-ai-status-dot vc-ai-status-dot--listening" />
+                    <span className="vc-ai-status-text vc-ai-status-text--listening">
+                      Listening...
+                    </span>
+                  </>
+                )}
+                {aiStatus === "idle" && (
+                  <span className="vc-ai-status-text vc-ai-status-text--idle">
+                    Ready
                   </span>
                 )}
-              </p>
-              {!transcript && !interimTranscript && (
-                <p className="text-xs text-white/20 italic">
-                  {isListening
-                    ? "Listening... start speaking"
-                    : "Press the mic button to start answering"}
-                </p>
-              )}
+              </div>
+            </div>
+          </div>
+
+          {/* Caption overlay */}
+          {showCaptions && lastAiMessage && (
+            <div className="vc-caption">
+              <div className="vc-caption-box">
+                <div className="vc-caption-label">
+                  Current Question · Q{questionNumber}
+                </div>
+                <div className="vc-caption-text">
+                  {lastAiMessage.length > 250
+                    ? lastAiMessage.slice(-250) + "..."
+                    : lastAiMessage}
+                </div>
+              </div>
             </div>
           )}
         </div>
-      </div>
 
-      {/* BOTTOM CONTROLS */}
-      <div className="h-20 flex items-center justify-center gap-4 border-t border-white/6 bg-[#080808] shrink-0">
-        {/* Mic toggle */}
-        <button
-          onClick={toggleMic}
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-150 active:scale-95 ${
-            micOn
-              ? "bg-[#1A1A1A] border border-white/10 hover:border-white/20"
-              : "bg-red-500/20 border border-red-500/30"
-          }`}
-          title={micOn ? "Mute microphone" : "Unmute microphone"}
-        >
-          {micOn ? (
-            <Mic className="w-5 h-5 text-white" />
-          ) : (
-            <MicOff className="w-5 h-5 text-red-400" />
-          )}
-        </button>
+        {/* Right Panel — Webcam + Transcript */}
+        <div className="vc-right-panel">
+          <div className="vc-webcam">
+            {camOn ? (
+              <video ref={userVideoRef} autoPlay muted playsInline />
+            ) : (
+              <div className="vc-webcam-placeholder">
+                <div className="vc-webcam-placeholder-avatar">You</div>
+              </div>
+            )}
+            {isListening && (
+              <div className="vc-webcam-rec">
+                <div className="vc-webcam-rec-dot" />
+                <span className="vc-webcam-rec-text">REC</span>
+              </div>
+            )}
+          </div>
 
-        {/* Camera toggle */}
-        <button
-          onClick={toggleCam}
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-150 active:scale-95 ${
-            camOn
-              ? "bg-[#1A1A1A] border border-white/10 hover:border-white/20"
-              : "bg-red-500/20 border border-red-500/30"
-          }`}
-          title={camOn ? "Turn off camera" : "Turn on camera"}
-        >
-          {camOn ? (
-            <Video className="w-5 h-5 text-white" />
-          ) : (
-            <VideoOff className="w-5 h-5 text-red-400" />
-          )}
-        </button>
-
-        {/* MAIN RECORD/SPEAK BUTTON */}
-        <button
-          onClick={toggleRecord}
-          disabled={isProcessing || aiSpeaking}
-          className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 active:scale-95 font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
-            isListening
-              ? "bg-red-500 shadow-lg shadow-red-500/40 animate-record"
-              : "bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-500/30"
-          }`}
-          title={isListening ? "Stop & submit answer" : "Start speaking"}
-        >
-          {isListening ? (
-            <div className="w-5 h-5 bg-white rounded" />
-          ) : (
-            <Mic className="w-6 h-6 text-white" />
-          )}
-        </button>
-
-        {/* Volume / Speaker */}
-        <button
-          onClick={() => {
-            if (isSpeaking) {
-              stopSpeaking();
-            }
-          }}
-          className="w-12 h-12 rounded-full bg-[#1A1A1A] border border-white/10 hover:border-white/20 flex items-center justify-center transition-all duration-150"
-          title="Toggle AI voice"
-        >
-          {isSpeaking ? (
-            <VolumeX className="w-5 h-5 text-white" />
-          ) : (
-            <Volume2 className="w-5 h-5 text-white" />
-          )}
-        </button>
-
-        {/* Transcript toggle */}
-        <button
-          onClick={() => setShowTranscript(!showTranscript)}
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-150 ${
-            showTranscript
-              ? "bg-indigo-500/20 border border-indigo-500/30"
-              : "bg-[#1A1A1A] border border-white/10 hover:border-white/20"
-          }`}
-          title="Toggle transcript"
-        >
-          <MessageSquare className="w-5 h-5 text-white" />
-        </button>
-
-        {/* Fullscreen */}
-        <button
-          onClick={() => {
-            if (!document.fullscreenElement) {
-              document.documentElement.requestFullscreen();
-              setIsFullscreen(true);
-            } else {
-              document.exitFullscreen();
-              setIsFullscreen(false);
-            }
-          }}
-          className="w-12 h-12 rounded-full bg-[#1A1A1A] border border-white/10 hover:border-white/20 flex items-center justify-center transition-all duration-150"
-          title="Toggle fullscreen"
-        >
-          {isFullscreen ? (
-            <Minimize2 className="w-5 h-5 text-white" />
-          ) : (
-            <Maximize2 className="w-5 h-5 text-white" />
-          )}
-        </button>
-
-        {/* End call */}
-        <button
-          onClick={() => setShowEndConfirm(true)}
-          className="w-12 h-12 rounded-full bg-red-500 hover:bg-red-400 flex items-center justify-center transition-all duration-150 shadow-lg shadow-red-500/30 active:scale-95 ml-4"
-          title="End interview"
-        >
-          <PhoneOff className="w-5 h-5 text-white" />
-        </button>
-      </div>
-
-      {/* End call confirmation modal */}
-      {showEndConfirm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-[#111] border border-white/8 rounded-2xl p-6 max-w-sm w-full mx-4 page-enter">
-            <h3 className="text-lg font-semibold text-white mb-2">
-              End Interview?
-            </h3>
-            <p className="text-sm text-[#888] mb-6">
-              Your session will be saved and you&apos;ll receive a detailed
-              performance report including filler word analysis and speaking
-              metrics.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowEndConfirm(false)}
-                className="flex-1 px-4 py-2.5 bg-transparent border border-white/10 hover:border-white/20 text-[#888] hover:text-white text-sm rounded-lg transition-all"
-              >
-                Continue
-              </button>
-              <button
-                onClick={endInterview}
-                className="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-400 text-white text-sm font-medium rounded-lg transition-all shadow-lg shadow-red-500/20"
-              >
-                End & Get Report
-              </button>
+          <div ref={transcriptPanelRef} className="vc-transcript">
+            <div className="vc-transcript-label">Your Answer</div>
+            <div className="vc-transcript-text">
+              {transcript}
+              {interimTranscript && (
+                <span className="vc-transcript-interim">
+                  {" "}
+                  {interimTranscript}
+                </span>
+              )}
+              {!transcript && !interimTranscript && (
+                <span className="vc-transcript-placeholder">
+                  {isListening
+                    ? "Listening... start speaking"
+                    : "Press mic to start answering"}
+                </span>
+              )}
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ Text Input (if toggled) ═══ */}
+      {showTextInput && (
+        <div className="vc-textinput">
+          <div className="vc-textinput-row">
+            <input
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleTextSubmit();
+              }}
+              placeholder="Type your answer..."
+              className="vc-textinput-field"
+            />
+            <button onClick={handleTextSubmit} className="vc-textinput-send">
+              <Send style={{ width: 16, height: 16, color: "white" }} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Bottom Toolbar ═══ */}
+      <div className="vc-toolbar">
+        {/* Mic */}
+        <div className="vc-tool-btn">
+          <button
+            onClick={toggleMic}
+            className={`vc-tool-btn-circle ${!micOn
+                ? "vc-tool-btn-circle--danger"
+                : isListening
+                  ? "vc-tool-btn-circle--mic-live"
+                  : "vc-tool-btn-circle--default"
+              }`}
+          >
+            {micOn ? (
+              <Mic style={{ width: 20, height: 20, color: "white" }} />
+            ) : (
+              <MicOff style={{ width: 20, height: 20, color: "#EF4444" }} />
+            )}
+          </button>
+          <span className="vc-tool-label">{micOn ? "Mic" : "Unmute"}</span>
+        </div>
+
+        {/* Camera */}
+        <div className="vc-tool-btn">
+          <button
+            onClick={toggleCam}
+            className={`vc-tool-btn-circle ${!camOn ? "vc-tool-btn-circle--danger" : "vc-tool-btn-circle--default"}`}
+          >
+            {camOn ? (
+              <Video style={{ width: 20, height: 20, color: "white" }} />
+            ) : (
+              <VideoOff style={{ width: 20, height: 20, color: "#EF4444" }} />
+            )}
+          </button>
+          <span className="vc-tool-label">{camOn ? "Camera" : "Show"}</span>
+        </div>
+
+        {/* Speaker */}
+        <div className="vc-tool-btn">
+          <button
+            onClick={toggleMute}
+            className={`vc-tool-btn-circle ${isMuted ? "vc-tool-btn-circle--danger" : "vc-tool-btn-circle--default"}`}
+          >
+            {isMuted ? (
+              <VolumeX
+                style={{ width: 20, height: 20, color: "#EF4444" }}
+              />
+            ) : (
+              <Volume2 style={{ width: 20, height: 20, color: "white" }} />
+            )}
+          </button>
+          <span className="vc-tool-label">Speaker</span>
+        </div>
+
+        {/* Text Input Toggle */}
+        <div className="vc-tool-btn">
+          <button
+            onClick={() => setShowTextInput(!showTextInput)}
+            className={`vc-tool-btn-circle ${showTextInput ? "vc-tool-btn-circle--active" : "vc-tool-btn-circle--default"}`}
+          >
+            <Keyboard
+              style={{
+                width: 20,
+                height: 20,
+                color: showTextInput ? "#818CF8" : "white",
+              }}
+            />
+          </button>
+          <span className="vc-tool-label">Type</span>
+        </div>
+
+        {/* Captions Toggle */}
+        <div className="vc-tool-btn">
+          <button
+            onClick={() => setShowCaptions(!showCaptions)}
+            className={`vc-tool-btn-circle ${showCaptions ? "vc-tool-btn-circle--active" : "vc-tool-btn-circle--default"}`}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke={showCaptions ? "#818CF8" : "white"}
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ width: 20, height: 20 }}
+            >
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <path d="M7 15h2M15 15h2M7 11h4M15 11h2" />
+            </svg>
+          </button>
+          <span className="vc-tool-label">Captions</span>
+        </div>
+
+        {/* Hint */}
+        <div className="vc-tool-btn">
+          <button
+            onClick={handleHint}
+            disabled={hintsRemaining <= 0}
+            className="vc-tool-btn-circle vc-tool-btn-circle--default"
+            style={{
+              position: "relative",
+              opacity: hintsRemaining <= 0 ? 0.3 : 1,
+            }}
+          >
+            <Lightbulb style={{ width: 20, height: 20, color: "#F59E0B" }} />
+            {hintsRemaining > 0 && (
+              <span className="vc-hint-badge">{hintsRemaining}</span>
+            )}
+          </button>
+          <span className="vc-tool-label">Hint</span>
+        </div>
+
+        {/* End Call */}
+        <div className="vc-tool-btn">
+          <button
+            onClick={() => setShowEndConfirm(true)}
+            className="vc-tool-btn-circle vc-tool-btn-circle--end"
+          >
+            <PhoneOff style={{ width: 22, height: 22, color: "white" }} />
+          </button>
+          <span className="vc-tool-label" style={{ color: "#EF4444" }}>
+            End
+          </span>
+        </div>
+      </div>
+
+      {/* Browser Warning */}
+      {!isSupported && (
+        <div className="vc-warning">
+          Speech recognition not supported. Use Chrome or Edge, or switch to
+          text input.
+        </div>
+      )}
+
+      {/* ═══ End Modal ═══ */}
+      {showEndConfirm && (
+        <div
+          className="vc-modal-overlay"
+          onClick={() => setShowEndConfirm(false)}
+        >
+          <div className="vc-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="vc-modal-icon">
+              <PhoneOff style={{ width: 24, height: 24, color: "#EF4444" }} />
+            </div>
+            <h3>End this session?</h3>
+            <p>
+              You have answered {questionNumber > 0 ? questionNumber - 1 : 0}{" "}
+              questions. Your progress will be saved and you&apos;ll receive a
+              detailed report.
+            </p>
+            <button
+              onClick={() => setShowEndConfirm(false)}
+              className="vc-modal-btn vc-modal-btn--cancel"
+            >
+              Continue Interview
+            </button>
+            <button onClick={endInterview} className="vc-modal-btn vc-modal-btn--end">
+              End &amp; View Report
+            </button>
           </div>
         </div>
       )}

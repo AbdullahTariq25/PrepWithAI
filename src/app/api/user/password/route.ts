@@ -1,57 +1,50 @@
-import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { auth } from "@/lib/auth";
-import connectDB from "@/lib/mongodb";
+// ===========================================
+// PrepWithAI — Change Password
+// PATCH /api/user/password
+// Validates current password, sets new one
+// Built by Abdullah Tariq, Lahore Pakistan
+// ===========================================
+
+import { NextRequest } from "next/server";
+import { withAuth, AuthContext } from "@/lib/withAuth";
+import { changePasswordSchema, validateBody } from "@/lib/validation";
+import { success, badRequest, serverError } from "@/lib/response";
 import User from "@/models/User";
 
-export async function PATCH(req: NextRequest) {
+async function handler(req: NextRequest, { user }: AuthContext) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { data, error } = await validateBody(req, changePasswordSchema);
+    if (error || !data) {
+      return badRequest(error || "Invalid input");
     }
 
-    const { currentPassword, newPassword } = await req.json();
-    if (!currentPassword || !newPassword) {
-      return NextResponse.json(
-        { error: "Both passwords are required" },
-        { status: 400 }
+    const dbUser = await User.findById(user.id).select("+password");
+    if (!dbUser?.password) {
+      return badRequest(
+        "Password change not available for OAuth accounts. You signed in with Google or GitHub."
       );
     }
 
-    if (newPassword.length < 6) {
-      return NextResponse.json(
-        { error: "Password must be at least 6 characters" },
-        { status: 400 }
-      );
-    }
-
-    await connectDB();
-    const user = await User.findById(session.user.id).select("+password");
-    if (!user?.password) {
-      return NextResponse.json(
-        { error: "Password change not available for OAuth accounts" },
-        { status: 400 }
-      );
-    }
-
-    const isValid = await bcrypt.compare(currentPassword, user.password);
+    // Verify current password
+    const isValid = await dbUser.comparePassword(data.currentPassword);
     if (!isValid) {
-      return NextResponse.json(
-        { error: "Current password is incorrect" },
-        { status: 400 }
-      );
+      return badRequest("Current password is incorrect");
     }
 
-    user.password = await bcrypt.hash(newPassword, 12);
-    await user.save();
+    // Prevent setting same password
+    const isSame = await dbUser.comparePassword(data.newPassword);
+    if (isSame) {
+      return badRequest("New password must be different from current password");
+    }
 
-    return NextResponse.json({ success: true });
+    // Update password (pre-save middleware handles hashing)
+    dbUser.password = data.newPassword;
+    await dbUser.save();
+
+    return success({ message: "Password updated successfully" });
   } catch (error) {
-    console.error("Password change error:", error);
-    return NextResponse.json(
-      { error: "Failed to update password" },
-      { status: 500 }
-    );
+    return serverError("Failed to update password", error);
   }
 }
+
+export const PATCH = withAuth(handler);

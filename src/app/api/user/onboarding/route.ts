@@ -1,27 +1,37 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import connectDB from "@/lib/mongodb";
+// ===========================================
+// PrepWithAI — Onboarding
+// POST /api/user/onboarding
+// Marks user as onboarded with initial prefs
+// Built by Abdullah Tariq, Lahore Pakistan
+// ===========================================
+
+import { NextRequest } from "next/server";
+import { withAuth, AuthContext } from "@/lib/withAuth";
+import { onboardingSchema, validateBody } from "@/lib/validation";
+import { success, badRequest, serverError } from "@/lib/response";
 import User from "@/models/User";
 
-export async function POST(req: NextRequest) {
+async function handler(req: NextRequest, { user }: AuthContext) {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { data, error } = await validateBody(req, onboardingSchema);
+    if (error || !data) {
+      return badRequest(error || "Invalid input");
     }
-    const { experienceLevel, targetCompany } = await req.json();
-    await connectDB();
-    await User.findOneAndUpdate(
-      { email: session.user.email },
-      {
-        experienceLevel,
-        targetCompany,
-        onboarded: true,
-      }
-    );
-    return NextResponse.json({ message: "Onboarding completed" });
+
+    const updateFields: Record<string, unknown> = {
+      onboarded: true,
+    };
+
+    if (data.experienceLevel) updateFields.experienceLevel = data.experienceLevel;
+    if (data.targetCompany) updateFields.targetCompanies = [data.targetCompany];
+    if (data.targetRole) updateFields.targetRole = data.targetRole;
+
+    await User.findByIdAndUpdate(user.id, { $set: updateFields });
+
+    return success({ message: "Onboarding completed" });
   } catch (error) {
-    console.error("Onboarding error:", error);
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    return serverError("Failed to complete onboarding", error);
   }
 }
+
+export const POST = withAuth(handler);

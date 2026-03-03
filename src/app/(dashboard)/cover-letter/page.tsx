@@ -1,340 +1,218 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import {
-  FileText,
-  Sparkles,
-  Copy,
-  Download,
-  Send,
-  Building2,
-  Briefcase,
-  Wand2,
-  CheckCircle,
-  RotateCcw,
-  Eye,
-  Palette,
-} from "lucide-react";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import { ChevronRight, FileText, Wand2, Copy, Download, RefreshCw, PenLine, Check } from "lucide-react";
 
-const TONES = [
-  { id: "professional", label: "Professional", icon: "👔" },
-  { id: "enthusiastic", label: "Enthusiastic", icon: "🚀" },
-  { id: "conversational", label: "Conversational", icon: "💬" },
-  { id: "formal", label: "Formal", icon: "📋" },
-];
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+};
 
-const TEMPLATES = [
-  { id: "standard", name: "Standard", description: "Traditional format" },
-  { id: "modern", name: "Modern", description: "Contemporary style" },
-  { id: "startup", name: "Startup", description: "Casual & dynamic" },
-  { id: "executive", name: "Executive", description: "Senior positions" },
-];
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } }
+};
 
 export default function CoverLetterPage() {
-  const [companyName, setCompanyName] = useState("");
-  const [jobTitle, setJobTitle] = useState("");
-  const [jobDescription, setJobDescription] = useState("");
-  const [tone, setTone] = useState("professional");
-  const [selectedTemplate, setSelectedTemplate] = useState("standard");
-  const [generatedLetter, setGeneratedLetter] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [keySkills, setKeySkills] = useState("");
-  const [whyCompany, setWhyCompany] = useState("");
+  const [result, setResult] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [tone, setTone] = useState("Professional");
+  const [length, setLength] = useState("Medium (350 words)");
 
-  const generateCoverLetter = async () => {
-    if (!companyName || !jobTitle) return;
+  const handleGenerate = () => {
     setIsGenerating(true);
+    // Simulate API call
+    setTimeout(() => {
+      setResult(`Dear Hiring Manager,
 
-    // Simulate AI generation
-    await new Promise((resolve) => setTimeout(resolve, 2500));
+I am writing to express my strong interest in the Senior Frontend Engineer position at Arbisoft. With over 3 years of experience building scalable web applications using React and Next.js, and a proven track record of delivering high-impact features, I am confident in my ability to contribute effectively to your engineering team.
 
-    const letter = `Dear Hiring Manager,
+In my recent role, I spearheaded the development of a core merchant dashboard that reduced loading times by 40% and successfully scaled to support over 10,000 daily active users. This involved deep optimization strategies, a complete rewrite of the state management architecture using modern React patterns, and establishing rigorous CI/CD pipelines.
 
-I am writing to express my strong interest in the ${jobTitle} position at ${companyName}. With my background in software engineering and passion for building impactful products, I am excited about the opportunity to contribute to your team.
+I have long admired Arbisoft's commitment to technical excellence and open-source contributions. The opportunity to bring my expertise in performance optimization and component-driven architecture to your upcoming projects aligns perfectly with my professional goals. I am particularly excited about your recent initiatives in AI-driven interfaces, an area I have been actively exploring and building prototypes for over the past year.
 
-${keySkills ? `My key technical skills include ${keySkills}, which I have honed through years of building production-grade applications. ` : ""}Throughout my career, I have consistently delivered high-quality solutions, collaborating with cross-functional teams to drive product innovation and technical excellence.
+I would welcome the opportunity to discuss how my technical skills and product-focused mindset can support Arbisoft's ongoing success. I have attached my resume for your review.
 
-${whyCompany ? `I am particularly drawn to ${companyName} because ${whyCompany}. ` : `I have long admired ${companyName}'s commitment to innovation and engineering excellence. `}The opportunity to work on challenging problems alongside talented engineers is exactly the kind of environment where I thrive.
-
-${jobDescription ? "After reviewing the job description, I am confident that my experience aligns well with your requirements. " : ""}I would welcome the opportunity to discuss how my skills and experience can benefit your team.
-
-Thank you for considering my application. I look forward to hearing from you.
+Thank you for your time and consideration.
 
 Best regards,
-[Your Name]`;
 
-    setGeneratedLetter(letter);
-    setIsGenerating(false);
+Abdullah Tariq
+Lahore, Pakistan
+abdullahtariq@prepwithai.com
+github.com/abdullahtariq`);
+      setIsGenerating(false);
+    }, 1500);
   };
 
-  const copyToClipboard = async () => {
-    await navigator.clipboard.writeText(generatedLetter);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(result);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-6 space-y-6 page-enter bg-[#080808]">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
-          <div className="p-2 bg-rose-500/20 rounded-xl">
-            <FileText className="w-6 h-6 text-rose-400" />
-          </div>
-          AI Cover Letter Generator
-        </h1>
-        <p className="text-[#888] mt-1">
-          Generate tailored cover letters for any job application
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Input Form */}
-        <div className="space-y-4">
-          {/* Company & Role */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-5 space-y-4">
-            <h3 className="text-white font-medium flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-indigo-400" />
-              Job Details
-            </h3>
-            <div>
-              <label className="text-sm text-[#888] mb-1 block">
-                Company Name *
-              </label>
-              <input
-                type="text"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-indigo-500 focus:outline-none"
-                placeholder="Google, Meta, Stripe..."
-              />
-            </div>
-            <div>
-              <label className="text-sm text-[#888] mb-1 block">
-                Job Title *
-              </label>
-              <input
-                type="text"
-                value={jobTitle}
-                onChange={(e) => setJobTitle(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-indigo-500 focus:outline-none"
-                placeholder="Senior Software Engineer"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-[#888] mb-1 block">
-                Job Description (optional)
-              </label>
-              <textarea
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-indigo-500 focus:outline-none resize-none"
-                placeholder="Paste the job description for a more tailored letter..."
-              />
-            </div>
-          </div>
-
-          {/* Personalization */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-5 space-y-4">
-            <h3 className="text-white font-medium flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              Personalization
-            </h3>
-            <div>
-              <label className="text-sm text-[#888] mb-1 block">
-                Key Skills to Highlight
-              </label>
-              <input
-                type="text"
-                value={keySkills}
-                onChange={(e) => setKeySkills(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-indigo-500 focus:outline-none"
-                placeholder="React, TypeScript, System Design..."
-              />
-            </div>
-            <div>
-              <label className="text-sm text-[#888] mb-1 block">
-                Why This Company?
-              </label>
-              <textarea
-                value={whyCompany}
-                onChange={(e) => setWhyCompany(e.target.value)}
-                rows={2}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-indigo-500 focus:outline-none resize-none"
-                placeholder="What excites you about this company..."
-              />
-            </div>
-          </div>
-
-          {/* Tone & Template */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-5 space-y-4">
-            <h3 className="text-white font-medium flex items-center gap-2">
-              <Palette className="w-4 h-4 text-purple-400" />
-              Style
-            </h3>
-            <div>
-              <label className="text-sm text-[#888] mb-2 block">Tone</label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {TONES.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setTone(t.id)}
-                    className={`p-2 rounded-lg border text-center text-sm transition-all ${
-                      tone === t.id
-                        ? "border-indigo-500 bg-indigo-500/10 text-white"
-                        : "border-white/10 text-[#888] hover:border-white/20"
-                    }`}
-                  >
-                    <span className="block text-lg mb-1">{t.icon}</span>
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="text-sm text-[#888] mb-2 block">
-                Template
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {TEMPLATES.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setSelectedTemplate(t.id)}
-                    className={`p-3 rounded-lg border text-left transition-all ${
-                      selectedTemplate === t.id
-                        ? "border-indigo-500 bg-indigo-500/10"
-                        : "border-white/10 hover:border-white/20"
-                    }`}
-                  >
-                    <p className="text-white text-sm font-medium">{t.name}</p>
-                    <p className="text-[#666] text-xs">{t.description}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Generate Button */}
-          <button
-            onClick={generateCoverLetter}
-            disabled={!companyName || !jobTitle || isGenerating}
-            className="w-full py-3 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
-          >
-            {isGenerating ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Generating with AI...
-              </>
-            ) : (
-              <>
-                <Wand2 className="w-4 h-4" />
-                Generate Cover Letter
-              </>
-            )}
-          </button>
+    <div className="min-h-screen bg-[#08080C] text-white page-enter">
+      <div className="px-4 md:px-8 py-8 md:py-12 max-w-5xl mx-auto">
+        <div className="flex items-center text-sm text-[#60607A] font-mono mb-8">
+          <Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
+          <ChevronRight className="w-4 h-4 mx-2" />
+          <span className="text-[#A0A0B0]">Cover Letter</span>
         </div>
 
-        {/* Output */}
-        <div className="space-y-4">
-          <div className="bg-white/5 rounded-xl border border-white/10 p-5 min-h-96">
-            {generatedLetter ? (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-4"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-white font-medium flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-emerald-400" />
-                    Generated Cover Letter
-                  </h3>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={copyToClipboard}
-                      className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-[#888] hover:text-white transition-colors"
-                      title="Copy"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setShowPreview(!showPreview)}
-                      className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-[#888] hover:text-white transition-colors"
-                      title="Preview"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-[#888] hover:text-white transition-colors"
-                      title="Download"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
+          {/* HEADER */}
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center text-purple-400 border border-purple-500/20">
+                <FileText className="w-5 h-5" />
+              </div>
+              <h1 className="text-3xl font-bold">Cover Letter Generator</h1>
+            </div>
+            <p className="text-[#A0A0B0]">AI writes a personalized cover letter in 30 seconds.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* FORM */}
+            <motion.div variants={itemVariants} className="lg:col-span-5 bg-[#111116] border border-white/5 rounded-3xl p-6 lg:p-8 relative overflow-hidden h-fit">
+              <div className="space-y-6 relative z-10">
+                <div>
+                  <label className="block text-sm font-medium text-[#A0A0B0] mb-2">Target Company</label>
+                  <select className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#6366F1] appearance-none cursor-pointer">
+                    <option>Arbisoft</option>
+                    <option>Systems Limited</option>
+                    <option>Techlogix</option>
+                    <option>10Pearls</option>
+                    <option>Google (Remote)</option>
+                    <option>Custom...</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#A0A0B0] mb-2">Target Role</label>
+                  <input type="text" defaultValue="Senior Frontend Engineer" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#6366F1]" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#A0A0B0] mb-2">Your Experience (Briefly)</label>
+                  <textarea rows={4} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#6366F1] resize-none text-sm leading-relaxed" defaultValue="I have 3 years of React experience, built an AI interview platform, and worked on optimizing Next.js dashboards scaling to 10k users."></textarea>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#A0A0B0] mb-3">Tone</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {["Professional", "Conversational", "Enthusiastic"].map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setTone(t)}
+                        className={`py-2 rounded-lg text-xs font-medium transition-colors border ${tone === t ? 'bg-white/10 text-white border-white/20' : 'bg-black/20 text-[#A0A0B0] border-transparent hover:bg-white/5 hover:text-white'}`}
+                      >
+                        {t}
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <textarea
-                  value={generatedLetter}
-                  onChange={(e) => setGeneratedLetter(e.target.value)}
-                  rows={20}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-[#ccc] text-sm leading-relaxed focus:border-indigo-500 focus:outline-none resize-none font-mono"
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={generateCoverLetter}
-                    className="flex items-center gap-2 px-4 py-2 bg-white/5 text-[#888] rounded-lg hover:bg-white/10 hover:text-white transition-colors"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    Regenerate
-                  </button>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-indigo-500/20 text-indigo-400 rounded-lg hover:bg-indigo-500/30 transition-colors">
-                    <Send className="w-4 h-4" />
-                    Use in Application
-                  </button>
-                </div>
-              </motion.div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-96 text-center">
-                <div className="p-4 bg-white/5 rounded-full mb-4">
-                  <Briefcase className="w-8 h-8 text-[#555]" />
-                </div>
-                <h3 className="text-white font-medium mb-2">
-                  Your Cover Letter Will Appear Here
-                </h3>
-                <p className="text-[#666] text-sm max-w-sm">
-                  Fill in the job details on the left and click generate to
-                  create a personalized cover letter.
-                </p>
-              </div>
-            )}
-          </div>
 
-          {/* Tips */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-4">
-            <h4 className="text-white text-sm font-medium mb-3 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              Cover Letter Tips
-            </h4>
-            <ul className="space-y-2 text-sm text-[#888]">
-              <li className="flex items-start gap-2">
-                <CheckCircle className="w-3 h-3 text-emerald-400 mt-1 shrink-0" />
-                Customize each letter for the specific company and role
-              </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle className="w-3 h-3 text-emerald-400 mt-1 shrink-0" />
-                Keep it concise — ideally under one page
-              </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle className="w-3 h-3 text-emerald-400 mt-1 shrink-0" />
-                Use specific examples and quantifiable achievements
-              </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle className="w-3 h-3 text-emerald-400 mt-1 shrink-0" />
-                Mirror keywords from the job description
-              </li>
-            </ul>
+                <div>
+                  <label className="block text-sm font-medium text-[#A0A0B0] mb-3">Length</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {["Short (200 words)", "Medium (350 words)", "Long (500 words)"].map(l => (
+                      <button
+                        key={l}
+                        onClick={() => setLength(l)}
+                        className={`py-2 rounded-lg text-xs font-medium transition-colors border ${length === l ? 'bg-[#6366F1]/20 text-indigo-400 border-[#6366F1]/30' : 'bg-black/20 text-[#A0A0B0] border-transparent hover:bg-white/5 hover:text-white'}`}
+                      >
+                        {l.split(' ')[0]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleGenerate}
+                  disabled={isGenerating}
+                  className="w-full mt-4 flex items-center justify-center gap-2 bg-[#6366F1] hover:bg-[#4F46E5] text-white py-4 rounded-xl font-medium transition-colors shadow-lg shadow-[#6366F1]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isGenerating ? (
+                    <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <><Wand2 className="w-5 h-5" /> Generate Letter</>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+
+            {/* RESULT */}
+            <motion.div variants={itemVariants} className="lg:col-span-7 flex flex-col h-full">
+              <AnimatePresence mode="wait">
+                {!result ? (
+                  <motion.div
+                    key="empty"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="h-full bg-gradient-to-b from-[#111116] to-[#08080C] border border-white/5 border-dashed rounded-3xl flex flex-col items-center justify-center p-12 text-center min-h-[400px]"
+                  >
+                    <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-6 text-[#60607A]">
+                      <PenLine className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white mb-2">Ready to write</h3>
+                    <p className="text-sm text-[#A0A0B0] max-w-[250px]">
+                      Fill out the details on the left and hit generate to get your AI-crafted cover letter.
+                    </p>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="result"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="h-full bg-[#111116] border border-white/5 rounded-3xl p-8 flex flex-col shadow-2xl relative group"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#6366F1]/5 to-transparent rounded-3xl pointer-events-none" />
+
+                    <div className="flex justify-end gap-2 mb-6 relative z-10">
+                      <button onClick={handleGenerate} className="p-2 hover:bg-white/10 rounded-lg text-[#A0A0B0] hover:text-white transition-colors flex items-center gap-2 text-sm font-medium" title="Regenerate">
+                        <RefreshCw className="w-4 h-4" /> <span className="hidden sm:inline">Regenerate</span>
+                      </button>
+                      <button disabled className="p-2 hover:bg-white/10 rounded-lg text-[#A0A0B0] hover:text-white transition-colors flex items-center gap-2 text-sm font-medium opacity-50 cursor-not-allowed" title="Download as TXT">
+                        <Download className="w-4 h-4" /> <span className="hidden sm:inline">Download</span>
+                      </button>
+                      <button onClick={handleCopy} className={`p-2 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium border ${copied ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'hover:bg-white/10 text-[#A0A0B0] hover:text-white border-transparent'}`} title="Copy to Clipboard">
+                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        <span className="hidden sm:inline">{copied ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto custom-scrollbar relative z-10 text-[15px] leading-relaxed text-[#D1D1DF] font-serif pr-4 whitespace-pre-wrap outline-none" contentEditable suppressContentEditableWarning>
+                      {result}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       </div>
+
+      <style dangerouslySetInnerHTML={{
+        __html: `
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 6px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background-color: rgba(255, 255, 255, 0.1);
+                    border-radius: 10px;
+                }
+                .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+                    background-color: rgba(255, 255, 255, 0.2);
+                }
+            `}} />
     </div>
   );
 }

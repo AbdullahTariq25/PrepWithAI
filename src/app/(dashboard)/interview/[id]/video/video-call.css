@@ -1,0 +1,813 @@
+/* ===========================================
+ * PrepWithAI — Video Call Styles
+ * Zoom/Google Meet-style professional call UI
+ * Built by Abdullah Tariq, Lahore Pakistan
+ * =========================================== */
+
+/* ─── Root Container ────────────────────────── */
+.vc-root {
+    position: fixed;
+    inset: 0;
+    background: #050505;
+    display: flex;
+    flex-direction: column;
+    font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+    color: #E8E8ED;
+    overflow: hidden;
+}
+
+/* ─── Top Bar ───────────────────────────────── */
+.vc-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 48px;
+    padding: 0 20px;
+    background: rgba(8, 8, 8, 0.95);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(20px);
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.vc-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.vc-topbar-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22C55E;
+    animation: vc-pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+}
+
+.vc-topbar-title {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.vc-topbar-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: capitalize;
+}
+
+.vc-topbar-center {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.vc-topbar-stat {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.vc-topbar-stat--warn {
+    color: #F59E0B;
+}
+
+.vc-topbar-timer {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    font-variant-numeric: tabular-nums;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ─── Main Content ──────────────────────────── */
+.vc-main {
+    flex: 1;
+    display: flex;
+    position: relative;
+    overflow: hidden;
+}
+
+/* ─── AI Panel (Left — Major) ───────────────── */
+.vc-ai-panel {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.04) 0%, transparent 60%);
+}
+
+/* AI Avatar */
+.vc-ai-avatar-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    z-index: 2;
+}
+
+.vc-ai-avatar {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366F1, #8B5CF6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 30px rgba(99, 102, 241, 0.2);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.vc-ai-avatar--speaking {
+    box-shadow: 0 0 60px rgba(99, 102, 241, 0.4);
+    animation: vc-avatar-breathe 2s ease-in-out infinite;
+}
+
+.vc-ai-avatar-letter {
+    font-size: 56px;
+    font-weight: 700;
+    color: white;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Speaking rings */
+.vc-ai-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-radius: 50%;
+    border: 1.5px solid rgba(99, 102, 241, 0.3);
+    animation: vc-ring-expand 2s ease-out infinite;
+    pointer-events: none;
+}
+
+.vc-ai-ring:nth-child(1) {
+    width: 180px;
+    height: 180px;
+    margin: -90px 0 0 -90px;
+    animation-delay: 0s;
+}
+
+.vc-ai-ring:nth-child(2) {
+    width: 210px;
+    height: 210px;
+    margin: -105px 0 0 -105px;
+    animation-delay: 0.5s;
+}
+
+.vc-ai-ring:nth-child(3) {
+    width: 240px;
+    height: 240px;
+    margin: -120px 0 0 -120px;
+    animation-delay: 1s;
+}
+
+/* Soundwave bars inside avatar */
+.vc-ai-soundwave {
+    position: absolute;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+}
+
+.vc-ai-soundwave-bar {
+    width: 3px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.vc-ai-soundwave-bar:nth-child(1) {
+    animation: vc-bar 0.6s ease-in-out infinite;
+}
+
+.vc-ai-soundwave-bar:nth-child(2) {
+    animation: vc-bar 0.6s ease-in-out infinite 0.1s;
+}
+
+.vc-ai-soundwave-bar:nth-child(3) {
+    animation: vc-bar 0.6s ease-in-out infinite 0.2s;
+}
+
+.vc-ai-soundwave-bar:nth-child(4) {
+    animation: vc-bar 0.6s ease-in-out infinite 0.15s;
+}
+
+.vc-ai-soundwave-bar:nth-child(5) {
+    animation: vc-bar 0.6s ease-in-out infinite 0.25s;
+}
+
+/* AI Info */
+.vc-ai-name {
+    font-size: 20px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.vc-ai-role {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: capitalize;
+}
+
+/* AI Status */
+.vc-ai-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.vc-ai-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: vc-pulse 1.5s infinite;
+}
+
+.vc-ai-status-dot--thinking {
+    background: #F59E0B;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+
+.vc-ai-status-dot--speaking {
+    background: #22C55E;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+}
+
+.vc-ai-status-dot--listening {
+    background: #6366F1;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+}
+
+.vc-ai-status-text {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.vc-ai-status-text--thinking {
+    color: #F59E0B;
+}
+
+.vc-ai-status-text--speaking {
+    color: #22C55E;
+}
+
+.vc-ai-status-text--listening {
+    color: #818CF8;
+}
+
+.vc-ai-status-text--idle {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* AI Thinking dots */
+.vc-thinking-dots {
+    display: flex;
+    gap: 4px;
+}
+
+.vc-thinking-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #F59E0B;
+    animation: vc-thinking 1.4s ease-in-out infinite;
+}
+
+.vc-thinking-dot:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.vc-thinking-dot:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+/* ─── Question / Caption Overlay ────────────── */
+.vc-caption {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 320px;
+    z-index: 5;
+}
+
+.vc-caption-box {
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(20px);
+    border-radius: 14px;
+    padding: 14px 20px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.vc-caption-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.3);
+    margin-bottom: 6px;
+}
+
+.vc-caption-text {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.6;
+}
+
+/* ─── Right Panel (Webcam + Transcript) ─────── */
+.vc-right-panel {
+    width: 300px;
+    border-left: 1px solid rgba(255, 255, 255, 0.06);
+    background: #080808;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+/* Webcam Preview */
+.vc-webcam {
+    position: relative;
+    height: 220px;
+    background: #0D0D0D;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.vc-webcam video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+}
+
+.vc-webcam-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0F0F0F, #1A1A1A);
+}
+
+.vc-webcam-placeholder-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.vc-webcam-rec {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    border-radius: 999px;
+    padding: 3px 10px;
+}
+
+.vc-webcam-rec-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #EF4444;
+    animation: vc-pulse 1.5s infinite;
+}
+
+.vc-webcam-rec-text {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+/* Transcript Area */
+.vc-transcript {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.vc-transcript::-webkit-scrollbar {
+    width: 3px;
+}
+
+.vc-transcript::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+}
+
+.vc-transcript-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.25);
+    margin-bottom: 10px;
+}
+
+.vc-transcript-text {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.7;
+}
+
+.vc-transcript-interim {
+    color: rgba(255, 255, 255, 0.35);
+    font-style: italic;
+}
+
+.vc-transcript-placeholder {
+    color: rgba(255, 255, 255, 0.2);
+    font-style: italic;
+    font-size: 13px;
+}
+
+/* ─── Bottom Toolbar ────────────────────────── */
+.vc-toolbar {
+    height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(8, 8, 8, 0.95);
+    backdrop-filter: blur(20px);
+    flex-shrink: 0;
+}
+
+.vc-tool-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.vc-tool-btn-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.vc-tool-btn-circle--default {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.vc-tool-btn-circle--default:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: scale(1.05);
+}
+
+.vc-tool-btn-circle--active {
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.vc-tool-btn-circle--danger {
+    background: rgba(239, 68, 68, 0.15);
+}
+
+.vc-tool-btn-circle--danger:hover {
+    background: rgba(239, 68, 68, 0.25);
+    transform: scale(1.05);
+}
+
+.vc-tool-btn-circle--mic-live {
+    background: #22C55E;
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+}
+
+.vc-tool-btn-circle--mic-live:hover {
+    background: #16A34A;
+    transform: scale(1.05);
+}
+
+.vc-tool-btn-circle--end {
+    background: #EF4444;
+    width: 52px;
+    height: 52px;
+}
+
+.vc-tool-btn-circle--end:hover {
+    background: #DC2626;
+    transform: scale(1.08);
+    box-shadow: 0 0 24px rgba(239, 68, 68, 0.3);
+}
+
+.vc-tool-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.35);
+    font-weight: 500;
+}
+
+/* Hint badge */
+.vc-hint-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #F59E0B;
+    color: #000;
+    font-size: 9px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ─── Waveform ──────────────────────────────── */
+.vc-waveform {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 3px;
+    height: 50px;
+    width: 240px;
+    margin-bottom: 8px;
+}
+
+.vc-waveform-bar {
+    width: 5px;
+    border-radius: 3px;
+    transition: height 80ms ease, background 200ms ease;
+}
+
+.vc-waveform-bar--active {
+    background: linear-gradient(to top, #22C55E, #86EFAC);
+}
+
+.vc-waveform-bar--idle {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* ─── End Modal ─────────────────────────────── */
+.vc-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.vc-modal {
+    width: 400px;
+    max-width: 90%;
+    background: #111114;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 32px;
+    text-align: center;
+}
+
+.vc-modal-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+}
+
+.vc-modal h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.vc-modal p {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+.vc-modal-btn {
+    width: 100%;
+    padding: 12px 0;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 8px;
+}
+
+.vc-modal-btn--cancel {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #ccc;
+}
+
+.vc-modal-btn--cancel:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.vc-modal-btn--end {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #EF4444;
+}
+
+.vc-modal-btn--end:hover {
+    background: rgba(239, 68, 68, 0.3);
+}
+
+/* ─── Text Input Panel ──────────────────────── */
+.vc-textinput {
+    padding: 12px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(8, 8, 8, 0.95);
+}
+
+.vc-textinput-row {
+    display: flex;
+    gap: 8px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.vc-textinput-field {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #E8E8ED;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.vc-textinput-field:focus {
+    border-color: rgba(99, 102, 241, 0.4);
+}
+
+.vc-textinput-send {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #6366F1, #8B5CF6);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.vc-textinput-send:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 16px rgba(99, 102, 241, 0.3);
+}
+
+/* ─── Browser Warning ───────────────────────── */
+.vc-warning {
+    font-size: 12px;
+    color: #F59E0B;
+    text-align: center;
+    padding: 6px 16px;
+    background: rgba(245, 158, 11, 0.06);
+    border-top: 1px solid rgba(245, 158, 11, 0.1);
+}
+
+/* ─── Animations ────────────────────────────── */
+@keyframes vc-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+@keyframes vc-avatar-breathe {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
+}
+
+@keyframes vc-ring-expand {
+    0% {
+        transform: scale(0.9);
+        opacity: 0.5;
+    }
+
+    100% {
+        transform: scale(1.3);
+        opacity: 0;
+    }
+}
+
+@keyframes vc-bar {
+
+    0%,
+    100% {
+        height: 4px;
+    }
+
+    50% {
+        height: 18px;
+    }
+}
+
+@keyframes vc-thinking {
+
+    0%,
+    60%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+
+    30% {
+        transform: translateY(-8px);
+        opacity: 1;
+    }
+}
+
+/* ─── Responsive ────────────────────────────── */
+@media (max-width: 768px) {
+    .vc-right-panel {
+        width: 100%;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 40vh;
+        z-index: 20;
+        border-left: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .vc-caption {
+        right: 20px;
+        bottom: 44vh;
+    }
+
+    .vc-ai-avatar {
+        width: 120px;
+        height: 120px;
+    }
+
+    .vc-ai-avatar-letter {
+        font-size: 40px;
+    }
+
+    .vc-toolbar {
+        gap: 8px;
+    }
+
+    .vc-tool-btn-circle {
+        width: 42px;
+        height: 42px;
+    }
+}

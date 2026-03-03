@@ -1,233 +1,358 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Trophy, Zap, Medal, Crown, Flame, Search } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getEloLevel } from "@/lib/utils";
+import Link from "next/link";
+import { ChevronRight, Trophy, Loader2 } from "lucide-react";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" as const },
+  },
+};
 
 interface LeaderboardUser {
-  _id: string;
+  rank: number;
   name: string;
-  image?: string;
   eloRating: number;
   totalSessions: number;
-  currentStreak: number;
-  badges: string[];
+  avgScore: number;
+  streak: number;
+  isCurrentUser: boolean;
 }
 
 export default function LeaderboardPage() {
-  const { data: session } = useSession();
-  const [users, setUsers] = useState<LeaderboardUser[]>([]);
+  const [filter, setFilter] = useState("all");
+  const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
+  const [currentUserRank, setCurrentUserRank] =
+    useState<LeaderboardUser | null>(null);
+  const [, setTotalUsers] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [period, setPeriod] = useState<"all" | "weekly" | "monthly">("all");
 
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(`/api/leaderboard?period=${period}`);
+        const period =
+          filter === "This Week"
+            ? "weekly"
+            : filter === "This Month"
+              ? "monthly"
+              : "all";
+        const res = await fetch(`/api/leaderboard?period=${period}&limit=50`);
         const data = await res.json();
-        setUsers(data.users || []);
+        if (data.data) {
+          setLeaderboard(data.data.leaderboard || []);
+          setCurrentUserRank(data.data.currentUserRank || null);
+          setTotalUsers(data.data.totalUsers || 0);
+        }
       } catch {
-        /* empty */
+        console.error("Failed to load leaderboard");
       } finally {
         setLoading(false);
       }
     };
+    setLoading(true);
     load();
-  }, [period]);
+  }, [filter]);
 
-  const filtered = users.filter(
-    (u) => !search || u.name.toLowerCase().includes(search.toLowerCase()),
-  );
-  const currentUserId = session?.user?.id;
+  const topUsers = leaderboard.slice(0, 3);
+  const allUsers = leaderboard.slice(3);
 
-  const getRankIcon = (index: number) => {
-    if (index === 0) return <Crown className="w-5 h-5 text-yellow-400" />;
-    if (index === 1) return <Medal className="w-5 h-5 text-[#ccc]" />;
-    if (index === 2) return <Medal className="w-5 h-5 text-amber-600" />;
+  // If current user is not in the list, add them at the end
+  const displayUsers =
+    currentUserRank && !leaderboard.find((u) => u.isCurrentUser)
+      ? [...allUsers, currentUserRank]
+      : allUsers;
+
+  const myUser = leaderboard.find((u) => u.isCurrentUser) || currentUserRank;
+
+  if (loading) {
     return (
-      <span className="text-sm font-semibold text-[#888] w-5 text-center">
-        {index + 1}
-      </span>
+      <div className="min-h-screen bg-[#08080C] text-white flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#6366F1]" />
+      </div>
     );
-  };
+  }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 page-enter bg-[#080808]">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <h1 className="text-3xl font-bold mb-1">Leaderboard</h1>
-        <p className="text-[#888]">
-          Compete with developers worldwide. Climb the ELO rankings.
-        </p>
-      </motion.div>
-
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#888]" />
-          <Input
-            placeholder="Search users..."
-            className="pl-10"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+    <div className="min-h-screen bg-[#08080C] text-white page-enter">
+      <div className="px-4 md:px-8 py-8 md:py-12 max-w-7xl mx-auto">
+        {/* Breadcrumb */}
+        <div className="flex items-center text-sm text-[#60607A] font-mono mb-8">
+          <Link
+            href="/dashboard"
+            className="hover:text-white transition-colors"
+          >
+            Dashboard
+          </Link>
+          <ChevronRight className="w-4 h-4 mx-2" />
+          <span className="text-[#A0A0B0]">Leaderboard</span>
         </div>
-        <div className="flex gap-2">
-          {(["all", "weekly", "monthly"] as const).map((p) => (
-            <Button
-              key={p}
-              variant={period === p ? "default" : "outline"}
-              size="sm"
-              onClick={() => setPeriod(p)}
-              className="capitalize"
-            >
-              {p === "all" ? "All Time" : p}
-            </Button>
-          ))}
-        </div>
-      </div>
 
-      {/* Top 3 podium */}
-      {filtered.length >= 3 && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-3 gap-4"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="space-y-12"
         >
-          {[1, 0, 2].map((pos) => {
-            const u = filtered[pos];
-            if (!u) return null;
-            const level = getEloLevel(u.eloRating);
-            const isCenter = pos === 0;
-            return (
-              <Card
-                key={u._id}
-                className={`bg-[#111] border-white/6 ${isCenter ? "ring-2 ring-yellow-500/30 -mt-4" : ""}`}
-              >
-                <CardContent className="p-6 text-center">
-                  <div className="mb-3">{getRankIcon(pos)}</div>
-                  <Avatar
-                    className={`mx-auto mb-3 ${isCenter ? "w-16 h-16" : "w-12 h-12"}`}
-                  >
-                    <AvatarImage src={u.image} />
-                    <AvatarFallback className="bg-indigo-600 text-white">
-                      {u.name?.charAt(0) || "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <h3 className="font-semibold truncate">{u.name}</h3>
-                  <div className="flex items-center justify-center gap-1 mt-1">
-                    <Zap className="w-4 h-4 text-indigo-400" />
-                    <span className="text-lg font-bold text-indigo-400">
-                      {u.eloRating}
-                    </span>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className="mt-2 text-[10px]"
-                    style={{
-                      color: level.color,
-                      borderColor: level.color + "40",
-                    }}
-                  >
-                    {level.name}
-                  </Badge>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </motion.div>
-      )}
-
-      {/* Full rankings */}
-      <Card className="bg-[#111] border-white/6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-indigo-400" /> Rankings
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="skeleton h-14 rounded-lg" />
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-12">
-              <Trophy className="w-12 h-12 text-[#888] mx-auto mb-4" />
-              <p className="text-[#888]">
-                No users found. Complete interviews to join the leaderboard!
+          {/* SECTION 1: HEADER & CURRENT USER CARD */}
+          <div className="flex flex-col lg:flex-row gap-8 items-start justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 border border-amber-500/20">
+                  <Trophy className="w-6 h-6" />
+                </div>
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                  Global Leaderboard
+                </h1>
+              </div>
+              <p className="text-[#A0A0B0] text-lg max-w-xl">
+                Top developers ranked by ELO rating. Updated in real-time.
               </p>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {filtered.map((u, i) => {
-                const level = getEloLevel(u.eloRating);
-                const isMe = u._id === currentUserId;
-                return (
-                  <motion.div
-                    key={u._id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                    className={`flex items-center gap-4 p-3 rounded-lg transition-colors ${isMe ? "bg-indigo-500/10 border border-indigo-500/20" : "hover:bg-white/4"}`}
-                  >
-                    <div className="w-8 flex justify-center">
-                      {getRankIcon(i)}
-                    </div>
-                    <Avatar className="w-9 h-9">
-                      <AvatarImage src={u.image} />
-                      <AvatarFallback className="text-xs bg-indigo-600 text-white">
-                        {u.name?.charAt(0) || "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium truncate">{u.name}</span>
-                        {isMe && (
-                          <Badge className="text-[10px] bg-indigo-500/20 text-indigo-400">
-                            You
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-xs text-[#888]">
-                        {u.totalSessions} sessions
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-1">
-                        <Zap className="w-3.5 h-3.5 text-indigo-400" />
-                        <span
-                          className="font-bold"
-                          style={{ color: level.color }}
-                        >
-                          {u.eloRating}
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-[#888]">
-                        {level.name}
-                      </div>
-                    </div>
-                    {u.currentStreak >= 7 && (
-                      <Flame className="w-4 h-4 text-orange-400 streak-fire" />
-                    )}
-                  </motion.div>
-                );
-              })}
+
+            {/* Current User Highlights */}
+            {myUser && (
+              <motion.div
+                variants={itemVariants}
+                className="w-full lg:w-auto bg-[#6366F1]/10 border border-[#6366F1]/20 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-6 shadow-[0_0_30px_rgba(99,102,241,0.1)]"
+              >
+                <div className="text-center sm:text-left">
+                  <p className="text-[#6366F1] font-medium mb-1">
+                    Your Rank: #{myUser.rank}
+                  </p>
+                  <p className="text-xl font-bold">{myUser.eloRating} ELO</p>
+                </div>
+                <div className="hidden sm:block w-px h-12 bg-white/10" />
+                <div className="flex gap-6">
+                  <div className="text-center">
+                    <p className="text-2xl font-mono font-bold">
+                      {myUser.totalSessions}
+                    </p>
+                    <p className="text-xs text-[#A0A0B0] uppercase tracking-wider">
+                      Sessions
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-mono font-bold">
+                      {myUser.avgScore}
+                    </p>
+                    <p className="text-xs text-[#A0A0B0] uppercase tracking-wider">
+                      Avg Score
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </div>
+
+          {/* SECTION 2: TOP 3 PODIUM */}
+          {topUsers.length >= 3 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 pb-4 items-end max-w-4xl mx-auto">
+              {/* Rank 2 - Silver */}
+              <motion.div
+                variants={itemVariants}
+                className="bg-gradient-to-t from-[#111116] to-[#1A1A24] border border-slate-300/20 rounded-t-3xl p-6 text-center relative md:h-[220px] order-2 md:order-1 flex flex-col justify-end"
+              >
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-slate-300 flex items-center justify-center text-black font-bold border-4 border-[#08080C] shadow-lg shadow-slate-300/20">
+                  2
+                </div>
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/10 flex items-center justify-center text-xl font-bold text-slate-300">
+                  {topUsers[1].name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")}
+                </div>
+                <h3 className="font-bold text-lg mb-1">{topUsers[1].name}</h3>
+                <p className="text-slate-300 font-mono font-bold text-xl">
+                  {topUsers[1].eloRating}
+                </p>
+                <p className="text-xs text-[#A0A0B0] mt-2">
+                  {topUsers[1].totalSessions} sessions
+                </p>
+              </motion.div>
+
+              {/* Rank 1 - Gold */}
+              <motion.div
+                variants={itemVariants}
+                className="bg-gradient-to-t from-[#111116] to-amber-900/20 border border-amber-500/30 rounded-t-3xl p-6 text-center relative md:h-[260px] order-1 md:order-2 flex flex-col justify-end z-10 shadow-[0_-10px_40px_rgba(245,158,11,0.15)]"
+              >
+                <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-amber-500 flex items-center justify-center text-black font-bold text-xl border-4 border-[#08080C] shadow-lg shadow-amber-500/40">
+                  1
+                </div>
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-amber-500/20 border-2 border-amber-500/50 flex items-center justify-center text-2xl font-bold text-amber-500">
+                  {topUsers[0].name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")}
+                </div>
+                <h3 className="font-bold text-xl mb-1 text-white">
+                  {topUsers[0].name}
+                </h3>
+                <p className="text-amber-500 font-mono font-bold text-2xl">
+                  {topUsers[0].eloRating}
+                </p>
+                <p className="text-xs text-amber-500/70 mt-2">
+                  {topUsers[0].totalSessions} sessions
+                </p>
+              </motion.div>
+
+              {/* Rank 3 - Bronze */}
+              <motion.div
+                variants={itemVariants}
+                className="bg-gradient-to-t from-[#111116] to-orange-900/10 border border-orange-400/20 rounded-t-3xl p-6 text-center relative md:h-[200px] order-3 flex flex-col justify-end"
+              >
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-orange-400 flex items-center justify-center text-black font-bold border-4 border-[#08080C] shadow-lg shadow-orange-400/20">
+                  3
+                </div>
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/10 flex items-center justify-center text-xl font-bold text-orange-400">
+                  {topUsers[2].name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")}
+                </div>
+                <h3 className="font-bold text-lg mb-1">{topUsers[2].name}</h3>
+                <p className="text-orange-400 font-mono font-bold text-xl">
+                  {topUsers[2].eloRating}
+                </p>
+                <p className="text-xs text-[#A0A0B0] mt-2">
+                  {topUsers[2].totalSessions} sessions
+                </p>
+              </motion.div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          ) : leaderboard.length === 0 ? (
+            <motion.div
+              variants={itemVariants}
+              className="bg-[#111116] border border-white/5 rounded-2xl p-12 text-center"
+            >
+              <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trophy className="w-8 h-8 text-amber-500" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">
+                The leaderboard fills up as more developers join
+              </h3>
+              <p className="text-[#A0A0B0]">
+                You are currently ranked #1! Keep practicing.
+              </p>
+            </motion.div>
+          ) : null}
+
+          {/* SECTION 3: FULL TABLE */}
+          <motion.div
+            variants={itemVariants}
+            className="bg-[#111116] border border-white/5 rounded-2xl overflow-hidden"
+          >
+            <div className="p-4 md:p-6 border-b border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <h3 className="text-lg font-bold">Rankings</h3>
+              <div className="flex bg-white/5 rounded-lg p-1 border border-white/5">
+                {["All Time", "This Month", "This Week"].map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={`px-4 py-1.5 rounded-md text-sm transition-colors ${filter === f ? "bg-white/10 text-white font-medium" : "text-[#A0A0B0] hover:text-white"}`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-white/5 text-[#A0A0B0] text-sm font-medium border-b border-white/5">
+                    <th className="px-6 py-4">Rank</th>
+                    <th className="px-6 py-4">User</th>
+                    <th className="px-6 py-4">ELO</th>
+                    <th className="px-6 py-4">Sessions</th>
+                    <th className="px-6 py-4">Avg Score</th>
+                    <th className="px-6 py-4">Streak</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayUsers.map((user) => (
+                    <tr
+                      key={user.rank}
+                      className={`border-b border-white/5 hover:bg-white/[0.02] transition-colors ${user.isCurrentUser ? "bg-[#6366F1]/5 relative" : ""}`}
+                    >
+                      {user.isCurrentUser && (
+                        <td className="absolute left-0 top-0 bottom-0 w-1 bg-[#6366F1]" />
+                      )}
+                      <td className="px-6 py-4 font-mono font-medium text-[#A0A0B0]">
+                        #{user.rank}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white">
+                            {user.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </div>
+                          <span
+                            className={
+                              user.isCurrentUser
+                                ? "text-[#6366F1] font-bold"
+                                : "font-medium"
+                            }
+                          >
+                            {user.name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-mono font-bold text-white">
+                          {user.eloRating}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-[#A0A0B0]">
+                        {user.totalSessions}
+                      </td>
+                      <td className="px-6 py-4 text-[#A0A0B0]">
+                        {user.avgScore}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-orange-400">🔥</span>
+                          <span className="font-mono text-[#A0A0B0]">
+                            {user.streak}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+
+          {/* SECTION 4: HOW ELO WORKS */}
+          <motion.div
+            variants={itemVariants}
+            className="bg-[#111116] border border-white/5 rounded-2xl p-6 md:p-8 max-w-3xl flex flex-col md:flex-row gap-6 items-start"
+          >
+            <div className="w-12 h-12 bg-blue-500/10 flex-shrink-0 rounded-xl flex items-center justify-center text-blue-400 mt-1">
+              <span className="font-bold text-xl">?</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold mb-2">How ELO Rating Works</h3>
+              <p className="text-[#A0A0B0] leading-relaxed text-sm">
+                Your ELO starts at 1200. Complete sessions to earn or lose
+                points. Higher score in a session = more points earned.
+                Consistency matters — users who practice daily climb faster than
+                users who practice occasionally.
+              </p>
+            </div>
+          </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }

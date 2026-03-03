@@ -102,6 +102,70 @@ export async function sendWelcomeEmail(to: string, name: string) {
   }
 }
 
+// ─── Password Reset Email ─────────────────────────
+
+export async function sendPasswordResetEmail(to: string, name: string, resetToken: string) {
+  const firstName = name.split(" ")[0];
+  const resetUrl = `${APP_URL}/reset-password?token=${resetToken}`;
+
+  try {
+    if (!resend) return { success: false, error: "Email not configured" };
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject: "Reset your PrepWithAI password",
+      html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#080808;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 24px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="display:inline-flex;align-items:center;gap:8px;">
+        <div style="width:40px;height:40px;background:linear-gradient(135deg,#7c3aed,#3b82f6);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+          <span style="color:white;font-size:20px;font-weight:bold;">P</span>
+        </div>
+        <span style="color:#F5F5F5;font-size:24px;font-weight:700;">PrepWithAI</span>
+      </div>
+    </div>
+
+    <div style="background:#111;border:1px solid #222;border-radius:16px;padding:32px;">
+      <h1 style="color:#F5F5F5;font-size:22px;font-weight:700;margin:0 0 12px;">
+        Password Reset Request
+      </h1>
+      <p style="color:#A3A3A3;font-size:15px;line-height:1.6;margin:0 0 24px;">
+        Hi ${firstName}, we received a request to reset your password. Click the button below to create a new one. This link expires in 1 hour.
+      </p>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${resetUrl}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#3b82f6);color:white;text-decoration:none;font-size:15px;font-weight:600;padding:12px 28px;border-radius:10px;">
+          Reset Password →
+        </a>
+      </div>
+      <p style="color:#666;font-size:13px;margin:24px 0 0;">
+        If you didn't request this, ignore this email. Your password remains unchanged.
+      </p>
+      <div style="margin-top:16px;padding:12px;background:#0a0a0a;border-radius:8px;">
+        <p style="color:#666;font-size:12px;margin:0 0 4px;">Or copy this URL:</p>
+        <p style="color:#A3A3A3;font-size:12px;word-break:break-all;margin:0;">${resetUrl}</p>
+      </div>
+    </div>
+
+    <div style="text-align:center;border-top:1px solid #222;padding-top:24px;margin-top:32px;">
+      <p style="color:#666;font-size:12px;margin:0;">
+        PrepWithAI • This link expires in 1 hour
+      </p>
+    </div>
+  </div>
+</body>
+</html>`,
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send password reset email:", error);
+    return { success: false, error };
+  }
+}
+
 // ─── Session Completion Email ─────────────────────
 
 export async function sendSessionCompletionEmail(

@@ -1,156 +1,213 @@
-﻿import { auth } from "@/lib/auth";
-import { NextRequest, NextResponse } from "next/server";
-import connectDB from "@/lib/mongodb";
+// ===========================================
+// PrepWithAI — Feedback Route
+// POST /api/interview/[id]/feedback
+// Generates comprehensive AI feedback, updates
+// ELO, streak, progress, and user stats
+// Built by Abdullah Tariq, Lahore Pakistan
+// ===========================================
+
+import { NextRequest } from "next/server";
+import { withAuth, AuthContext } from "@/lib/withAuth";
+import { notFound, forbidden, serverError } from "@/lib/response";
+import { generateFeedback } from "@/lib/groq";
+import { calculateNewElo } from "@/lib/utils";
 import Session from "@/models/Session";
 import User from "@/models/User";
 import UserProgress from "@/models/UserProgress";
-import Groq from "groq-sdk";
-import { calculateNewElo } from "@/lib/utils";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! });
-
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+async function handler(_req: NextRequest, { user, params }: AuthContext) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { id } = await params;
-    await connectDB();
+    const { id } = params;
 
     const interviewSession = await Session.findById(id);
     if (!interviewSession) {
-      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+      return notFound("Session not found");
     }
-    if (interviewSession.userId.toString() !== session.user.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    if (interviewSession.userId.toString() !== user.id) {
+      return forbidden("You do not have access to this session");
     }
 
+    // Build transcript from messages
     const transcript = interviewSession.messages
-      .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
+      .map(
+        (m: { role: string; content: string }) =>
+          `${m.role === "interviewer" ? "Interviewer" : "Candidate"}: ${m.content}`
+      )
       .join("\n");
 
-    const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert interview evaluator. Analyze the interview transcript and provide detailed, actionable feedback. Return valid JSON only.",
-        },
-        {
-          role: "user",
-          content: `Analyze this ${interviewSession.type.replace(/_/g, " ")} interview (${interviewSession.difficulty} level, ${interviewSession.company}).
+    // Generate AI feedback
+    const feedback = await generateFeedback(
+      transcript,
+      interviewSession.type,
+      interviewSession.difficulty,
+      interviewSession.company,
+      user.id
+    );
 
-Transcript:
-${transcript.slice(0, 6000)}
+    // Calculate duration
+    const duration =
+      interviewSession.messages.length > 0
+        ? Math.floor(
+            (Date.now() -
+              new Date(interviewSession.createdAt).getTime()) /
+              1000
+          )
+        : 0;
 
-Return exactly this JSON (no markdown):
-{
-  "overallScore": <0-100>,
-  "grades": {
-    "problemSolving": <0-100>,
-    "communication": <0-100>,
-    "codeQuality": <0-100>,
-    "edgeCases": <0-100>,
-    "timeManagement": <0-100>
-  },
-  "strengths": ["str1", "str2", "str3"],
-  "improvements": ["imp1", "imp2", "imp3"],
-  "summary": "2-3 sentence assessment",
-  "recommendedTopics": ["topic1", "topic2"],
-  "seniorTip": "one advanced tip"
-}`,
-        },
-      ],
-      max_tokens: 1200,
-      temperature: 0.3,
-    });
+    // ─── ELO Calculation ────────────────────────────
 
-    let feedback;
-    try {
-      const text = response.choices[0]?.message?.content ?? "{}";
-      const match = text.match(/\{[\s\S]*\}/);
-      feedback = match ? JSON.parse(match[0]) : {};
-    } catch {
-      feedback = {
-        overallScore: 60,
-        grades: { problemSolving: 60, communication: 60, codeQuality: 60, edgeCases: 50, timeManagement: 60 },
-        strengths: ["Attempted the problem"],
-        improvements: ["Could improve clarity"],
-        summary: "Basic understanding shown. More practice recommended.",
-        seniorTip: "Focus on articulating your thought process clearly.",
-      };
-    }
-
-    const duration = interviewSession.messages.length > 0
-      ? Math.floor((Date.now() - new Date(interviewSession.createdAt).getTime()) / 1000)
-      : 0;
-
-    const grades = feedback.grades || { problemSolving: 0, communication: 0, codeQuality: 0, edgeCases: 0, timeManagement: 0 };
-    const overallScore = feedback.overallScore || 60;
-
-    // ELO calculation
-    const user = await User.findById(session.user.id);
-    const currentElo = user?.eloRating || 1200;
-    const difficultyElo: Record<string, number> = { easy: 1000, medium: 1300, hard: 1600, expert: 1900 };
-    const expectedDifficulty = difficultyElo[interviewSession.difficulty] || 1300;
-    const newElo = calculateNewElo(currentElo, expectedDifficulty, overallScore, 100);
+    const dbUser = await User.findById(user.id);
+    const currentElo = dbUser?.eloRating || 1200;
+    const difficultyElo: Record<string, number> = {
+      easy: 1000,
+      mid: 1300,
+      hard: 1600,
+      expert: 1900,
+    };
+    const expectedDifficulty =
+      difficultyElo[interviewSession.difficulty] || 1300;
+    const newElo = calculateNewElo(
+      currentElo,
+      expectedDifficulty,
+      feedback.overallScore,
+      100
+    );
     const eloChange = newElo - currentElo;
 
-    // Update session
+    // ─── Update Session ─────────────────────────────
+
     await Session.findByIdAndUpdate(id, {
-      overallScore,
-      grades,
+      overallScore: feedback.overallScore,
+      grades: feedback.grades,
       duration,
       completed: true,
       reportGenerated: true,
+      eloChange,
+      eloAfter: newElo,
+      strengths: feedback.strengths,
+      improvements: feedback.improvements,
+      summary: feedback.summary,
+      seniorTip: feedback.seniorTip,
+      recommendedTopics: feedback.recommendedTopics,
     });
 
-    // Update user ELO + streak
-    const streakUpdate = overallScore >= 60
-      ? { $inc: { currentStreak: 1 }, $max: { maxStreak: (user?.currentStreak || 0) + 1 } }
-      : { $set: { currentStreak: 0 } };
+    // ─── Update User Stats ──────────────────────────
 
-    await User.findByIdAndUpdate(session.user.id, {
-      eloRating: newElo,
-      $inc: { totalSessions: 1 },
-      ...streakUpdate,
-    });
+    if (dbUser) {
+      // Update streak
+      await dbUser.updateStreak();
 
-    // Update user progress
+      // Update aggregate stats
+      const allSessions = await Session.find({
+        userId: user.id,
+        completed: true,
+      })
+        .select("overallScore")
+        .lean();
+
+      const totalSessions = allSessions.length;
+      const avgScore =
+        totalSessions > 0
+          ? Math.round(
+              allSessions.reduce(
+                (sum, s) => sum + (s.overallScore || 0),
+                0
+              ) / totalSessions
+            )
+          : 0;
+
+      await User.findByIdAndUpdate(user.id, {
+        eloRating: newElo,
+        totalSessions,
+        avgScore,
+        lastActiveDate: new Date(),
+      });
+    }
+
+    // ─── Update UserProgress ────────────────────────
+
     const categoryMap: Record<string, string> = {
-      dsa: "dsa", system_design: "systemDesign", behavioral: "behavioral",
-      frontend: "frontend", backend: "backend", full_stack: "backend",
-      full_loop: "dsa", machine_learning: "backend", mobile: "frontend",
-      devops: "backend", data_engineering: "backend", security: "backend",
+      dsa: "dsa",
+      system_design: "systemDesign",
+      behavioral: "behavioral",
+      frontend: "frontend",
+      backend: "backend",
+      full_stack: "backend",
+      full_loop: "dsa",
+      machine_learning: "backend",
+      mobile: "frontend",
+      devops: "backend",
+      data_engineering: "backend",
+      security: "backend",
     };
     const category = categoryMap[interviewSession.type] || "dsa";
 
+    const today = new Date().toISOString().split("T")[0];
+
     await UserProgress.findOneAndUpdate(
-      { userId: session.user.id },
+      { userId: user.id },
       {
         $set: {
           eloRating: newElo,
-          [`categoryScores.${category}`]: overallScore,
-          [`skillScores.problemSolving`]: grades.problemSolving,
-          [`skillScores.communication`]: grades.communication,
-          [`skillScores.codeQuality`]: grades.codeQuality,
+          [`categoryScores.${category}`]: feedback.overallScore,
+          "skillScores.problemSolving":
+            feedback.grades.problemSolving,
+          "skillScores.communication":
+            feedback.grades.communication,
+          "skillScores.codeQuality": feedback.grades.codeQuality,
+          "skillScores.edgeCases": feedback.grades.edgeCases,
+          "skillScores.timeManagement":
+            feedback.grades.timeManagement,
+          weakTopics: feedback.recommendedTopics,
         },
-        $push: { dailyScores: { date: new Date(), score: overallScore } },
-        $inc: { totalSessions: 1, totalTime: duration },
+        $push: {
+          dailyScores: {
+            date: new Date(),
+            score: feedback.overallScore,
+            sessions: 1,
+          },
+          eloHistory: {
+            date: new Date(),
+            rating: newElo,
+            change: eloChange,
+          },
+        },
+        $inc: {
+          totalSessions: 1,
+          totalTime: duration,
+          [`heatmap.${today}`]: 1,
+        },
       },
       { upsert: true }
     );
 
-    return NextResponse.json({
-      feedback: { ...feedback, eloChange, newElo, grades },
+    // ─── Send completion email (non-blocking) ───────
+
+    try {
+      const { sendSessionCompletionEmail } = await import("@/lib/email");
+      sendSessionCompletionEmail(
+        dbUser?.email || "",
+        dbUser?.name || "",
+        feedback.overallScore,
+        interviewSession.type,
+        interviewSession.company,
+        id
+      ).catch(console.error);
+    } catch {
+      // Email not configured
+    }
+
+    return Response.json({
+      feedback: {
+        ...feedback,
+        eloChange,
+        newElo,
+        duration,
+      },
     });
   } catch (error) {
-    console.error("Feedback error:", error);
-    return NextResponse.json({ error: "Failed to generate feedback" }, { status: 500 });
+    return serverError("Failed to generate feedback", error);
   }
 }
+
+export const POST = withAuth(handler);
