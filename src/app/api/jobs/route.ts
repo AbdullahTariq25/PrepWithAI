@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { NextRequest } from "next/server";
 import { withAuth, AuthContext } from "@/lib/withAuth";
 import { badRequest, created, serverError, success } from "@/lib/response";
@@ -44,7 +45,7 @@ async function getJobs(req: NextRequest, ctx: AuthContext) {
       .lean();
 
     const counts = await JobTarget.aggregate([
-      { $match: { userId: new (await import("mongoose")).default.Types.ObjectId(ctx.user.id) } },
+      { $match: { userId: new mongoose.Types.ObjectId(ctx.user.id) } },
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
 
