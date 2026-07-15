@@ -1,115 +1,103 @@
-"use client";
-
-import React from "react";
-import { motion } from "framer-motion";
 import { Scale } from "lucide-react";
 import MarketingNav from "@/components/marketing/MarketingNav";
 import MarketingFooter from "@/components/marketing/MarketingFooter";
 
-const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
-};
-
-const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
-};
+const sections = [
+  {
+    title: "1. Eligibility and account use",
+    body: [
+      "You must be at least 13 years old to use PrepWithAI. You are responsible for the activity performed through your account and for keeping your credentials secure.",
+      "You may not use the service to violate applicable law, interfere with the service, attempt unauthorized access, abuse rate limits, or disrupt other users.",
+    ],
+  },
+  {
+    title: "2. Nature of the service",
+    body: [
+      "PrepWithAI is an interview-practice and career-preparation product. It does not guarantee employment, compensation, admission, promotion, or any other career outcome.",
+      "AI-generated questions, feedback, summaries, estimates, and recommendations may be incomplete or inaccurate. Important decisions should be checked against your own judgment and appropriate professional or primary sources.",
+    ],
+  },
+  {
+    title: "3. Your content and data",
+    body: [
+      "You retain ownership of the resumes, code, messages, interview responses, and other content you submit. You grant PrepWithAI the limited rights required to process that content and provide the requested product functionality.",
+      "You are responsible for ensuring that content you upload does not violate another party's rights or contain information you are not authorized to provide.",
+    ],
+  },
+  {
+    title: "4. Plans, trials, and payments",
+    body: [
+      "PrepWithAI may offer Free, Pro, Team, Enterprise, trial, promotional, or other access levels. Features, limits, and prices may change as the product evolves, subject to applicable law and any commitments made at the time of purchase.",
+      "Paid checkout and subscription management are processed through Stripe when billing is configured. PrepWithAI does not directly store complete payment-card details.",
+      "A promotional or free trial may be limited to one use per account. Attempting to repeatedly obtain trial access through duplicate or abusive accounts may result in restriction or suspension.",
+    ],
+  },
+  {
+    title: "5. Cancellation and termination",
+    body: [
+      "You may stop using the service and delete your account through the available account controls. Paid subscription cancellation is subject to the billing options made available through the product and payment provider.",
+      "We may restrict or terminate access when reasonably necessary to address fraud, abuse, security risks, legal requirements, or material violations of these terms.",
+    ],
+  },
+  {
+    title: "6. Availability and changes",
+    body: [
+      "The service may change, experience interruptions, or contain defects. We may add, remove, or modify features as we improve the product. We do not promise that every feature will always remain available in the same form.",
+    ],
+  },
+  {
+    title: "7. Limitation of responsibility",
+    body: [
+      "To the maximum extent permitted by applicable law, PrepWithAI is provided on an as-available basis. You remain responsible for how you use generated content and for verifying information before relying on it in high-impact situations.",
+    ],
+  },
+];
 
 export default function TermsPage() {
-    return (
-        <>
-            <MarketingNav />
-            <main className="min-h-screen bg-[#08080C] text-white pt-24 pb-16 font-sans">
-                {/* Header */}
-                <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-16 pb-12">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
-                        className="inline-flex items-center px-3 py-1 rounded-full border border-rose-500/30 bg-rose-500/10 text-xs font-mono font-medium text-rose-400 mb-6 uppercase tracking-widest"
-                    >
-                        <Scale className="w-3.5 h-3.5 mr-2" /> Legal
-                    </motion.div>
-                    <motion.h1
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: 0.1 }}
-                        className="text-4xl md:text-5xl font-bold tracking-tight mb-6"
-                    >
-                        Terms of Service
-                    </motion.h1>
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: 0.2 }}
-                        className="text-[#A0A0B0] flex flex-col gap-2"
-                    >
-                        <p className="font-mono text-sm">Last updated: February 28, 2026</p>
-                    </motion.div>
+  return (
+    <>
+      <MarketingNav />
+      <main className="min-h-screen bg-[#08080c] pt-28 text-white">
+        <section className="border-b border-white/7 px-5 py-16 sm:px-8 lg:py-20">
+          <div className="mx-auto max-w-3xl text-center">
+            <div className="mx-auto mb-5 inline-flex items-center gap-2 rounded-full border border-rose-500/20 bg-rose-500/8 px-3 py-1.5 text-xs font-medium text-rose-300">
+              <Scale className="h-3.5 w-3.5" /> Legal
+            </div>
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Terms of Service</h1>
+            <p className="mt-4 text-sm text-[#858596]">Last updated: July 15, 2026</p>
+            <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-[#9494a4]">
+              These terms describe the rules for using PrepWithAI. By accessing or using the service, you agree to these terms.
+            </p>
+          </div>
+        </section>
+
+        <section className="px-5 py-16 sm:px-8 lg:py-20">
+          <div className="mx-auto max-w-3xl space-y-5">
+            {sections.map((section) => (
+              <article key={section.title} className="rounded-2xl border border-white/7 bg-[#111116] p-6 sm:p-7">
+                <h2 className="text-xl font-semibold tracking-tight">{section.title}</h2>
+                <div className="mt-4 space-y-4">
+                  {section.body.map((paragraph) => (
+                    <p key={paragraph} className="text-sm leading-7 text-[#9a9aaa]">{paragraph}</p>
+                  ))}
                 </div>
+              </article>
+            ))}
 
-                {/* Content */}
-                <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 border-t border-white/5">
-                    <motion.div
-                        variants={containerVariants}
-                        initial="hidden"
-                        animate="visible"
-                        className="space-y-8"
-                    >
-                        <motion.div variants={itemVariants} className="bg-[#111116] border border-white/10 rounded-2xl p-6 md:p-8 hover:border-rose-500/30 transition-colors group">
-                            <h2 className="text-xl font-bold text-white mb-4 group-hover:text-rose-400 transition-colors">1. Using PrepWithAI</h2>
-                            <p className="text-[#A0A0B0] leading-relaxed mb-4">By accessing our service, you agree to these terms:</p>
-                            <ul className="list-disc pl-5 space-y-2 text-[#D1D1DF]">
-                                <li>You must be at least 13 years old.</li>
-                                <li>You are responsible for maintaining the security of your account and API keys.</li>
-                                <li>You must not use the service for any illegal or harmful purposes, including scraping data aggressively.</li>
-                            </ul>
-                        </motion.div>
+            <article className="rounded-2xl border border-indigo-500/20 bg-indigo-500/[0.05] p-6 sm:p-7">
+              <h2 className="text-xl font-semibold">8. Contact</h2>
+              <p className="mt-4 text-sm leading-7 text-[#9a9aaa]">
+                Questions about these terms may be sent to <a href="mailto:legal@prepwithai.com" className="font-medium text-indigo-300 hover:text-indigo-200">legal@prepwithai.com</a>.
+              </p>
+            </article>
 
-                        <motion.div variants={itemVariants} className="bg-[#111116] border border-white/10 rounded-2xl p-6 md:p-8 hover:border-rose-500/30 transition-colors group">
-                            <h2 className="text-xl font-bold text-white mb-4 group-hover:text-rose-400 transition-colors">2. Our Service</h2>
-                            <p className="text-[#A0A0B0] leading-relaxed mb-4">PrepWithAI is a simulator designed to help you practice:</p>
-                            <ul className="list-disc pl-5 space-y-2 text-[#D1D1DF]">
-                                <li>We do <span className="text-white font-medium italic">not</span> guarantee you will get a job offer.</li>
-                                <li>Because we rely on LLMs (OpenAI, Groq), the feedback generated may occasionally be inaccurate or biased. We are constantly improving our models, but cannot guarantee perfection.</li>
-                            </ul>
-                        </motion.div>
-
-                        <motion.div variants={itemVariants} className="bg-[#111116] border border-white/10 rounded-2xl p-6 md:p-8 hover:border-rose-500/30 transition-colors group">
-                            <h2 className="text-xl font-bold text-white mb-4 group-hover:text-rose-400 transition-colors">3. Your Content</h2>
-                            <p className="text-[#A0A0B0] leading-relaxed">
-                                The transcripts, resumes, and code you provide during sessions remain entirely yours. You grant us the limited right to process this data exclusively to provide our service to you. You can export or definitively delete this content at any time via your account settings.
-                            </p>
-                        </motion.div>
-
-                        <motion.div variants={itemVariants} className="bg-[#111116] border border-white/10 rounded-2xl p-6 md:p-8 hover:border-rose-500/30 transition-colors group">
-                            <h2 className="text-xl font-bold text-white mb-4 group-hover:text-rose-400 transition-colors">4. Payments & Refunds</h2>
-                            <p className="text-[#A0A0B0] leading-relaxed mb-4">We believe in transparent billing:</p>
-                            <ul className="list-disc pl-5 space-y-2 text-[#D1D1DF]">
-                                <li>Stripe securely handles all our payment processing. We do not store your credit card.</li>
-                                <li>During our Beta period, the service is entirely free.</li>
-                                <li>When paid plans launch, we will enforce a strict "no questions asked" 14-day refund policy for your first month.</li>
-                            </ul>
-                        </motion.div>
-
-                        <motion.div variants={itemVariants} className="bg-[#111116] border border-white/10 rounded-2xl p-6 md:p-8 hover:border-rose-500/30 transition-colors group">
-                            <h2 className="text-xl font-bold text-white mb-4 group-hover:text-rose-400 transition-colors">5. Termination</h2>
-                            <p className="text-[#A0A0B0] leading-relaxed mb-4">
-                                You may cancel your account at any time. We reserve the right to suspend or terminate accounts that abuse our systems (e.g., botting, DDoS). If we terminate your paid account without cause, we will issue a prorated refund.
-                            </p>
-                        </motion.div>
-
-                        <motion.div variants={itemVariants} className="bg-[#111116] border border-white/10 rounded-2xl p-6 md:p-8 hover:border-rose-500/30 transition-colors group">
-                            <h2 className="text-xl font-bold text-white mb-4 group-hover:text-rose-400 transition-colors">6. Contact Information</h2>
-                            <p className="text-[#A0A0B0] leading-relaxed">
-                                For legal inquiries or notices, please contact us at <a href="mailto:legal@prepwithai.com" className="text-white hover:text-rose-400 underline decoration-white/20 underline-offset-4 transition-colors">legal@prepwithai.com</a>.
-                            </p>
-                        </motion.div>
-                    </motion.div>
-                </div>
-            </main>
-            <MarketingFooter />
-        </>
-    );
+            <p className="pt-4 text-xs leading-6 text-[#666678]">
+              This page is product terms text, not jurisdiction-specific legal advice. The operator should obtain qualified legal review before relying on these terms for a major commercial launch or a specific regulatory market.
+            </p>
+          </div>
+        </section>
+      </main>
+      <MarketingFooter />
+    </>
+  );
 }
