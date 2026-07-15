@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Linkedin, Github, Twitter, Instagram, Facebook } from "lucide-react";
+import { Linkedin, Github, Twitter } from "lucide-react";
 
 const productLinks = [
     { label: "Features", href: "/features" },
