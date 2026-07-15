@@ -1,32 +1,11 @@
-// ===========================================
-// PrepWithAI — Rate Limiter
-// In-memory sliding window rate limiting
-// for API route protection
-// Built by Abdullah Tariq, Lahore Pakistan
-// ===========================================
-
-// ─── Types ──────────────────────────────────────────
+import crypto from "crypto";
+import dbConnect from "@/lib/mongodb";
+import RateLimitBucket from "@/models/RateLimitBucket";
 
 interface RateLimitEntry {
   count: number;
   resetAt: number;
 }
-
-// ─── In-Memory Store ────────────────────────────────
-
-const store = new Map<string, RateLimitEntry>();
-
-// Cleanup old entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of store) {
-    if (entry.resetAt <= now) {
-      store.delete(key);
-    }
-  }
-}, 5 * 60 * 1000);
-
-// ─── Rate Limit Check ───────────────────────────────
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -35,55 +14,105 @@ export interface RateLimitResult {
   resetAt: number;
 }
 
-export function checkRateLimit(
-  identifier: string,
-  limit: number = 60,
-  windowMs: number = 60 * 1000
+const globalRateLimit = globalThis as typeof globalThis & {
+  __prepWithAiRateLimitStore?: Map<string, RateLimitEntry>;
+};
+
+const fallbackStore =
+  globalRateLimit.__prepWithAiRateLimitStore || new Map<string, RateLimitEntry>();
+globalRateLimit.__prepWithAiRateLimitStore = fallbackStore;
+
+function hashIdentifier(identifier: string): string {
+  return crypto.createHash("sha256").update(identifier).digest("hex");
+}
+
+function localFallback(
+  key: string,
+  limit: number,
+  windowMs: number,
 ): RateLimitResult {
   const now = Date.now();
-  const key = identifier;
 
-  const entry = store.get(key);
+  if (fallbackStore.size > 2_000) {
+    for (const [storedKey, entry] of fallbackStore) {
+      if (entry.resetAt <= now) fallbackStore.delete(storedKey);
+      if (fallbackStore.size <= 1_500) break;
+    }
+  }
 
+  const entry = fallbackStore.get(key);
   if (!entry || entry.resetAt <= now) {
-    // New window
-    store.set(key, { count: 1, resetAt: now + windowMs });
-    return {
-      allowed: true,
-      remaining: limit - 1,
-      limit,
-      resetAt: now + windowMs,
-    };
+    const resetAt = now + windowMs;
+    fallbackStore.set(key, { count: 1, resetAt });
+    return { allowed: true, remaining: Math.max(0, limit - 1), limit, resetAt };
   }
 
-  if (entry.count >= limit) {
-    return {
-      allowed: false,
-      remaining: 0,
-      limit,
-      resetAt: entry.resetAt,
-    };
-  }
-
-  entry.count++;
+  entry.count += 1;
   return {
-    allowed: true,
-    remaining: limit - entry.count,
+    allowed: entry.count <= limit,
+    remaining: Math.max(0, limit - entry.count),
     limit,
     resetAt: entry.resetAt,
   };
 }
 
-// ─── Preset Rate Limiters ───────────────────────────
+export async function checkRateLimit(
+  identifier: string,
+  limit: number = 60,
+  windowMs: number = 60 * 1000,
+): Promise<RateLimitResult> {
+  const key = hashIdentifier(identifier);
+  const now = new Date();
+  const newResetAt = new Date(now.getTime() + windowMs);
 
-export function rateLimitAuth(ip: string): RateLimitResult {
-  return checkRateLimit(`auth:${ip}`, 10, 15 * 60 * 1000); // 10 attempts per 15 min
+  try {
+    await dbConnect();
+
+    let bucket = await RateLimitBucket.findOneAndUpdate(
+      { key, resetAt: { $gt: now } },
+      { $inc: { count: 1 } },
+      { new: true },
+    );
+
+    if (!bucket) {
+      bucket = await RateLimitBucket.findOneAndUpdate(
+        { key },
+        {
+          $set: {
+            count: 1,
+            resetAt: newResetAt,
+          },
+        },
+        { upsert: true, new: true },
+      );
+    }
+
+    const count = bucket?.count || 1;
+    const resetAt = bucket?.resetAt?.getTime() || newResetAt.getTime();
+
+    return {
+      allowed: count <= limit,
+      remaining: Math.max(0, limit - count),
+      limit,
+      resetAt,
+    };
+  } catch (error) {
+    // Rate limiting should remain available during a transient database incident,
+    // but the bounded in-process fallback is intentionally less authoritative
+    // than the distributed MongoDB bucket.
+    console.error("Distributed rate limit check failed; using local fallback:", error);
+    return localFallback(key, limit, windowMs);
+  }
 }
 
-export function rateLimitChat(userId: string): RateLimitResult {
-  return checkRateLimit(`chat:${userId}`, 60, 60 * 1000); // 60 messages per minute
+export function rateLimitAuth(ip: string): Promise<RateLimitResult> {
+  return checkRateLimit(`auth:${ip}`, 10, 15 * 60 * 1000);
 }
 
-export function rateLimitApi(userId: string): RateLimitResult {
-  return checkRateLimit(`api:${userId}`, 100, 60 * 1000); // 100 requests per minute
+export function rateLimitChat(userId: string): Promise<RateLimitResult> {
+  return checkRateLimit(`chat:${userId}`, 45, 60 * 1000);
+}
+
+export function rateLimitApi(userId: string): Promise<RateLimitResult> {
+  return checkRateLimit(`api:${userId}`, 100, 60 * 1000);
 }
