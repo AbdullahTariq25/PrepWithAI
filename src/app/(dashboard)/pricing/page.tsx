@@ -1,137 +1,198 @@
-﻿"use client";
+"use client";
 
-import { motion } from "framer-motion";
-import {
-  CheckCircle2,
-  Sparkles,
-  Brain,
-  Mic,
-  Video,
-  Building2,
-  BookOpen,
-  BarChart3,
-  Layers,
-  Zap,
-  Trophy,
-} from "lucide-react";
+import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { Check, Crown, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-const allFeatures = [
-  { icon: Brain, label: "All 12 Interview Types", desc: "DSA, System Design, Behavioral, Frontend, Backend, API Design, Cloud & more" },
-  { icon: Mic, label: "Voice Mode", desc: "Practice speaking your answers naturally with real-time AI voice" },
-  { icon: Video, label: "Video Interviews", desc: "Webcam + AI avatar with real-time visual feedback" },
-  { icon: Building2, label: "20+ Company Packs", desc: "Google, Meta, Amazon, Apple, Microsoft, Netflix & more" },
-  { icon: BookOpen, label: "500+ Question Bank", desc: "Curated questions across all categories and difficulty levels" },
-  { icon: Layers, label: "Flashcards & Daily Challenges", desc: "Spaced repetition and daily practice to build consistency" },
-  { icon: BarChart3, label: "Full Analytics & Progress", desc: "Detailed performance metrics, skill radar charts & streak tracking" },
-  { icon: Zap, label: "ELO Rating System", desc: "Competitive rating that adapts to your skill level over time" },
-  { icon: Trophy, label: "Leaderboard & Study Groups", desc: "Compete with others and study collaboratively" },
-  { icon: Sparkles, label: "AI-Powered Feedback", desc: "Detailed feedback with scores, grades, and actionable improvement tips" },
+const freeFeatures = [
+  "3 interview sessions per day",
+  "Core DSA practice",
+  "Text interview mode",
+  "Basic AI feedback",
+  "Save your 5 most recent sessions",
+];
+
+const proFeatures = [
+  "Unlimited interview sessions",
+  "All interview tracks and company packs",
+  "Voice and video interview modes",
+  "Detailed scoring and improvement feedback",
+  "Progress analytics and unlimited history",
+  "Resume-personalized interview questions",
+];
+
+const teamFeatures = [
+  "Everything in Pro",
+  "5 seats included",
+  "Shared team preparation workspace",
+  "Manager visibility and readiness insights",
+  "Priority support",
 ];
 
 export default function PricingPage() {
+  const { data: session, update } = useSession();
+  const [loading, setLoading] = useState<"trial" | "pro" | "team" | null>(null);
+  const [notice, setNotice] = useState("");
+  const currentPlan = session?.user?.plan || "free";
+
+  async function startTrial() {
+    setLoading("trial");
+    setNotice("");
+    try {
+      const response = await fetch("/api/user/start-trial", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to start trial");
+      setNotice(data.message || "Your Pro trial is active.");
+      await update();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Unable to start trial");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function checkout(planId: "pro" | "team") {
+    setLoading(planId);
+    setNotice("");
+    try {
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.url) {
+        throw new Error(data.error || "Unable to open checkout");
+      }
+      window.location.assign(data.url);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Unable to open checkout");
+      setLoading(null);
+    }
+  }
+
+  const plans = [
+    {
+      id: "free",
+      name: "Free",
+      price: "$0",
+      description: "Build a consistent interview practice habit.",
+      icon: ShieldCheck,
+      features: freeFeatures,
+      action: (
+        <Button variant="outline" className="w-full" disabled>
+          {currentPlan === "free" ? "Current plan" : "Free plan"}
+        </Button>
+      ),
+    },
+    {
+      id: "pro",
+      name: "Pro",
+      price: "$9",
+      suffix: "/month",
+      description: "The complete preparation workspace for serious candidates.",
+      icon: Crown,
+      popular: true,
+      features: proFeatures,
+      action: currentPlan === "pro" ? (
+        <Button className="w-full" disabled>Current plan</Button>
+      ) : (
+        <div className="grid gap-2">
+          <Button className="w-full" onClick={() => checkout("pro")} disabled={loading !== null}>
+            {loading === "pro" ? "Opening checkout…" : "Upgrade to Pro"}
+          </Button>
+          {currentPlan === "free" && (
+            <Button variant="ghost" className="w-full" onClick={startTrial} disabled={loading !== null}>
+              {loading === "trial" ? "Starting trial…" : "Start 14-day free trial"}
+            </Button>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "team",
+      name: "Team",
+      price: "$29",
+      suffix: "/month",
+      description: "Structured interview readiness for small engineering teams.",
+      icon: Users,
+      features: teamFeatures,
+      action: currentPlan === "team" ? (
+        <Button className="w-full" disabled>Current plan</Button>
+      ) : (
+        <Button variant="outline" className="w-full" onClick={() => checkout("team")} disabled={loading !== null}>
+          {loading === "team" ? "Opening checkout…" : "Choose Team"}
+        </Button>
+      ),
+    },
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto space-y-10 page-enter bg-[#080808]">
-      {/* Hero */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center"
-      >
-        <Badge className="mb-4 gap-1.5 bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
-          <Sparkles className="w-3 h-3" /> Beta
+    <div className="mx-auto max-w-6xl space-y-10 page-enter">
+      <div className="mx-auto max-w-3xl text-center">
+        <Badge className="mb-4 gap-1.5 border-indigo-500/30 bg-indigo-500/10 text-indigo-300">
+          <Sparkles className="h-3.5 w-3.5" /> Plans built for real interview preparation
         </Badge>
-        <h1 className="text-4xl font-bold mb-4 tracking-tight">
-          Everything is{" "}
-          <span className="bg-linear-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">
-            completely free
-          </span>
-        </h1>
-        <p className="text-lg text-[#888] max-w-2xl mx-auto">
-          During the beta period, all features are unlocked for everyone.
-          No credit card needed. No trial period. No limits.
+        <h1 className="text-4xl font-bold tracking-tight md:text-5xl">Choose how seriously you want to prepare.</h1>
+        <p className="mt-4 text-base leading-7 text-[#9a9aaa] md:text-lg">
+          Start with the free plan, try Pro for 14 days, and upgrade when you need unlimited practice and deeper feedback.
         </p>
-      </motion.div>
+      </div>
 
-      {/* Big Free Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="relative bg-[var(--bg-surface)] border border-emerald-500/30 rounded-2xl p-8 premium-card"
-      >
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <Badge className="bg-emerald-600 text-white px-4 py-1 gap-1.5 text-sm">
-            <Sparkles className="w-3.5 h-3.5" /> Beta  All Features Free
-          </Badge>
+      {notice && (
+        <div className="mx-auto max-w-2xl rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-[#c7c7d2]">
+          {notice}
         </div>
+      )}
 
-        <div className="text-center mb-8 mt-4">
-          <div className="text-6xl font-bold tabular-nums mb-1">$0</div>
-          <div className="text-[#888]">Forever during beta</div>
-        </div>
-
-        <div className="grid sm:grid-cols-2 gap-4">
-          {allFeatures.map((f, i) => (
-            <motion.div
-              key={f.label}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 + i * 0.04 }}
-              className="flex items-start gap-3 p-3 rounded-xl bg-white/3 border border-white/5"
+      <div className="grid gap-5 lg:grid-cols-3">
+        {plans.map((plan) => {
+          const Icon = plan.icon;
+          return (
+            <section
+              key={plan.id}
+              className={`relative flex h-full flex-col rounded-2xl border p-6 ${
+                plan.popular
+                  ? "border-indigo-500/40 bg-gradient-to-b from-indigo-500/10 to-[#111116] shadow-[0_20px_80px_rgba(79,70,229,0.12)]"
+                  : "border-white/8 bg-[#111116]"
+              }`}
             >
-              <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <f.icon className="w-4.5 h-4.5 text-emerald-400" />
-              </div>
-              <div>
-                <div className="text-sm font-medium flex items-center gap-2">
-                  {f.label}
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                </div>
-                <div className="text-xs text-[#666] mt-0.5">{f.desc}</div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
+              {plan.popular && (
+                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 border-0 bg-indigo-600 text-white">
+                  Most popular
+                </Badge>
+              )}
 
-      {/* FAQ */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="space-y-3"
-      >
-        <h2 className="text-2xl font-bold text-center mb-6 tracking-tight">
-          Frequently Asked Questions
-        </h2>
-        {[
-          {
-            q: "Why is everything free?",
-            a: "We are in beta and want as many people as possible to use the platform so we can improve it. All features are completely free during this period.",
-          },
-          {
-            q: "Will it always be free?",
-            a: "We plan to keep a generous free tier forever. When we introduce paid plans, existing beta users will be grandfathered in with special pricing.",
-          },
-          {
-            q: "What AI model powers the interviews?",
-            a: "We use Groq LLama 3.3 70B for fast, high-quality interview simulations with sub-second response times.",
-          },
-          {
-            q: "Do I need to enter a credit card?",
-            a: "No. Never. Just sign up with your email and start practicing immediately.",
-          },
-        ].map((faq) => (
-          <div
-            key={faq.q}
-            className="bg-[var(--bg-surface)] border border-white/8 rounded-xl p-5 hover:border-white/12 transition-colors"
-          >
-            <h3 className="font-medium text-sm mb-1">{faq.q}</h3>
-            <p className="text-sm text-[#888]">{faq.a}</p>
-          </div>
-        ))}
-      </motion.div>
+              <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-white/8 bg-white/5">
+                <Icon className="h-5 w-5 text-indigo-300" />
+              </div>
+              <h2 className="text-2xl font-semibold">{plan.name}</h2>
+              <div className="mt-3 flex items-end gap-1">
+                <span className="text-4xl font-bold tracking-tight">{plan.price}</span>
+                {plan.suffix && <span className="pb-1 text-sm text-[#77778a]">{plan.suffix}</span>}
+              </div>
+              <p className="mt-3 min-h-12 text-sm leading-6 text-[#9292a3]">{plan.description}</p>
+
+              <div className="my-6 h-px bg-white/8" />
+              <div className="flex-1 space-y-3">
+                {plan.features.map((feature) => (
+                  <div key={feature} className="flex items-start gap-3 text-sm text-[#b6b6c2]">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                    <span>{feature}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-7">{plan.action}</div>
+            </section>
+          );
+        })}
+      </div>
+
+      <p className="text-center text-xs text-[#666679]">
+        Cancel paid subscriptions through the customer portal. Payment availability depends on the configured Stripe account.
+      </p>
     </div>
   );
 }
