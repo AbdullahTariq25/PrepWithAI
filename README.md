@@ -147,7 +147,7 @@ Optional OAuth provider credentials may exist in the backend configuration, but 
 
 ## Deployment
 
-The project is designed for Vercel deployment through Git integration. Keep all production secrets in the Vercel project environment and configure the Stripe webhook endpoint against the production `/api/stripe/webhook` route.
+The project is designed for Vercel deployment through Git integration. The production branch is `main`; production releases should come from CI-validated commits on that branch. Keep all production secrets in the Vercel project environment and configure the Stripe webhook endpoint against the production `/api/stripe/webhook` route.
 
 Before a production release:
 
