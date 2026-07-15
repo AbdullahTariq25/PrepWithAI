@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
+import { getAuthSecretMode } from "@/lib/auth-secret";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const checks: Record<string, { status: "ok" | "error"; latencyMs?: number }> = {};
+  const checks: Record<
+    string,
+    { status: "ok" | "error" | "warning"; latencyMs?: number; mode?: string }
+  > = {};
   let databaseHealthy = false;
 
   const databaseStarted = Date.now();
@@ -53,14 +57,22 @@ export async function GET(request: NextRequest) {
   }
 
   checks.aiConfiguration = { status: process.env.GROQ_API_KEY ? "ok" : "error" };
+
+  const authMode = getAuthSecretMode();
   checks.authConfiguration = {
-    status: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET ? "ok" : "error",
+    status:
+      authMode === "missing"
+        ? "error"
+        : authMode === "preview-derived"
+          ? "warning"
+          : "ok",
+    mode: authMode,
   };
 
   const healthy =
     databaseHealthy &&
     checks.aiConfiguration.status === "ok" &&
-    checks.authConfiguration.status === "ok";
+    checks.authConfiguration.status !== "error";
 
   return NextResponse.json(
     {

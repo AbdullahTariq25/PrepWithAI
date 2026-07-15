@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 import connectDB from "./mongodb";
+import { requireAuthSecret } from "@/lib/auth-secret";
 import { rateLimitAuth } from "@/lib/rateLimit";
 import User from "@/models/User";
 
@@ -95,6 +96,7 @@ allProviders.push(
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: allProviders,
+  trustHost: true,
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google" || account?.provider === "github") {
@@ -155,10 +157,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   pages: {
     signIn: "/login",
+    error: "/auth/error",
     newUser: "/onboarding",
   },
   session: {
     strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+  secret: requireAuthSecret(),
 });

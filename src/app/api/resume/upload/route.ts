@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import { analyzeResumeText, extractPdfText } from "@/lib/resume-analysis";
+import { analyzeResumeJobMatch } from "@/lib/job-match";
 import User from "@/models/User";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MIN_EXTRACTED_TEXT = 120;
+const MAX_JOB_DESCRIPTION = 12_000;
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,6 +18,16 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
     const file = formData.get("resume");
+    const rawJobDescription = formData.get("jobDescription");
+    const jobDescription =
+      typeof rawJobDescription === "string" ? rawJobDescription.trim() : "";
+
+    if (jobDescription.length > MAX_JOB_DESCRIPTION) {
+      return NextResponse.json(
+        { error: "The target job description cannot exceed 12,000 characters" },
+        { status: 400 },
+      );
+    }
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "No PDF resume was uploaded" }, { status: 400 });
@@ -52,12 +64,17 @@ export async function POST(req: NextRequest) {
     }
 
     const parsed = analyzeResumeText(extracted.text, extracted.pages, extracted.parser);
+    const jobMatch =
+      jobDescription.length >= 80
+        ? analyzeResumeJobMatch(extracted.text, jobDescription)
+        : null;
 
     await connectDB();
     await User.findByIdAndUpdate(session.user.id, {
       $set: {
         resumeParsed: {
           ...parsed,
+          jobMatch,
           sourceFileName: file.name.slice(0, 180),
           analyzedAt: new Date(),
         },
@@ -69,7 +86,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       parsed,
-      message: "Resume text extracted and analyzed successfully",
+      jobMatch,
+      message: jobMatch
+        ? "Resume extracted, analyzed, and compared with the target job description"
+        : "Resume text extracted and analyzed successfully",
     });
   } catch (error) {
     console.error("Resume analysis error:", error);

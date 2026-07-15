@@ -6,6 +6,7 @@ import {
   AlertCircle,
   ArrowRight,
   BarChart3,
+  BriefcaseBusiness,
   CheckCircle2,
   FileText,
   Loader2,
@@ -32,6 +33,17 @@ interface ResumeAnalysis {
   };
 }
 
+interface JobMatch {
+  matchScore: number;
+  skillCoverage: number;
+  keywordCoverage: number;
+  matchedSkills: string[];
+  missingSkills: string[];
+  matchedKeywords: string[];
+  missingKeywords: string[];
+  recommendations: string[];
+}
+
 function scoreTone(score: number) {
   if (score >= 80) return "text-emerald-300";
   if (score >= 60) return "text-amber-300";
@@ -41,7 +53,9 @@ function scoreTone(score: number) {
 export default function ResumePage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
   const [analysis, setAnalysis] = useState<ResumeAnalysis | null>(null);
+  const [jobMatch, setJobMatch] = useState<JobMatch | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
@@ -49,6 +63,7 @@ export default function ResumePage() {
   async function uploadResume(file: File) {
     setError("");
     setAnalysis(null);
+    setJobMatch(null);
 
     if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
       setError("Please upload a PDF resume.");
@@ -58,16 +73,22 @@ export default function ResumePage() {
       setError("The PDF must be larger than 0 bytes and no more than 10 MB.");
       return;
     }
+    if (jobDescription.length > 12_000) {
+      setError("The target job description cannot exceed 12,000 characters.");
+      return;
+    }
 
     setLoading(true);
     setFileName(file.name);
     try {
       const body = new FormData();
       body.append("resume", file);
+      if (jobDescription.trim()) body.append("jobDescription", jobDescription.trim());
       const response = await fetch("/api/resume/upload", { method: "POST", body });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to analyze the resume");
       setAnalysis(data.parsed || null);
+      setJobMatch(data.jobMatch || null);
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Unable to analyze the resume");
     } finally {
@@ -104,7 +125,7 @@ export default function ResumePage() {
           </div>
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Extract real preparation signals from your resume.</h1>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-[#9090a0] sm:text-base">
-            PrepWithAI reads selectable text from your PDF, detects technical skills and sections, and highlights structural signals that can improve role-specific interview preparation.
+            PrepWithAI reads selectable text from your PDF, detects technical skills and sections, and can compare the document with a target job description using transparent coverage signals.
           </p>
         </div>
         <Link href="/resume/builder" className="inline-flex items-center gap-2 text-sm font-medium text-indigo-300 hover:text-indigo-200">
@@ -118,6 +139,19 @@ export default function ResumePage() {
           <p className="mt-2 text-sm leading-6 text-[#7f7f91]">
             PDF only, up to 10 MB. Text-based PDFs work best; scanned image-only documents may need OCR before upload.
           </p>
+
+          <label className="mt-5 block">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-[#d5d5de]">Target job description <span className="text-[#666678]">(optional)</span></span>
+              <span className="text-[11px] text-[#666678]">{jobDescription.length}/12,000</span>
+            </div>
+            <textarea
+              value={jobDescription}
+              onChange={(event) => setJobDescription(event.target.value.slice(0, 12_000))}
+              placeholder="Paste the role description before uploading to get transparent skill and keyword coverage."
+              className="mt-2 min-h-32 w-full resize-y rounded-xl border border-white/9 bg-black/20 px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-[#5f5f70] focus:border-indigo-400/40 focus:ring-2 focus:ring-indigo-400/10"
+            />
+          </label>
 
           <input ref={inputRef} type="file" accept="application/pdf,.pdf" onChange={handleInput} className="hidden" />
           <div
@@ -133,7 +167,7 @@ export default function ResumePage() {
             }}
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
-            className={`mt-6 flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 text-center transition ${
+            className={`mt-5 flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 text-center transition ${
               dragging ? "border-indigo-400 bg-indigo-500/10" : "border-white/10 bg-black/15 hover:border-indigo-500/30 hover:bg-indigo-500/[0.04]"
             }`}
           >
@@ -142,7 +176,7 @@ export default function ResumePage() {
             </div>
             <h3 className="mt-5 font-semibold">{loading ? "Extracting and analyzing…" : "Drop a PDF here or browse"}</h3>
             <p className="mt-2 max-w-sm text-xs leading-5 text-[#6f6f80]">
-              The analysis is based on text actually extracted from your document. PrepWithAI does not invent missing work history or education.
+              The analysis is based on text actually extracted from your document. PrepWithAI does not invent missing work history, education, or skills.
             </p>
           </div>
 
@@ -180,7 +214,7 @@ export default function ResumePage() {
                 <FileText className="mx-auto h-8 w-8 text-[#5f5f72]" />
                 <h3 className="mt-4 font-semibold text-[#d6d6df]">No resume analyzed yet</h3>
                 <p className="mt-2 text-sm leading-6 text-[#767687]">
-                  Upload a PDF to detect skills, section content, project signals, and practical resume-quality indicators.
+                  Upload a PDF to detect skills, section content, project signals, practical resume-quality indicators, and optional target-role alignment.
                 </p>
               </div>
             </div>
@@ -197,6 +231,36 @@ export default function ResumePage() {
                   </div>
                 ))}
               </div>
+
+              {jobMatch && (
+                <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.04] p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 text-sm font-semibold text-cyan-200"><BriefcaseBusiness className="h-4 w-4" /> Target job match</div>
+                      <p className="mt-2 text-xs leading-5 text-[#838394]">Transparent textual alignment from the uploaded resume and the job description you supplied.</p>
+                    </div>
+                    <div className={`text-3xl font-bold tabular-nums ${scoreTone(jobMatch.matchScore)}`}>{jobMatch.matchScore}%</div>
+                  </div>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-white/7 bg-black/15 p-4"><div className="text-xs text-[#717182]">Skill coverage</div><div className="mt-1 text-xl font-semibold">{jobMatch.skillCoverage}%</div></div>
+                    <div className="rounded-xl border border-white/7 bg-black/15 p-4"><div className="text-xs text-[#717182]">Keyword coverage</div><div className="mt-1 text-xl font-semibold">{jobMatch.keywordCoverage}%</div></div>
+                  </div>
+
+                  {(jobMatch.matchedSkills.length > 0 || jobMatch.missingSkills.length > 0) && (
+                    <div className="mt-5 grid gap-4 md:grid-cols-2">
+                      <div><div className="text-xs font-semibold uppercase tracking-[0.1em] text-emerald-300">Matched skills</div><div className="mt-2 flex flex-wrap gap-2">{jobMatch.matchedSkills.length > 0 ? jobMatch.matchedSkills.map((skill) => <span key={skill} className="rounded-lg border border-emerald-400/15 bg-emerald-400/8 px-2.5 py-1 text-xs text-emerald-200">{skill}</span>) : <span className="text-xs text-[#777789]">No dictionary skills matched.</span>}</div></div>
+                      <div><div className="text-xs font-semibold uppercase tracking-[0.1em] text-amber-300">Not detected in resume</div><div className="mt-2 flex flex-wrap gap-2">{jobMatch.missingSkills.length > 0 ? jobMatch.missingSkills.map((skill) => <span key={skill} className="rounded-lg border border-amber-400/15 bg-amber-400/8 px-2.5 py-1 text-xs text-amber-200">{skill}</span>) : <span className="text-xs text-[#777789]">No detected skill gaps.</span>}</div></div>
+                    </div>
+                  )}
+
+                  <div className="mt-5 space-y-2">
+                    {jobMatch.recommendations.map((recommendation) => (
+                      <div key={recommendation} className="flex gap-3 text-sm leading-6 text-[#a8a8b5]"><Target className="mt-1 h-4 w-4 shrink-0 text-cyan-300" />{recommendation}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#646476]">Detected technical skills</div>
@@ -253,7 +317,7 @@ export default function ResumePage() {
               )}
 
               <div className="rounded-xl border border-amber-500/15 bg-amber-500/[0.05] p-4 text-xs leading-6 text-amber-100/70">
-                These scores are deterministic document-quality signals, not a guarantee of ATS ranking, recruiter decisions, or job outcomes. Review extracted text and recommendations before acting on them.
+                These scores are deterministic document and text-alignment signals, not guarantees of ATS ranking, recruiter decisions, interviews, or job outcomes. Never add a skill or keyword you cannot truthfully support.
                 {analysis.metadata?.pages ? ` Parsed ${analysis.metadata.pages} page${analysis.metadata.pages === 1 ? "" : "s"}.` : ""}
               </div>
             </div>

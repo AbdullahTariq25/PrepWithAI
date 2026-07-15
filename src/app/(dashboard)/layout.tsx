@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import {
+  Activity,
   BarChart3,
   BookOpen,
   Brain,
@@ -38,6 +39,7 @@ const sections = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/plan", label: "My Prep Plan", icon: Target },
+      { href: "/readiness", label: "Readiness Check", icon: Activity },
       { href: "/interview", label: "New Interview", icon: MessageSquare },
       { href: "/daily", label: "Daily Challenge", icon: Flame },
       { href: "/questions", label: "Questions", icon: BookOpen },

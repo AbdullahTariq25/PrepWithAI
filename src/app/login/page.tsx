@@ -1,16 +1,33 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { ArrowRight, Brain, Check, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Brain,
+  Check,
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  Mail,
+} from "lucide-react";
 
 const benefits = [
   "Resume your interview history and progress",
   "Practice voice, coding, behavioral, and system-design interviews",
   "Review AI feedback and target the next weak spot",
 ];
+
+function safeCallbackUrl() {
+  const value = new URLSearchParams(window.location.search).get("callbackUrl");
+  return value && value.startsWith("/") && !value.startsWith("//")
+    ? value
+    : "/dashboard";
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,10 +36,33 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [authReady, setAuthReady] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/readiness", { cache: "no-store" })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (active) setAuthReady(Boolean(response.ok && data.ready));
+      })
+      .catch(() => {
+        if (active) setAuthReady(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+
+    if (authReady === false) {
+      setError("Sign-in is temporarily unavailable on this deployment. Please retry after the service is reconfigured.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -37,10 +77,10 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
+      router.push(safeCallbackUrl());
       router.refresh();
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError("The sign-in service could not complete the request. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -104,6 +144,13 @@ export default function LoginPage() {
                 Use the email and password connected to your PrepWithAI account.
               </p>
 
+              {authReady === false && (
+                <div className="mt-6 flex items-start gap-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.08] px-4 py-3 text-sm text-amber-100">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  Authentication is not ready on this deployment. The page remains available so the configuration issue can be diagnosed without a generic server error.
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="mt-8 space-y-4">
                 {error && (
                   <div role="alert" className="rounded-xl border border-red-400/20 bg-red-400/[0.08] px-4 py-3 text-sm text-red-200">
@@ -128,7 +175,12 @@ export default function LoginPage() {
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-xs font-medium text-zinc-400">Password</span>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="text-xs font-medium text-zinc-400">Password</span>
+                    <Link href="/forgot-password" className="text-xs font-medium text-indigo-300 hover:text-indigo-200">
+                      Forgot password?
+                    </Link>
+                  </div>
                   <span className="relative block">
                     <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-600" />
                     <input
@@ -153,7 +205,7 @@ export default function LoginPage() {
 
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || authReady === false}
                   className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-semibold text-zinc-950 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Sign in <ArrowRight className="h-4 w-4" /></>}

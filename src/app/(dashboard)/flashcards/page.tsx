@@ -1,21 +1,29 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  BookOpen,
-  RotateCcw,
+  Brain,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Shuffle,
-  Star,
-  Check,
-  X,
-  Brain,
-  Layers,
-  Sparkles,
+  Clock3,
   Filter,
+  Layers,
+  Loader2,
+  RotateCcw,
+  Sparkles,
+  Target,
 } from "lucide-react";
+
+interface FlashcardProgress {
+  repetitions: number;
+  reviewCount: number;
+  retention: number | null;
+  intervalDays: number;
+  nextReviewAt: string | null;
+  lastReviewedAt: string | null;
+  lastRating: string | null;
+}
 
 interface Flashcard {
   id: string;
@@ -23,407 +31,339 @@ interface Flashcard {
   back: string;
   category: string;
   difficulty: "easy" | "medium" | "hard";
+  due: boolean;
   mastered: boolean;
+  progress: FlashcardProgress;
 }
 
-const CATEGORIES = [
-  "All",
-  "JavaScript",
-  "React",
-  "System Design",
-  "Data Structures",
-  "Algorithms",
-  "Behavioral",
-  "SQL",
-  "DevOps",
-];
+interface FlashcardResponse {
+  flashcards: Flashcard[];
+  stats: { due: number; mastered: number; reviewed: number };
+  categories: string[];
+  error?: string;
+}
 
-const MOCK_FLASHCARDS: Flashcard[] = [
+type Rating = "again" | "hard" | "good" | "easy";
+
+const ratingOptions: Array<{
+  value: Rating;
+  label: string;
+  detail: string;
+  className: string;
+}> = [
   {
-    id: "1",
-    front: "What is the difference between == and === in JavaScript?",
-    back: '== performs type coercion before comparison (loose equality), while === compares both value and type without coercion (strict equality). Example: "5" == 5 is true, but "5" === 5 is false.',
-    category: "JavaScript",
-    difficulty: "easy",
-    mastered: false,
+    value: "again",
+    label: "Again",
+    detail: "Review in ~10 min",
+    className: "border-red-400/20 bg-red-400/8 text-red-200 hover:bg-red-400/14",
   },
   {
-    id: "2",
-    front: "Explain the Virtual DOM in React",
-    back: "The Virtual DOM is a lightweight in-memory representation of the real DOM. React creates a virtual DOM tree, and when state changes, it creates a new virtual DOM, diffs it with the previous one (reconciliation), and only updates the changed parts in the real DOM. This minimizes expensive DOM operations.",
-    category: "React",
-    difficulty: "medium",
-    mastered: false,
+    value: "hard",
+    label: "Hard",
+    detail: "Short interval",
+    className: "border-amber-400/20 bg-amber-400/8 text-amber-200 hover:bg-amber-400/14",
   },
   {
-    id: "3",
-    front: "What is a closure in JavaScript?",
-    back: "A closure is a function that has access to variables from its outer (enclosing) function scope, even after the outer function has returned. Closures are created every time a function is created. They enable data privacy, factory functions, and module patterns.",
-    category: "JavaScript",
-    difficulty: "easy",
-    mastered: false,
+    value: "good",
+    label: "Good",
+    detail: "Normal interval",
+    className: "border-indigo-400/20 bg-indigo-400/8 text-indigo-200 hover:bg-indigo-400/14",
   },
   {
-    id: "4",
-    front: "Explain CAP Theorem",
-    back: "The CAP theorem states that a distributed system can only guarantee 2 of 3 properties simultaneously: Consistency (all nodes see the same data), Availability (every request gets a response), and Partition tolerance (system works despite network partitions). Since partitions are unavoidable, you choose between CP or AP systems.",
-    category: "System Design",
-    difficulty: "hard",
-    mastered: false,
-  },
-  {
-    id: "5",
-    front: "What is the time complexity of binary search?",
-    back: "O(log n) time complexity and O(1) space complexity for iterative implementation. The search space is halved with each comparison, making it efficient for sorted arrays. Recursive implementation uses O(log n) space for the call stack.",
-    category: "Algorithms",
-    difficulty: "easy",
-    mastered: false,
-  },
-  {
-    id: "6",
-    front: "Explain the STAR method for behavioral interviews",
-    back: "STAR stands for: Situation (set the context), Task (describe your responsibility), Action (explain what you did), Result (share the outcome with metrics). This framework helps structure behavioral answers clearly and concisely. Always quantify results when possible.",
-    category: "Behavioral",
-    difficulty: "easy",
-    mastered: false,
-  },
-  {
-    id: "7",
-    front: "What is a B-Tree and where is it used?",
-    back: "A B-Tree is a self-balancing search tree where nodes can have multiple keys and children. Each node can contain m-1 to 2m-1 keys. B-Trees are widely used in databases and file systems because they minimize disk I/O by keeping the tree shallow, allowing large branching factors.",
-    category: "Data Structures",
-    difficulty: "hard",
-    mastered: false,
-  },
-  {
-    id: "8",
-    front: "What is the difference between SQL JOIN types?",
-    back: "INNER JOIN: returns matching rows from both tables. LEFT JOIN: all rows from left + matching from right (NULLs for non-matching). RIGHT JOIN: all rows from right + matching from left. FULL OUTER JOIN: all rows from both tables. CROSS JOIN: cartesian product of both tables.",
-    category: "SQL",
-    difficulty: "medium",
-    mastered: false,
-  },
-  {
-    id: "9",
-    front: "Explain useEffect cleanup in React",
-    back: "The cleanup function in useEffect runs before the component unmounts and before the effect re-runs. It is used to prevent memory leaks by cleaning up subscriptions, event listeners, timers, or abort controllers. Return a function from useEffect to define cleanup logic.",
-    category: "React",
-    difficulty: "medium",
-    mastered: false,
-  },
-  {
-    id: "10",
-    front: "What is CI/CD?",
-    back: "CI (Continuous Integration): automatically building and testing code changes when merged. CD (Continuous Delivery): automatically deploying tested code to staging. CD (Continuous Deployment): automatically deploying to production. Tools: GitHub Actions, Jenkins, CircleCI, GitLab CI.",
-    category: "DevOps",
-    difficulty: "medium",
-    mastered: false,
+    value: "easy",
+    label: "Easy",
+    detail: "Longer interval",
+    className: "border-emerald-400/20 bg-emerald-400/8 text-emerald-200 hover:bg-emerald-400/14",
   },
 ];
 
-const diffColors = {
-  easy: { text: "text-emerald-400", bg: "bg-emerald-500/20" },
-  medium: { text: "text-amber-400", bg: "bg-amber-500/20" },
-  hard: { text: "text-red-400", bg: "bg-red-500/20" },
-};
+function displayCategory(value: string) {
+  return value
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function formatNextReview(value: string | null) {
+  if (!value) return "New card";
+  const date = new Date(value);
+  const diff = date.getTime() - Date.now();
+  if (diff <= 0) return "Due now";
+  const minutes = Math.ceil(diff / 60_000);
+  if (minutes < 60) return `In ${minutes} min`;
+  const hours = Math.ceil(minutes / 60);
+  if (hours < 48) return `In ${hours} hr`;
+  return `In ${Math.ceil(hours / 24)} days`;
+}
 
 export default function FlashcardsPage() {
-  const [cards, setCards] = useState<Flashcard[]>(MOCK_FLASHCARDS);
+  const [cards, setCards] = useState<Flashcard[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [stats, setStats] = useState({ due: 0, mastered: 0, reviewed: 0 });
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [dueOnly, setDueOnly] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [showMastered, setShowMastered] = useState(true);
-  const [studyMode, setStudyMode] = useState<"browse" | "study">("browse");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [reviewedThisSession, setReviewedThisSession] = useState(0);
 
-  const filteredCards = cards.filter((c) => {
-    if (selectedCategory !== "All" && c.category !== selectedCategory)
-      return false;
-    if (!showMastered && c.mastered) return false;
-    return true;
-  });
+  const loadCards = useCallback(async () => {
+    setLoading(true);
+    setError("");
 
-  const currentCard = filteredCards[currentIndex];
-  const masteredCount = cards.filter((c) => c.mastered).length;
+    try {
+      const params = new URLSearchParams({ limit: "50" });
+      if (selectedCategory !== "all") params.set("category", selectedCategory);
+      if (dueOnly) params.set("dueOnly", "1");
 
-  const nextCard = () => {
-    setIsFlipped(false);
-    setCurrentIndex((prev) => (prev + 1) % filteredCards.length);
-  };
+      const response = await fetch(`/api/flashcards?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const data = (await response.json()) as FlashcardResponse;
+      if (!response.ok) throw new Error(data.error || "Unable to load flashcards");
 
-  const prevCard = () => {
-    setIsFlipped(false);
-    setCurrentIndex(
-      (prev) => (prev - 1 + filteredCards.length) % filteredCards.length,
-    );
-  };
-
-  const shuffleCards = () => {
-    setIsFlipped(false);
-    setCurrentIndex(0);
-    setCards((prev) => [...prev].sort(() => Math.random() - 0.5));
-  };
-
-  const toggleMastered = (id: string) => {
-    setCards((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, mastered: !c.mastered } : c)),
-    );
-  };
-
-  const markKnown = () => {
-    if (currentCard) {
-      toggleMastered(currentCard.id);
-      nextCard();
+      setCards(data.flashcards || []);
+      setStats(data.stats || { due: 0, mastered: 0, reviewed: 0 });
+      setCategories(data.categories || []);
+      setCurrentIndex(0);
+      setIsFlipped(false);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Unable to load flashcards");
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [dueOnly, selectedCategory]);
+
+  useEffect(() => {
+    void loadCards();
+  }, [loadCards]);
+
+  const currentCard = cards[currentIndex];
+  const masteryRate = useMemo(() => {
+    if (cards.length === 0) return 0;
+    return Math.round((cards.filter((card) => card.mastered).length / cards.length) * 100);
+  }, [cards]);
+
+  function move(direction: 1 | -1) {
+    if (cards.length === 0) return;
+    setCurrentIndex((index) => (index + direction + cards.length) % cards.length);
+    setIsFlipped(false);
+  }
+
+  async function rateCard(rating: Rating) {
+    if (!currentCard || saving) return;
+    setSaving(true);
+    setError("");
+
+    try {
+      const response = await fetch(`/api/flashcards/${currentCard.id}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Unable to save review");
+
+      setReviewedThisSession((count) => count + 1);
+      await loadCards();
+    } catch (reviewError) {
+      setError(reviewError instanceof Error ? reviewError.message : "Unable to save review");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
-    <div className="min-h-screen p-4 md:p-6 space-y-6 page-enter bg-[#080808]">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="mx-auto max-w-6xl space-y-7 page-enter">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
-            <div className="p-2 bg-purple-500/20 rounded-xl">
-              <BookOpen className="w-6 h-6 text-purple-400" />
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">
+            Retention workspace
+          </p>
+          <h1 className="mt-2 text-3xl font-bold tracking-[-0.04em]">Spaced repetition</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#858596]">
+            Review real question-bank concepts on a schedule that adapts to how well you remember them.
+            Your ratings and next-review dates are saved to your account.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/4 px-4 py-3 text-sm text-[#a8a8b8]">
+          <Sparkles className="h-4 w-4 text-violet-300" />
+          {reviewedThisSession} reviewed this session
+        </div>
+      </div>
+
+      {error && (
+        <div role="alert" className="rounded-xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-200">
+          {error}
+        </div>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: "Loaded cards", value: cards.length, icon: Layers },
+          { label: "Due now", value: stats.due, icon: Clock3 },
+          { label: "Reviewed", value: stats.reviewed, icon: RotateCcw },
+          { label: "Mastery", value: `${masteryRate}%`, icon: Target },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <div key={item.label} className="rounded-2xl border border-white/8 bg-[#101016] p-4">
+              <div className="flex items-center gap-2 text-xs text-[#747486]">
+                <Icon className="h-4 w-4 text-violet-300" /> {item.label}
+              </div>
+              <div className="mt-3 text-2xl font-semibold">{item.value}</div>
             </div>
-            Flashcards
-          </h1>
-          <p className="text-[#888] mt-1">
-            Master interview concepts with spaced repetition
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() =>
-              setStudyMode(studyMode === "browse" ? "study" : "browse")
-            }
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              studyMode === "study"
-                ? "bg-purple-500 text-white"
-                : "bg-white/5 text-[#888] hover:text-white"
-            }`}
-          >
-            <Brain className="w-4 h-4" />
-            {studyMode === "study" ? "Exit Study Mode" : "Study Mode"}
-          </button>
-          <button
-            onClick={shuffleCards}
-            className="flex items-center gap-2 px-4 py-2 bg-white/5 text-[#888] rounded-lg hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <Shuffle className="w-4 h-4" />
-            Shuffle
-          </button>
-        </div>
+          );
+        })}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 slide-up-stagger">
-        <div className="bg-white/5 rounded-xl border border-white/10 p-4 premium-card">
-          <div className="flex items-center gap-2 text-purple-400 mb-2">
-            <Layers className="w-4 h-4" />
-            <span className="text-sm">Total Cards</span>
-          </div>
-          <p className="text-2xl font-bold text-white">{cards.length}</p>
-        </div>
-        <div className="bg-white/5 rounded-xl border border-white/10 p-4 premium-card">
-          <div className="flex items-center gap-2 text-emerald-400 mb-2">
-            <Check className="w-4 h-4" />
-            <span className="text-sm">Mastered</span>
-          </div>
-          <p className="text-2xl font-bold text-white">{masteredCount}</p>
-        </div>
-        <div className="bg-white/5 rounded-xl border border-white/10 p-4 premium-card">
-          <div className="flex items-center gap-2 text-amber-400 mb-2">
-            <RotateCcw className="w-4 h-4" />
-            <span className="text-sm">To Review</span>
-          </div>
-          <p className="text-2xl font-bold text-white">
-            {cards.length - masteredCount}
-          </p>
-        </div>
-        <div className="bg-white/5 rounded-xl border border-white/10 p-4 premium-card">
-          <div className="flex items-center gap-2 text-indigo-400 mb-2">
-            <Sparkles className="w-4 h-4" />
-            <span className="text-sm">Mastery</span>
-          </div>
-          <p className="text-2xl font-bold text-white">
-            {Math.round((masteredCount / cards.length) * 100)}%
-          </p>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Filter className="w-4 h-4 text-[#666]" />
-        {CATEGORIES.map((cat) => (
+      <div className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-[#0e0e14] p-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter className="h-4 w-4 text-[#666678]" />
           <button
-            key={cat}
-            onClick={() => {
-              setSelectedCategory(cat);
-              setCurrentIndex(0);
-              setIsFlipped(false);
-            }}
-            className={`px-3 py-1 rounded-full text-sm transition-colors ${
-              selectedCategory === cat
-                ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
-                : "bg-white/5 text-[#888] border border-white/10 hover:border-white/20"
+            onClick={() => setSelectedCategory("all")}
+            className={`rounded-full border px-3 py-1.5 text-xs transition ${
+              selectedCategory === "all"
+                ? "border-violet-400/30 bg-violet-400/10 text-violet-200"
+                : "border-white/8 bg-white/4 text-[#89899a] hover:text-white"
             }`}
           >
-            {cat}
+            All topics
           </button>
-        ))}
+          {categories.map((category) => (
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                selectedCategory === category
+                  ? "border-violet-400/30 bg-violet-400/10 text-violet-200"
+                  : "border-white/8 bg-white/4 text-[#89899a] hover:text-white"
+              }`}
+            >
+              {displayCategory(category)}
+            </button>
+          ))}
+        </div>
+
         <button
-          onClick={() => setShowMastered(!showMastered)}
-          className={`px-3 py-1 rounded-full text-sm transition-colors ${
-            showMastered
-              ? "bg-white/5 text-[#888] border border-white/10"
-              : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+          onClick={() => setDueOnly((value) => !value)}
+          className={`rounded-xl border px-4 py-2 text-sm transition ${
+            dueOnly
+              ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
+              : "border-white/8 bg-white/4 text-[#9999aa] hover:text-white"
           }`}
         >
-          {showMastered ? "Hide Mastered" : "Show Mastered"}
+          {dueOnly ? "Showing due cards" : "Showing all cards"}
         </button>
       </div>
 
-      {/* Flashcard Display */}
-      {filteredCards.length > 0 && currentCard ? (
-        <div className="flex flex-col items-center">
-          {/* Progress */}
-          <div className="w-full max-w-2xl flex items-center justify-between mb-4 text-sm text-[#888]">
-            <span>
-              Card {currentIndex + 1} of {filteredCards.length}
-            </span>
-            <div className="flex items-center gap-2">
-              <span
-                className={`px-2 py-0.5 rounded-full text-xs ${diffColors[currentCard.difficulty].bg} ${diffColors[currentCard.difficulty].text}`}
-              >
-                {currentCard.difficulty}
-              </span>
-              <span className="text-[#666]">{currentCard.category}</span>
-            </div>
-          </div>
-
-          {/* Card */}
-          <div
-            className="w-full max-w-2xl perspective-1000 cursor-pointer"
-            onClick={() => setIsFlipped(!isFlipped)}
-          >
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`${currentCard.id}-${isFlipped ? "back" : "front"}`}
-                initial={{ rotateY: isFlipped ? -90 : 90, opacity: 0 }}
-                animate={{ rotateY: 0, opacity: 1 }}
-                exit={{ rotateY: isFlipped ? 90 : -90, opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className={`min-h-75 p-8 rounded-2xl border flex flex-col items-center justify-center text-center ${
-                  isFlipped
-                    ? "bg-indigo-500/10 border-indigo-500/20"
-                    : "bg-white/5 border-white/10"
-                }`}
-              >
-                <p className="text-xs text-[#666] uppercase tracking-wider mb-4">
-                  {isFlipped ? "💡 Answer" : "❓ Question"}
-                </p>
-                <p
-                  className={`text-lg md:text-xl ${isFlipped ? "text-[#ccc]" : "text-white"} leading-relaxed`}
-                >
-                  {isFlipped ? currentCard.back : currentCard.front}
-                </p>
-                <p className="text-xs text-[#555] mt-6">
-                  {isFlipped
-                    ? "Click to see question"
-                    : "Click to reveal answer"}
-                </p>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-
-          {/* Controls */}
-          <div className="flex items-center gap-4 mt-6">
-            <button
-              onClick={prevCard}
-              className="p-3 bg-white/5 rounded-full hover:bg-white/10 text-[#888] hover:text-white transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-
-            {studyMode === "study" ? (
-              <>
-                <button
-                  onClick={nextCard}
-                  className="flex items-center gap-2 px-6 py-3 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                  Don&apos;t Know
-                </button>
-                <button
-                  onClick={markKnown}
-                  className="flex items-center gap-2 px-6 py-3 bg-emerald-500/20 text-emerald-400 rounded-xl hover:bg-emerald-500/30 transition-colors"
-                >
-                  <Check className="w-5 h-5" />
-                  Know It
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setIsFlipped(!isFlipped)}
-                  className="flex items-center gap-2 px-6 py-3 bg-purple-500/20 text-purple-400 rounded-xl hover:bg-purple-500/30 transition-colors"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  Flip
-                </button>
-                <button
-                  onClick={() => toggleMastered(currentCard.id)}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-colors ${
-                    currentCard.mastered
-                      ? "bg-emerald-500/20 text-emerald-400"
-                      : "bg-white/5 text-[#888] hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  <Star
-                    className={`w-4 h-4 ${currentCard.mastered ? "fill-emerald-400" : ""}`}
-                  />
-                  {currentCard.mastered ? "Mastered" : "Mark Mastered"}
-                </button>
-              </>
-            )}
-
-            <button
-              onClick={nextCard}
-              className="p-3 bg-white/5 rounded-full hover:bg-white/10 text-[#888] hover:text-white transition-colors"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="w-full max-w-2xl mt-6">
-            <div className="flex gap-1">
-              {filteredCards.map((card, i) => (
-                <button
-                  key={card.id}
-                  onClick={() => {
-                    setCurrentIndex(i);
-                    setIsFlipped(false);
-                  }}
-                  className={`flex-1 h-1.5 rounded-full transition-colors ${
-                    i === currentIndex
-                      ? "bg-purple-500"
-                      : card.mastered
-                        ? "bg-emerald-500/50"
-                        : "bg-white/10"
-                  }`}
-                />
-              ))}
-            </div>
+      {loading ? (
+        <div className="grid min-h-[420px] place-items-center rounded-[28px] border border-white/8 bg-[#0d0d12]">
+          <div className="text-center text-sm text-[#88889a]">
+            <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-violet-300" />
+            Loading your review queue…
           </div>
         </div>
+      ) : currentCard ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between text-xs text-[#737385]">
+            <span>
+              Card {currentIndex + 1} of {cards.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full border border-white/8 bg-white/4 px-2.5 py-1 capitalize">
+                {currentCard.difficulty}
+              </span>
+              <span>{displayCategory(currentCard.category)}</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsFlipped((value) => !value)}
+            className="group flex min-h-[360px] w-full flex-col items-center justify-center rounded-[30px] border border-white/9 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.10),transparent_42%),#0d0d13] p-7 text-center shadow-2xl shadow-black/20 transition hover:border-violet-400/20 sm:p-12"
+          >
+            <div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl border border-violet-400/15 bg-violet-400/8 text-violet-300">
+              {isFlipped ? <CheckCircle2 className="h-5 w-5" /> : <Brain className="h-5 w-5" />}
+            </div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-300">
+              {isFlipped ? "Answer and coaching reference" : "Recall before revealing"}
+            </p>
+            <div className="mt-5 max-w-3xl text-xl font-medium leading-8 text-[#eeeeF5] sm:text-2xl">
+              {isFlipped ? currentCard.back : currentCard.front}
+            </div>
+            <p className="mt-8 text-xs text-[#666678]">
+              {isFlipped ? "Rate how difficult recall felt." : "Think through your answer, then click to reveal."}
+            </p>
+          </button>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-xs text-[#747486]">
+              <Clock3 className="h-4 w-4" />
+              {formatNextReview(currentCard.progress.nextReviewAt)}
+              {currentCard.progress.retention !== null && (
+                <span>· {currentCard.progress.retention}% retention</span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => move(-1)}
+                className="grid h-10 w-10 place-items-center rounded-xl border border-white/8 bg-white/4 text-[#9b9bac] hover:bg-white/8 hover:text-white"
+                aria-label="Previous card"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => move(1)}
+                className="grid h-10 w-10 place-items-center rounded-xl border border-white/8 bg-white/4 text-[#9b9bac] hover:bg-white/8 hover:text-white"
+                aria-label="Next card"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {isFlipped && (
+            <div className="grid gap-2 sm:grid-cols-4">
+              {ratingOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => void rateCard(option.value)}
+                  disabled={saving}
+                  className={`rounded-2xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${option.className}`}
+                >
+                  <div className="text-sm font-semibold">{option.label}</div>
+                  <div className="mt-1 text-[11px] opacity-70">{option.detail}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       ) : (
-        <div className="text-center py-20">
-          <BookOpen className="w-12 h-12 text-[#555] mx-auto mb-4" />
-          <h3 className="text-white font-medium mb-2">No Flashcards Found</h3>
-          <p className="text-[#888] text-sm">
-            Try changing your filters or category selection.
-          </p>
+        <div className="grid min-h-[420px] place-items-center rounded-[28px] border border-white/8 bg-[#0d0d12] p-8 text-center">
+          <div className="max-w-md">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-300">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <h2 className="mt-5 text-xl font-semibold">
+              {dueOnly ? "Your review queue is clear" : "No flashcards found"}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[#818192]">
+              {dueOnly
+                ? "You have no cards due in this filter. Show all cards to study ahead or come back when the scheduler brings them back."
+                : "The question bank has no cards for this topic yet."}
+            </p>
+            {dueOnly && (
+              <button
+                onClick={() => setDueOnly(false)}
+                className="mt-5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 hover:bg-zinc-100"
+              >
+                Show all cards
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -3,7 +3,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { CheckCircle2, CreditCard, Loader2, Save, Shield, Sparkles, Trash2, User } from "lucide-react";
+import {
+  CheckCircle2,
+  CreditCard,
+  Download,
+  Loader2,
+  Save,
+  Shield,
+  Sparkles,
+  Trash2,
+  User,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +23,7 @@ import { Separator } from "@/components/ui/separator";
 export default function SettingsPage() {
   const { data: session, update } = useSession();
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState("");
   const [formData, setFormData] = useState({ name: "", email: "" });
   const [passwordData, setPasswordData] = useState({ current: "", newPassword: "", confirm: "" });
@@ -73,6 +84,36 @@ export default function SettingsPage() {
       setNotice(error instanceof Error ? error.message : "Unable to update password");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleExportData() {
+    setExporting(true);
+    setNotice("");
+    try {
+      const response = await fetch("/api/user/export", { cache: "no-store" });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Unable to export account data");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") || "";
+      const filenameMatch = disposition.match(/filename="([^"]+)"/);
+      const filename = filenameMatch?.[1] || "prepwithai-data.json";
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setNotice("Your data export was downloaded.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Unable to export account data");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -210,6 +251,27 @@ export default function SettingsPage() {
             <Link href="/pricing">
               <Button variant="outline"><CreditCard className="mr-2 h-4 w-4" /> Manage plan</Button>
             </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="rounded-lg bg-cyan-500/10 p-2"><Download className="h-5 w-5 text-cyan-300" /></div>
+            <div>
+              <h2 className="font-semibold">Data portability</h2>
+              <p className="text-sm text-[#858596]">Download the core data associated with your account.</p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-4 rounded-xl border border-white/8 bg-white/4 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-xl text-sm leading-6 text-[#858596]">
+              Export your profile, interview sessions, progress history, study-group memberships, flashcard reviews, and AI usage records as JSON.
+            </p>
+            <Button variant="outline" onClick={handleExportData} disabled={exporting}>
+              {exporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+              Export data
+            </Button>
           </div>
         </CardContent>
       </Card>

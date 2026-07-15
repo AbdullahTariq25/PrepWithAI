@@ -6,8 +6,8 @@ Use this document as the minimum operational gate for a production release. Secr
 
 | Variable | Purpose |
 |---|---|
-| `MONGODB_URI` | MongoDB connection used by authentication, sessions, progress, study groups, distributed rate limits, and product data. |
-| `NEXTAUTH_SECRET` or `AUTH_SECRET` | Strong random secret used for authenticated sessions and JWT validation. |
+| `MONGODB_URI` | MongoDB connection used by authentication, sessions, progress, study groups, job targets, flashcard review history, distributed rate limits, and product data. |
+| `AUTH_SECRET` or `NEXTAUTH_SECRET` | Strong random secret used for authenticated sessions and JWT validation. **Required for production.** |
 | `NEXT_PUBLIC_APP_URL` | Canonical public application URL used for links and application flows. |
 | `GROQ_API_KEY` | AI interview and evaluation provider credential. |
 
@@ -16,6 +16,15 @@ Recommended generation for the auth secret:
 ```bash
 openssl rand -base64 48
 ```
+
+### Authentication environment policy
+
+- Production must have an explicit `AUTH_SECRET` or `NEXTAUTH_SECRET`. The application intentionally fails closed without it.
+- Preview deployments should also receive an explicit Preview-scoped auth secret in the hosting platform.
+- As a recovery mechanism for **non-production Vercel Preview deployments only**, PrepWithAI can derive a stable deployment-scoped signing secret from server-only credentials already available to that preview. This exists to prevent a preview-only `MissingSecret` failure from hiding the rest of the release during testing.
+- The preview fallback is **not** the production configuration and should not replace a properly managed Preview secret.
+- `GET /api/auth/readiness` reports whether the current deployment can initialize authentication without exposing the secret.
+- Auth.js and the Next.js proxy must always use the same secret resolver; do not configure one independently of the other.
 
 ## AI configuration
 
@@ -73,7 +82,9 @@ Endpoints:
 
 - `GET /api/health` — public minimal liveness only.
 - `HEAD /api/health` — lightweight liveness probe.
-- `GET /api/health?deep=1` with `Authorization: Bearer <HEALTH_CHECK_SECRET>` — protected readiness diagnostics.
+- `GET /api/health?deep=1` with `Authorization: Bearer <HEALTH_CHECK_SECRET>` — protected infrastructure readiness diagnostics.
+- `GET /api/auth/readiness` — public safe signal that authentication can initialize on this deployment.
+- `GET /api/readiness` — authenticated product readiness diagnostics used by the Readiness Center.
 
 Do not expose the deep-check secret in browser code or public monitoring URLs.
 
@@ -109,6 +120,7 @@ The public sign-in and sign-up screens are credentials-only. Optional OAuth prov
 - [ ] TTL cleanup for rate-limit buckets is allowed to operate.
 - [ ] Production and preview environments use separate secrets where practical.
 - [ ] A domain and HTTPS are configured before sending password-reset or billing links to customers.
+- [ ] New persistent models—flashcard progress and job targets—are included in backup, export, and deletion verification.
 
 ## Release gate
 
@@ -122,20 +134,45 @@ npm run build
 
 Then verify:
 
+### Authentication and deployment
+
 - [ ] The exact commit intended for release passed CI.
 - [ ] `/api/health` returns `200` without leaking configuration details.
+- [ ] `/api/auth/readiness` returns `200` and `ready: true` on the exact deployment under test.
 - [ ] Protected deep readiness returns `200`; any `503` is investigated before release.
 - [ ] Credentials signup, login, logout, forgot-password, and reset-password flows work.
+- [ ] A protected route redirects an unauthenticated visitor to login with a safe internal callback URL.
+- [ ] A successful login returns the user to the requested internal route and does not redirect to an untrusted external URL.
+- [ ] Runtime logs contain no `MissingSecret` or repeated Auth.js configuration errors after the smoke test.
+
+### Interview core
+
+- [ ] The authenticated Readiness Center reports auth, database, and AI-interviewer state accurately.
+- [ ] Microphone and camera checks request permissions only when the user runs the device check and stop acquired media tracks after testing.
 - [ ] A Free user can start the allowed Free interview flow and is blocked from Pro-only tracks/modes server-side.
 - [ ] A Pro/trial user can start text, voice, and video modes.
 - [ ] Interview completion produces one report only; repeated report requests do not duplicate ELO or progress.
 - [ ] Evidence shown in the report is attributable to candidate transcript text.
+
+### Learning and career workflows
+
+- [ ] Flashcards load from the real question bank, not a hard-coded browser list.
+- [ ] Again/Hard/Good/Easy ratings persist after refresh and produce a new `nextReviewAt` schedule.
+- [ ] Due-card filtering and mastery state are user-specific.
 - [ ] Resume upload extracts the actual PDF and rejects image-only PDFs honestly.
+- [ ] Optional resume-to-job matching uses the supplied job description and remains labeled as a deterministic preparation signal—not a hiring, recruiter, or ATS guarantee.
+- [ ] The Job Target Pipeline stores only user-entered opportunities; no fabricated listings, posting ages, salary claims, or match percentages are shown.
+- [ ] Job status changes, follow-up dates, archive, delete, and source URLs persist correctly.
 - [ ] Code execution either runs against the configured sandbox or returns an explicit unavailable state.
 - [ ] Study groups persist after refresh; join, leave, capacity, privacy, and owner deletion behave correctly.
+
+### Data lifecycle and commercial operations
+
+- [ ] Account data export downloads a private JSON archive containing the expected profile, interview, progress, study-group, flashcard, job-pipeline, and user AI-usage records.
+- [ ] Account deletion removes user-owned sessions, progress, flashcard history, job targets, user AI usage, owned study groups, and group membership references before deleting the user.
 - [ ] Stripe upgrade/cancel lifecycle works when billing is enabled.
 - [ ] Error monitoring receives a controlled test error when monitoring is enabled.
-- [ ] Mobile and desktop smoke tests cover the landing page, auth, dashboard, interview setup, active interview, report, resume, pricing, and study groups.
+- [ ] Mobile and desktop smoke tests cover the landing page, auth, dashboard, readiness, interview setup, active interview, report, resume, job pipeline, flashcards, pricing, settings export, and study groups.
 
 ## Rollback readiness
 
@@ -144,6 +181,7 @@ Before release, record:
 - the exact Git commit SHA,
 - the deployment ID/URL,
 - the previous known-good deployment,
-- the database migration or schema-change impact, if any.
+- the database/schema impact of new persistent models,
+- whether a rollback changes authentication secret resolution or session compatibility.
 
-Prefer promoting a validated immutable deployment and retain a known-good rollback candidate. Never describe a deployment as current until the deployed commit SHA has been verified.
+Prefer promoting a validated immutable deployment and retain a known-good rollback candidate. Never describe a deployment as current until the deployed commit SHA—or an application-tree-identical commit—has been verified.
