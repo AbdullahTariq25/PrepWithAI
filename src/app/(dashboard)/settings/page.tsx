@@ -1,16 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { motion } from "framer-motion";
-import {
-  User,
-  Shield,
-  Save,
-  Loader2,
-  CheckCircle2,
-  Sparkles,
-} from "lucide-react";
+import { CheckCircle2, CreditCard, Loader2, Save, Shield, Sparkles, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,44 +11,53 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 export default function SettingsPage() {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [formData, setFormData] = useState({
-    name: session?.user?.name || "",
-    email: session?.user?.email || "",
-  });
-  const [passwordData, setPasswordData] = useState({
-    current: "",
-    newPassword: "",
-    confirm: "",
-  });
+  const [notice, setNotice] = useState("");
+  const [formData, setFormData] = useState({ name: "", email: "" });
+  const [passwordData, setPasswordData] = useState({ current: "", newPassword: "", confirm: "" });
 
-  const handleSaveProfile = async () => {
+  useEffect(() => {
+    setFormData({
+      name: session?.user?.name || "",
+      email: session?.user?.email || "",
+    });
+  }, [session?.user?.email, session?.user?.name]);
+
+  async function handleSaveProfile() {
     setSaving(true);
+    setNotice("");
     try {
-      await fetch("/api/user/update", {
+      const response = await fetch("/api/user/update", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: formData.name }),
+        body: JSON.stringify({ name: formData.name.trim() }),
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Unable to save profile");
+      await update({ name: formData.name.trim() });
+      setNotice("Profile updated successfully.");
     } catch (error) {
-      console.error("Save error:", error);
+      setNotice(error instanceof Error ? error.message : "Unable to save profile");
     } finally {
       setSaving(false);
     }
-  };
+  }
 
-  const handleChangePassword = async () => {
-    if (passwordData.newPassword !== passwordData.confirm) {
-      alert("Passwords do not match");
+  async function handleChangePassword() {
+    setNotice("");
+    if (passwordData.newPassword.length < 8) {
+      setNotice("Your new password must be at least 8 characters.");
       return;
     }
+    if (passwordData.newPassword !== passwordData.confirm) {
+      setNotice("The new passwords do not match.");
+      return;
+    }
+
     setSaving(true);
     try {
-      const res = await fetch("/api/user/password", {
+      const response = await fetch("/api/user/password", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -63,251 +65,165 @@ export default function SettingsPage() {
           newPassword: passwordData.newPassword,
         }),
       });
-      if (res.ok) {
-        setPasswordData({ current: "", newPassword: "", confirm: "" });
-        setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
-      } else {
-        const data = await res.json();
-        alert(data.error || "Failed to update password");
-      }
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Unable to update password");
+      setPasswordData({ current: "", newPassword: "", confirm: "" });
+      setNotice("Password updated successfully.");
     } catch (error) {
-      console.error("Password error:", error);
+      setNotice(error instanceof Error ? error.message : "Unable to update password");
     } finally {
       setSaving(false);
     }
-  };
+  }
+
+  async function deleteAccount() {
+    const confirmed = window.confirm("Delete your account and all associated data permanently? This cannot be undone.");
+    if (!confirmed) return;
+
+    setSaving(true);
+    setNotice("");
+    try {
+      const response = await fetch("/api/user/delete", { method: "DELETE" });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Unable to delete account");
+      }
+      window.location.assign("/");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Unable to delete account");
+      setSaving(false);
+    }
+  }
+
+  const plan = session?.user?.plan || "free";
+  const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 page-enter bg-[#080808]">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <h1 className="text-3xl font-bold mb-2">Settings</h1>
-        <p className="text-[#888]">Manage your account and preferences</p>
-      </motion.div>
+    <div className="mx-auto max-w-3xl space-y-7 page-enter">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+        <p className="mt-2 text-sm text-[#858596]">Manage your profile, security, billing, and account data.</p>
+      </div>
 
-      {saved && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 bg-green-500/10 text-green-500 border border-green-500/20 rounded-lg px-4 py-3 text-sm"
-        >
-          <CheckCircle2 className="w-4 h-4" />
-          Changes saved successfully!
-        </motion.div>
+      {notice && (
+        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-[#c8c8d2]">
+          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          {notice}
+        </div>
       )}
 
-      {/* Profile Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-indigo-500/10 rounded-lg">
-                <User className="w-5 h-5 text-indigo-500" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">Profile</h2>
-                <p className="text-sm text-[#888]">Your personal information</p>
-              </div>
+      <Card>
+        <CardContent className="p-6">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="rounded-lg bg-indigo-500/10 p-2"><User className="h-5 w-5 text-indigo-400" /></div>
+            <div>
+              <h2 className="font-semibold">Profile</h2>
+              <p className="text-sm text-[#858596]">Your account identity.</p>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">
-                  Full Name
-                </label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="Your name"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">
-                  Email
-                </label>
-                <Input value={formData.email} disabled className="opacity-60" />
-                <p className="text-xs text-[#888] mt-1">
-                  Email cannot be changed
-                </p>
-              </div>
-              <Button onClick={handleSaveProfile} disabled={saving}>
-                {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <Save className="w-4 h-4 mr-2" />
-                )}
-                Save Changes
-              </Button>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="settings-name" className="mb-1.5 block text-sm font-medium">Full name</label>
+              <Input
+                id="settings-name"
+                value={formData.name}
+                onChange={(event) => setFormData((current) => ({ ...current, name: event.target.value }))}
+                placeholder="Your name"
+              />
             </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Security Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-orange-500/10 rounded-lg">
-                <Shield className="w-5 h-5 text-orange-500" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">Security</h2>
-                <p className="text-sm text-[#888]">
-                  Password and authentication
-                </p>
-              </div>
+            <div>
+              <label htmlFor="settings-email" className="mb-1.5 block text-sm font-medium">Email</label>
+              <Input id="settings-email" value={formData.email} disabled className="opacity-60" />
+              <p className="mt-1 text-xs text-[#717181]">Email changes are not currently supported.</p>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">
-                  Current Password
-                </label>
-                <Input
-                  type="password"
-                  value={passwordData.current}
-                  onChange={(e) =>
-                    setPasswordData({
-                      ...passwordData,
-                      current: e.target.value,
-                    })
-                  }
-                  placeholder="••••••••"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">
-                  New Password
-                </label>
-                <Input
-                  type="password"
-                  value={passwordData.newPassword}
-                  onChange={(e) =>
-                    setPasswordData({
-                      ...passwordData,
-                      newPassword: e.target.value,
-                    })
-                  }
-                  placeholder="••••••••"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">
-                  Confirm New Password
-                </label>
-                <Input
-                  type="password"
-                  value={passwordData.confirm}
-                  onChange={(e) =>
-                    setPasswordData({
-                      ...passwordData,
-                      confirm: e.target.value,
-                    })
-                  }
-                  placeholder="••••••••"
-                />
-              </div>
-              <Button
-                onClick={handleChangePassword}
-                disabled={
-                  saving ||
-                  !passwordData.current ||
-                  !passwordData.newPassword ||
-                  !passwordData.confirm
-                }
-              >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <Shield className="w-4 h-4 mr-2" />
-                )}
-                Update Password
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Plan Status */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-emerald-500/10 rounded-lg">
-                <Sparkles className="w-5 h-5 text-emerald-500" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">Plan Status</h2>
-                <p className="text-sm text-[#888]">Your current plan</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-white/4 rounded-lg">
-              <div>
-                <p className="font-medium">Beta — All Features Free</p>
-                <p className="text-sm text-[#888]">
-                  Unlimited interviews, all types, voice mode, video interviews,
-                  and more.
-                </p>
-              </div>
-              <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                Free
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Danger Zone */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-      >
-        <Card className="border-red-500/20">
-          <CardContent className="p-6">
-            <h2 className="text-lg font-semibold text-red-500 mb-2">
-              Danger Zone
-            </h2>
-            <p className="text-sm text-[#888] mb-4">
-              Permanently delete your account and all data. This action cannot
-              be undone.
-            </p>
-            <Separator className="mb-4" />
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (
-                  confirm(
-                    "Are you sure you want to delete your account? This cannot be undone.",
-                  )
-                ) {
-                  fetch("/api/user/delete", { method: "DELETE" }).then(() => {
-                    window.location.href = "/";
-                  });
-                }
-              }}
-            >
-              Delete Account
+            <Button onClick={handleSaveProfile} disabled={saving || !formData.name.trim()}>
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Save profile
             </Button>
-          </CardContent>
-        </Card>
-      </motion.div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="rounded-lg bg-amber-500/10 p-2"><Shield className="h-5 w-5 text-amber-400" /></div>
+            <div>
+              <h2 className="font-semibold">Security</h2>
+              <p className="text-sm text-[#858596]">Update your password.</p>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <Input
+              type="password"
+              aria-label="Current password"
+              value={passwordData.current}
+              onChange={(event) => setPasswordData((current) => ({ ...current, current: event.target.value }))}
+              placeholder="Current password"
+            />
+            <Input
+              type="password"
+              aria-label="New password"
+              value={passwordData.newPassword}
+              onChange={(event) => setPasswordData((current) => ({ ...current, newPassword: event.target.value }))}
+              placeholder="New password"
+            />
+            <Input
+              type="password"
+              aria-label="Confirm new password"
+              value={passwordData.confirm}
+              onChange={(event) => setPasswordData((current) => ({ ...current, confirm: event.target.value }))}
+              placeholder="Confirm new password"
+            />
+            <Button
+              onClick={handleChangePassword}
+              disabled={saving || !passwordData.current || !passwordData.newPassword || !passwordData.confirm}
+            >
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+              Update password
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="rounded-lg bg-indigo-500/10 p-2"><Sparkles className="h-5 w-5 text-indigo-300" /></div>
+            <div>
+              <h2 className="font-semibold">Plan and billing</h2>
+              <p className="text-sm text-[#858596]">Your current product access.</p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-4 rounded-xl border border-white/8 bg-white/4 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="font-medium">{planLabel} plan</p>
+                <Badge className="border-indigo-500/20 bg-indigo-500/10 text-indigo-300">{planLabel}</Badge>
+              </div>
+              <p className="mt-1 text-sm text-[#858596]">
+                {plan === "free"
+                  ? "Core interview practice with clear daily limits."
+                  : "Premium interview preparation features are active on this account."}
+              </p>
+            </div>
+            <Link href="/pricing">
+              <Button variant="outline"><CreditCard className="mr-2 h-4 w-4" /> Manage plan</Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-red-500/20">
+        <CardContent className="p-6">
+          <h2 className="font-semibold text-red-400">Danger zone</h2>
+          <p className="mt-2 text-sm text-[#858596]">Permanently delete your account and associated data.</p>
+          <Separator className="my-5" />
+          <Button variant="destructive" onClick={deleteAccount} disabled={saving}>
+            <Trash2 className="mr-2 h-4 w-4" /> Delete account
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

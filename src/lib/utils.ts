@@ -1,71 +1,47 @@
-// ===========================================
-// PrepWithAI — Utility Functions
-// Built by Abdullah Tariq, Lahore Pakistan
-// ===========================================
-
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { ELO_CONFIG, FILLER_WORDS, FREE_TRIAL_DAYS } from "./constants";
+import { ELO_CONFIG, FILLER_WORDS } from "./constants";
+import {
+  BILLING,
+  effectivePlan as resolveEffectivePlan,
+  hasProAccess,
+  isTrialActive,
+  trialDaysRemaining,
+} from "./billing";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// ─── Pro Trial Helpers ───────────────────────────
-// ALL FEATURES ARE FREE — These functions always return pro status.
-
-/**
- * Always returns false — no trial system, everything is free.
- */
 export function isOnProTrial(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _user: { plan: string; proTrialEndsAt?: Date | string | null } | null | undefined
+  user: { plan: string; proTrialEndsAt?: Date | string | null } | null | undefined,
 ): boolean {
-  return false;
+  return user?.plan === "free" && isTrialActive(user.proTrialEndsAt);
 }
 
-/**
- * Always returns 0 — no trial system.
- */
 export function proTrialDaysRemaining(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _proTrialEndsAt: Date | string | null | undefined
+  proTrialEndsAt: Date | string | null | undefined,
 ): number {
-  return 0;
+  return trialDaysRemaining(proTrialEndsAt);
 }
 
-/**
- * Always returns "pro" — all users get full access.
- */
 export function effectivePlan(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _user: { plan: string; proTrialEndsAt?: Date | string | null } | null | undefined
+  user: { plan: string; proTrialEndsAt?: Date | string | null } | null | undefined,
 ): string {
-  return "pro";
+  return resolveEffectivePlan(user);
 }
 
-/**
- * Calculate the trial end date — kept for backward compat, returns far future.
- */
 export function calculateTrialEndDate(startDate?: Date): Date {
-  const start = startDate ?? new Date();
-  const end = new Date(start);
-  end.setDate(end.getDate() + FREE_TRIAL_DAYS);
+  const end = new Date(startDate ?? new Date());
+  end.setDate(end.getDate() + BILLING.pro.trialDays);
   return end;
 }
 
-/**
- * Always returns true — all features accessible to everyone.
- */
 export function canAccessProFeature(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _user: { plan: string; proTrialEndsAt?: Date | string | null } | null | undefined
+  user: { plan: string; proTrialEndsAt?: Date | string | null } | null | undefined,
 ): boolean {
-  return true;
+  return hasProAccess(user);
 }
-
-
-// ─── Formatting ─────────────────────────────────
 
 export function formatDate(date: Date | string): string {
   return new Date(date).toLocaleDateString("en-US", {
@@ -83,10 +59,8 @@ export function formatDateShort(date: Date | string): string {
 }
 
 export function formatRelativeTime(date: Date | string): string {
-  const now = new Date();
-  const then = new Date(date);
-  const diffMs = now.getTime() - then.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
+  const diffMs = Date.now() - new Date(date).getTime();
+  const diffMins = Math.floor(diffMs / 60_000);
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
 
@@ -117,26 +91,20 @@ export function formatDurationLong(seconds: number): string {
 }
 
 export function formatNumber(num: number): string {
-  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
   return num.toString();
 }
 
 export function formatCurrency(amount: number, currency: string = "USD"): string {
-  if (currency === "PKR") {
-    return `PKR ${amount.toLocaleString()}`;
-  }
-  if (currency === "USD/hr") {
-    return `$${amount}/hr`;
-  }
+  if (currency === "PKR") return `PKR ${amount.toLocaleString()}`;
+  if (currency === "USD/hr") return `$${amount}/hr`;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
   }).format(amount);
 }
-
-// ─── Score Helpers ──────────────────────────────
 
 export function getScoreColor(score: number): string {
   if (score >= 90) return "text-emerald-400";
@@ -183,7 +151,6 @@ export function getScoreGrade(score: number): string {
 }
 
 export function getPercentile(score: number): number {
-  // Simplified percentile calculation based on score distribution
   if (score >= 95) return 99;
   if (score >= 90) return 95;
   if (score >= 85) return 88;
@@ -196,52 +163,39 @@ export function getPercentile(score: number): number {
   return 5;
 }
 
-// ─── ELO Rating System ──────────────────────────
-
 export function calculateNewElo(
   currentRating: number,
   questionDifficulty: number,
   score: number,
-  maxScore: number = 100
+  maxScore: number = 100,
 ): number {
   const expectedScore = 1 / (1 + Math.pow(10, (questionDifficulty - currentRating) / 400));
   const actualScore = score / maxScore;
   const newRating = currentRating + ELO_CONFIG.kFactor * (actualScore - expectedScore);
-  return Math.max(
-    ELO_CONFIG.minRating,
-    Math.min(ELO_CONFIG.maxRating, Math.round(newRating))
-  );
+  return Math.max(ELO_CONFIG.minRating, Math.min(ELO_CONFIG.maxRating, Math.round(newRating)));
 }
 
 export function getEloLevel(rating: number): { name: string; color: string } {
-  const level = ELO_CONFIG.levels.find(
-    (l) => rating >= l.min && rating < l.max
-  );
+  const level = ELO_CONFIG.levels.find((item) => rating >= item.min && rating < item.max);
   return level || { name: "Beginner", color: "#6b7280" };
 }
 
 export function getEloDifficultyForRating(rating: number): number {
-  // Returns the difficulty rating that would challenge this player
   return rating + Math.floor(Math.random() * 200) - 50;
 }
 
-// ─── Voice Analysis ─────────────────────────────
-
 export function countFillerWords(text: string): Record<string, number> {
-  const lower = text.toLowerCase();
   const counts: Record<string, number> = {};
   for (const filler of FILLER_WORDS) {
-    const regex = new RegExp(`\\b${filler}\\b`, "gi");
-    const matches = lower.match(regex);
-    if (matches && matches.length > 0) {
-      counts[filler] = matches.length;
-    }
+    const escaped = filler.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const matches = text.match(new RegExp(`\\b${escaped}\\b`, "gi"));
+    if (matches?.length) counts[filler] = matches.length;
   }
   return counts;
 }
 
 export function calculateWPM(text: string, durationSeconds: number): number {
-  if (durationSeconds === 0) return 0;
+  if (durationSeconds <= 0) return 0;
   const wordCount = text.split(/\s+/).filter(Boolean).length;
   return Math.round((wordCount / durationSeconds) * 60);
 }
@@ -254,18 +208,12 @@ export function getSpeakingFeedback(wpm: number): string {
   return "Too fast — slow down, your interviewer may struggle to follow";
 }
 
-// ─── String Helpers ─────────────────────────────
-
 export function truncate(str: string, length: number): string {
-  if (str.length <= length) return str;
-  return str.slice(0, length) + "...";
+  return str.length <= length ? str : `${str.slice(0, length)}...`;
 }
 
 export function slugify(str: string): string {
-  return str
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+  return str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 export function capitalize(str: string): string {
@@ -273,111 +221,75 @@ export function capitalize(str: string): string {
 }
 
 export function formatInterviewType(type: string): string {
-  return type
-    .replace(/_/g, " ")
-    .replace(/-/g, " ")
-    .split(" ")
-    .map(capitalize)
-    .join(" ");
+  return type.replace(/_/g, " ").replace(/-/g, " ").split(" ").map(capitalize).join(" ");
 }
-
-// ─── ID Generation ──────────────────────────────
 
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
 }
 
-// ─── Async ──────────────────────────────────────
-
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// ─── Streak ─────────────────────────────────────
-
 export function calculateStreak(dates: Date[]): number {
   if (dates.length === 0) return 0;
 
-  const sorted = dates
-    .map((d) => new Date(d))
-    .sort((a, b) => b.getTime() - a.getTime());
-
+  const sorted = dates.map((date) => new Date(date)).sort((a, b) => b.getTime() - a.getTime());
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const firstDate = new Date(sorted[0]);
   firstDate.setHours(0, 0, 0, 0);
-
-  const diffDays = Math.floor(
-    (today.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  // If last activity is more than 1 day ago, streak is 0
+  const diffDays = Math.floor((today.getTime() - firstDate.getTime()) / 86_400_000);
   if (diffDays > 1) return 0;
 
   let streak = 1;
-  for (let i = 1; i < sorted.length; i++) {
-    const curr = new Date(sorted[i]);
-    const prev = new Date(sorted[i - 1]);
-    curr.setHours(0, 0, 0, 0);
-    prev.setHours(0, 0, 0, 0);
-
-    const diff = Math.floor(
-      (prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24)
-    );
-
-    if (diff === 1) {
-      streak++;
-    } else if (diff > 1) {
-      break;
-    }
-    // diff === 0 means same day, continue
+  for (let index = 1; index < sorted.length; index++) {
+    const current = new Date(sorted[index]);
+    const previous = new Date(sorted[index - 1]);
+    current.setHours(0, 0, 0, 0);
+    previous.setHours(0, 0, 0, 0);
+    const diff = Math.floor((previous.getTime() - current.getTime()) / 86_400_000);
+    if (diff === 1) streak++;
+    else if (diff > 1) break;
   }
-
   return streak;
 }
 
-// ─── Heatmap ────────────────────────────────────
-
 export function generateHeatmapData(
   dailyScores: { date: string; sessions: number }[],
-  days: number = 365
+  days: number = 365,
 ): { date: string; count: number; level: number }[] {
   const map = new Map<string, number>();
-  for (const d of dailyScores) {
-    const key = new Date(d.date).toISOString().split("T")[0];
-    map.set(key, (map.get(key) || 0) + d.sessions);
+  for (const item of dailyScores) {
+    const key = new Date(item.date).toISOString().split("T")[0];
+    map.set(key, (map.get(key) || 0) + item.sessions);
   }
 
   const result: { date: string; count: number; level: number }[] = [];
   const today = new Date();
-
-  for (let i = days; i >= 0; i--) {
+  for (let offset = days; offset >= 0; offset--) {
     const date = new Date(today);
-    date.setDate(date.getDate() - i);
+    date.setDate(date.getDate() - offset);
     const key = date.toISOString().split("T")[0];
     const count = map.get(key) || 0;
     const level = count === 0 ? 0 : count <= 1 ? 1 : count <= 3 ? 2 : count <= 5 ? 3 : 4;
     result.push({ date: key, count, level });
   }
-
   return result;
 }
 
-// ─── Chart Colors ───────────────────────────────
-
 export const CHART_COLORS = [
-  "#8b5cf6", // violet
-  "#3b82f6", // blue
-  "#10b981", // emerald
-  "#f59e0b", // amber
-  "#ef4444", // red
-  "#ec4899", // pink
-  "#06b6d4", // cyan
-  "#84cc16", // lime
+  "#8b5cf6",
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#ec4899",
+  "#06b6d4",
+  "#84cc16",
 ];
-
-// ─── Validation ─────────────────────────────────
 
 export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
+import type { PaidPlanId } from "@/lib/billing";
 
 function getStripe() {
   if (!process.env.STRIPE_SECRET_KEY) return null;
@@ -10,30 +11,37 @@ function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY);
 }
 
-const PRICE_MAP: Record<string, string> = {
+const PRICE_MAP: Record<PaidPlanId, string> = {
   pro: process.env.STRIPE_PRO_MONTHLY_PRICE_ID || "",
   team: process.env.STRIPE_TEAM_MONTHLY_PRICE_ID || "",
 };
 
 export async function POST(req: NextRequest) {
   try {
-    const stripe = getStripe();
-    if (!stripe) {
-      return NextResponse.json(
-        { error: "Payments are not configured. All features are free during beta!" },
-        { status: 200 }
-      );
-    }
-
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { planId } = await req.json();
+    const stripe = getStripe();
+    if (!stripe) {
+      return NextResponse.json(
+        { error: "Payments are temporarily unavailable. Stripe is not configured." },
+        { status: 503 },
+      );
+    }
+
+    const { planId } = (await req.json()) as { planId?: PaidPlanId };
+    if (planId !== "pro" && planId !== "team") {
+      return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+    }
+
     const priceId = PRICE_MAP[planId];
     if (!priceId) {
-      return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+      return NextResponse.json(
+        { error: `${planId === "pro" ? "Pro" : "Team"} billing is not configured yet.` },
+        { status: 503 },
+      );
     }
 
     await connectDB();
@@ -54,17 +62,21 @@ export async function POST(req: NextRequest) {
       await user.save();
     }
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
+    const metadata = {
+      userId: user._id.toString(),
+      planId,
+    };
+
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
-      payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?payment=success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing?payment=cancelled`,
-      metadata: {
-        userId: user._id.toString(),
-        planId,
-      },
+      allow_promotion_codes: true,
+      success_url: `${appUrl}/dashboard?payment=success`,
+      cancel_url: `${appUrl}/pricing?payment=cancelled`,
+      metadata,
+      subscription_data: { metadata },
     });
 
     return NextResponse.json({ url: checkoutSession.url });
@@ -72,7 +84,7 @@ export async function POST(req: NextRequest) {
     console.error("Checkout error:", error);
     return NextResponse.json(
       { error: "Failed to create checkout session" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

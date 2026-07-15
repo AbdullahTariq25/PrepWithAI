@@ -1,109 +1,22 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { useSession } from "next-auth/react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import {
-  Brain,
-  MessageSquare,
-  Trophy,
-  Flame,
-  TrendingUp,
-  TrendingDown,
-  Clock,
-  Target,
   ArrowRight,
-  Code2,
-  Network,
+  BarChart3,
+  Brain,
+  Clock3,
+  Flame,
+  MessageSquare,
   Sparkles,
+  Target,
   Zap,
-  Calendar,
-  Video,
-  Mic,
-  Settings2,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { getEloLevel, formatDuration, getPercentile } from "@/lib/utils";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { formatDuration, getEloLevel, getPercentile } from "@/lib/utils";
 
-/* ─── Motivational Lines ─── */
-const motivationalLines = [
-  "Your consistency is your competitive advantage.",
-  "The developer who practices daily beats the one who crams weekly.",
-  "One session today is worth three sessions the night before the interview.",
-  "Your next interview is closer than you think. Let us prepare for it.",
-  "Every session you complete is an investment in your future salary.",
-  "Great engineers are not born — they are practiced.",
-  "The compound effect of daily practice is unstoppable.",
-  "You are building muscle memory for technical interviews.",
-  "Each question you solve makes the next one easier.",
-  "Confidence comes from preparation, not luck.",
-  "Today's practice is tomorrow's perfect answer.",
-  "The best time to prepare was yesterday. The next best is right now.",
-  "You are one session closer to your dream job.",
-  "Consistency defeats talent when talent does not practice.",
-  "Small daily improvements lead to staggering long-term results.",
-  "Your future self will thank you for this session.",
-  "Interview skills are muscles — train them daily.",
-  "The gap between where you are and where you want to be is practice.",
-  "Every expert was once a beginner who refused to give up.",
-  "You do not rise to the level of your goals — you fall to the level of your systems.",
-  "Master the fundamentals and the rest follows.",
-  "Pressure is a privilege — it means you are aiming high.",
-  "The harder the interview, the better the offer.",
-  "Think of each session as compound interest for your career.",
-  "Your dedication to practice sets you apart from 90% of candidates.",
-  "Embrace the discomfort — that is where growth happens.",
-  "You are not just preparing for an interview — you are leveling up as an engineer.",
-  "Progress, not perfection.",
-  "Show up. Do the work. Trust the process.",
-  "Every rejection gets you closer to the right yes.",
-];
-
-function getGreeting(name: string): { text: string; emoji: string } {
-  const h = new Date().getHours();
-  if (h < 12) return { text: `Good morning, ${name}`, emoji: "🌅" };
-  if (h < 17) return { text: `Good afternoon, ${name}`, emoji: "☀️" };
-  if (h < 21) return { text: `Good evening, ${name}`, emoji: "🌆" };
-  return { text: `Still grinding, ${name}?`, emoji: "🔥" };
-}
-
-function getDayOfYear(): number {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 0);
-  const diff = now.getTime() - start.getTime();
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
-}
-
-/* ─── Companies ─── */
-const companies = [
-  { name: "Google", slug: "google", color: "#4285F4", letter: "G" },
-  { name: "Meta", slug: "meta", color: "#0668E1", letter: "M" },
-  { name: "Amazon", slug: "amazon", color: "#FF9900", letter: "A" },
-  { name: "Microsoft", slug: "microsoft", color: "#00A4EF", letter: "M" },
-  { name: "Stripe", slug: "stripe", color: "#635BFF", letter: "S" },
-  { name: "Apple", slug: "apple", color: "#A2AAAD", letter: "A" },
-  {
-    name: "Systems Limited",
-    slug: "systems_limited",
-    color: "#0066CC",
-    letter: "S",
-  },
-  { name: "Techlogix", slug: "techlogix", color: "#FF6B35", letter: "T" },
-  { name: "10Pearls", slug: "10pearls", color: "#00B4D8", letter: "10" },
-];
-
-/* ─── Interfaces ─── */
 interface ProgressData {
   totalSessions: number;
   avgScore: number;
@@ -111,8 +24,6 @@ interface ProgressData {
   maxStreak: number;
   totalTime: number;
   eloRating: number;
-  skillScores: Record<string, number>;
-  categoryScores: Record<string, number>;
   dailyScores: { date: string; score: number }[];
   weeklyGoal: number;
   sessionsThisWeek: number;
@@ -122,1245 +33,290 @@ interface SessionItem {
   _id: string;
   type: string;
   company: string;
-  difficulty: string;
   overallScore: number;
   duration: number;
   completed: boolean;
   createdAt: string;
 }
 
-/* ─── RayCard Component ─── */
-function RayCard({
-  children,
-  style,
-  className,
-}: {
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-  className?: string;
-}) {
-  return (
-    <div
-      className={className}
-      style={{
-        backgroundColor: "var(--bg-surface)",
-        border: "1px solid var(--border-subtle)",
-        borderRadius: 16,
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  );
+const practicePaths = [
+  {
+    title: "Technical interview",
+    description: "Practice problem solving and explain your reasoning clearly.",
+    href: "/interview?type=dsa",
+    icon: Brain,
+  },
+  {
+    title: "Behavioral interview",
+    description: "Build concise STAR stories and stronger leadership examples.",
+    href: "/interview?type=behavioral",
+    icon: MessageSquare,
+  },
+  {
+    title: "System design",
+    description: "Practice architecture, tradeoffs, scale, and communication.",
+    href: "/interview?type=system_design",
+    icon: Target,
+  },
+];
+
+function formatInterviewType(value: string) {
+  return value
+    .replace(/_/g, " ")
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
-/* ─── Score Trend Chart Tooltip ─── */
-function ChartTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: Array<{ value: number }>;
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  const score = payload[0].value;
-  const color = score >= 80 ? "#22C55E" : score >= 60 ? "#F59E0B" : "#EF4444";
-  return (
-    <div
-      style={{
-        background: "rgba(15,15,15,0.95)",
-        backdropFilter: "blur(12px)",
-        border: "1px solid var(--border-default)",
-        borderRadius: 10,
-        padding: "10px 14px",
-      }}
-    >
-      <div
-        style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}
-      >
-        {label}
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <div
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            backgroundColor: color,
-          }}
-        />
-        <span
-          style={{
-            fontSize: 15,
-            fontWeight: 700,
-            color: "var(--text-primary)",
-          }}
-        >
-          {score}%
-        </span>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Main Page ─── */
 export default function DashboardPage() {
   const { data: session } = useSession();
-  const user = session?.user;
-  const firstName = user?.name?.split(" ")[0] ?? "there";
-
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [recentSessions, setRecentSessions] = useState<SessionItem[]>([]);
-  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setMounted(true);
-    Promise.all([
-      fetch("/api/progress").then((r) => r.json()),
-      fetch("/api/sessions").then((r) => r.json()),
-    ])
-      .then(([progressData, sessionsData]) => {
-        if (!progressData.error) setProgress(progressData);
-        if (sessionsData.sessions)
+    let active = true;
+
+    async function loadDashboard() {
+      try {
+        const [progressResponse, sessionsResponse] = await Promise.all([
+          fetch("/api/progress", { cache: "no-store" }),
+          fetch("/api/sessions", { cache: "no-store" }),
+        ]);
+
+        const [progressData, sessionsData] = await Promise.all([
+          progressResponse.json(),
+          sessionsResponse.json(),
+        ]);
+
+        if (!active) return;
+        if (progressResponse.ok && !progressData.error) setProgress(progressData);
+        if (sessionsResponse.ok && Array.isArray(sessionsData.sessions)) {
           setRecentSessions(sessionsData.sessions.slice(0, 5));
-      })
-      .catch(() => {});
+        }
+      } catch {
+        // The dashboard still renders useful empty states when optional data fails.
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void loadDashboard();
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const greeting = useMemo(() => getGreeting(firstName), [firstName]);
-  const dailyQuote = useMemo(
-    () => motivationalLines[getDayOfYear() % motivationalLines.length],
-    [],
+  const firstName = session?.user?.name?.split(" ")[0] || "there";
+  const totalSessions = progress?.totalSessions || 0;
+  const avgScore = progress?.avgScore || 0;
+  const streak = progress?.streak || 0;
+  const totalTime = progress?.totalTime || 0;
+  const eloRating = progress?.eloRating || session?.user?.eloRating || 1200;
+  const eloLevel = getEloLevel(eloRating);
+  const weeklyGoal = Math.max(progress?.weeklyGoal || 5, 1);
+  const sessionsThisWeek = progress?.sessionsThisWeek || 0;
+  const weeklyProgress = Math.min(100, Math.round((sessionsThisWeek / weeklyGoal) * 100));
+  const percentile = getPercentile(avgScore);
+
+  const chartData = useMemo(
+    () =>
+      (progress?.dailyScores || []).slice(-30).map((item) => ({
+        date: new Date(item.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        score: item.score,
+      })),
+    [progress?.dailyScores],
   );
 
-  const eloRating = progress?.eloRating ?? 1200;
-  const eloLevel = useMemo(() => getEloLevel(eloRating), [eloRating]);
-  const totalSessions = progress?.totalSessions ?? 0;
-  const avgScore = progress?.avgScore ?? 0;
-  const streak = progress?.streak ?? 0;
-  const weeklyGoal = progress?.weeklyGoal ?? 5;
-  const sessionsThisWeek = progress?.sessionsThisWeek ?? 0;
-  const weeklyPct = Math.min(
-    100,
-    Math.round((sessionsThisWeek / weeklyGoal) * 100),
-  );
-  const percentile = useMemo(() => getPercentile(avgScore), [avgScore]);
-
-  const chartData = useMemo(() => {
-    const scores = progress?.dailyScores ?? [];
-    return scores.slice(-30).map((d) => ({
-      date: new Date(d.date).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
-      score: d.score,
-    }));
-  }, [progress?.dailyScores]);
-
-  if (!mounted) return null;
+  const stats = [
+    { label: "Completed sessions", value: loading ? "—" : totalSessions.toString(), icon: MessageSquare },
+    { label: "Average score", value: loading ? "—" : `${avgScore}%`, icon: BarChart3 },
+    { label: "Current streak", value: loading ? "—" : `${streak}d`, icon: Flame },
+    { label: "Practice time", value: loading ? "—" : formatDuration(totalTime), icon: Clock3 },
+  ];
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto" }} className="page-enter">
-      {/* ─── Greeting ─── */}
-      <div style={{ marginBottom: 32 }} className="animate-fade-up">
-        <h1
-          style={{
-            fontSize: 28,
-            fontWeight: 700,
-            letterSpacing: "-0.03em",
-            lineHeight: 1.2,
-            margin: 0,
-          }}
-        >
-          {greeting.text} {greeting.emoji}
-        </h1>
-        <p
-          style={{
-            color: "var(--text-secondary)",
-            fontSize: 14,
-            marginTop: 6,
-            fontStyle: "italic",
-          }}
-        >
-          &ldquo;{dailyQuote}&rdquo;
-        </p>
-      </div>
-
-      {/* ─── Hero Stats Row ─── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 14,
-          marginBottom: 16,
-        }}
-        className="stagger"
-      >
-        {/* Total Sessions */}
-        <RayCard style={{ padding: 24 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginBottom: 12,
-            }}
-          >
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                backgroundColor: "rgba(59,130,246,0.1)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <MessageSquare
-                style={{ width: 18, height: 18, color: "#60A5FA" }}
-              />
+    <div className="mx-auto max-w-7xl space-y-7 page-enter">
+      <section className="overflow-hidden rounded-3xl border border-indigo-500/15 bg-gradient-to-br from-indigo-500/12 via-[#111116] to-[#0b0b10] p-6 sm:p-8">
+        <div className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr] lg:items-end">
+          <div>
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-400/20 bg-indigo-500/10 px-3 py-1.5 text-xs font-medium text-indigo-300">
+              <Sparkles className="h-3.5 w-3.5" /> Your interview workspace
             </div>
-            <span
-              className="text-caption"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Total Sessions
-            </span>
-          </div>
-          <div
-            className="font-code"
-            style={{
-              fontSize: 48,
-              fontWeight: 700,
-              lineHeight: 1,
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
-            {totalSessions}
-          </div>
-        </RayCard>
-
-        {/* Average Score */}
-        <RayCard style={{ padding: 24 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginBottom: 12,
-            }}
-          >
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                backgroundColor:
-                  avgScore >= 80
-                    ? "rgba(34,197,94,0.1)"
-                    : avgScore >= 60
-                      ? "rgba(245,158,11,0.1)"
-                      : "rgba(239,68,68,0.1)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <TrendingUp
-                style={{
-                  width: 18,
-                  height: 18,
-                  color:
-                    avgScore >= 80
-                      ? "#22C55E"
-                      : avgScore >= 60
-                        ? "#F59E0B"
-                        : "#EF4444",
-                }}
-              />
-            </div>
-            <span
-              className="text-caption"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Average Score
-            </span>
-          </div>
-          <div
-            className="font-code"
-            style={{
-              fontSize: 48,
-              fontWeight: 700,
-              lineHeight: 1,
-              color:
-                avgScore >= 80
-                  ? "#22C55E"
-                  : avgScore >= 60
-                    ? "#F59E0B"
-                    : avgScore > 0
-                      ? "#EF4444"
-                      : "var(--text-primary)",
-            }}
-          >
-            {avgScore > 0 ? `${avgScore}%` : "—"}
-          </div>
-        </RayCard>
-
-        {/* Current Streak */}
-        <RayCard style={{ padding: 24 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginBottom: 12,
-            }}
-          >
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                backgroundColor: "rgba(249,115,22,0.1)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Flame style={{ width: 18, height: 18, color: "#FB923C" }} />
-            </div>
-            <span
-              className="text-caption"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Current Streak
-            </span>
-          </div>
-          {streak > 0 ? (
-            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-              <span
-                style={{
-                  fontSize: 20,
-                  animation: "fire-pulse 1s ease-in-out infinite",
-                }}
+            <h1 className="max-w-3xl text-3xl font-bold tracking-[-0.04em] sm:text-4xl">
+              Welcome back, {firstName}. Build confidence through deliberate practice.
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-[#9a9aaa] sm:text-base">
+              Choose a focused interview session, explain your thinking, review the feedback, and repeat with one clear improvement target.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                href="/interview"
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500"
               >
-                🔥
-              </span>
-              <span
-                className="font-code"
-                style={{
-                  fontSize: 48,
-                  fontWeight: 700,
-                  lineHeight: 1,
-                  color: "#FB923C",
-                }}
+                Start interview <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/progress"
+                className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-[#d4d4dd] transition hover:bg-white/8"
               >
-                {streak}d
-              </span>
+                Review progress
+              </Link>
             </div>
-          ) : (
-            <div>
-              <span
-                className="font-code"
-                style={{
-                  fontSize: 48,
-                  fontWeight: 700,
-                  lineHeight: 1,
-                  color: "var(--text-muted)",
-                }}
-              >
-                0d
-              </span>
-              <p
-                style={{
-                  fontSize: 11,
-                  color: "var(--text-muted)",
-                  marginTop: 4,
-                }}
-              >
-                Start a streak today
-              </p>
-            </div>
-          )}
-        </RayCard>
+          </div>
 
-        {/* ELO Rating */}
-        <RayCard style={{ padding: 24 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginBottom: 12,
-            }}
-          >
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                backgroundColor: "rgba(99,102,241,0.1)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Zap style={{ width: 18, height: 18, color: "#818CF8" }} />
-            </div>
-            <span
-              className="text-caption"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              ELO Rating
-            </span>
-          </div>
-          <div
-            className="font-code"
-            style={{
-              fontSize: 48,
-              fontWeight: 700,
-              lineHeight: 1,
-              color: "#818CF8",
-            }}
-          >
-            {eloRating}
-          </div>
-          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
-            Top {100 - percentile}% of users · {eloLevel.name}
-          </p>
-        </RayCard>
-      </div>
-
-      {/* ─── Weekly Target ─── */}
-      <div className="animate-fade-up stagger-5" style={{ marginBottom: 24 }}>
-        <RayCard style={{ padding: 20 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 12,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Target style={{ width: 16, height: 16, color: "#818CF8" }} />
-              <span style={{ fontSize: 14, fontWeight: 600 }}>
-                Weekly Target
-              </span>
-            </div>
-            <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-              {weeklyPct}%
-            </span>
-          </div>
-          <div
-            style={{
-              position: "relative",
-              height: 8,
-              backgroundColor: "rgba(255,255,255,0.06)",
-              borderRadius: 999,
-              overflow: "hidden",
-            }}
-          >
-            <div
-              className="bar-fill-animate"
-              style={{
-                height: "100%",
-                width: `${weeklyPct}%`,
-                borderRadius: 999,
-                background:
-                  weeklyPct >= 100
-                    ? "linear-gradient(90deg, #22C55E, #4ADE80)"
-                    : "linear-gradient(90deg, #6366F1, #818CF8)",
-                transition: "width 600ms ease",
-              }}
-            />
-          </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: 8,
-              fontSize: 12,
-            }}
-          >
-            <span style={{ color: "var(--text-secondary)" }}>
-              {sessionsThisWeek} of {weeklyGoal} sessions this week
-            </span>
-            {weeklyPct >= 100 && (
-              <span style={{ color: "#22C55E" }}>Weekly goal achieved! 🎉</span>
-            )}
-          </div>
-        </RayCard>
-      </div>
-
-      {/* ─── Score Trend Chart ─── */}
-      <div className="animate-fade-up stagger-6" style={{ marginBottom: 24 }}>
-        <RayCard style={{ padding: 24 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 20,
-            }}
-          >
-            <div>
-              <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>
-                30-Day Score Trend
-              </h2>
-              <p
-                style={{
-                  fontSize: 13,
-                  color: "var(--text-secondary)",
-                  marginTop: 2,
-                }}
-              >
-                Your performance over the last 30 days
-              </p>
-            </div>
-          </div>
-          {chartData.length > 0 ? (
-            <div style={{ width: "100%", height: 260 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={chartData}
-                  margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient
-                      id="scoreGradient"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop offset="0%" stopColor="rgba(99,102,241,0.30)" />
-                      <stop offset="100%" stopColor="rgba(99,102,241,0.00)" />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="date"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: "#525252", fontSize: 11 }}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: "#525252", fontSize: 11 }}
-                    ticks={[0, 25, 50, 75, 100]}
-                  />
-                  <Tooltip content={<ChartTooltip />} cursor={false} />
-                  <Area
-                    type="monotone"
-                    dataKey="score"
-                    stroke="#6366F1"
-                    strokeWidth={2}
-                    fill="url(#scoreGradient)"
-                    dot={false}
-                    activeDot={{
-                      r: 4,
-                      fill: "#6366F1",
-                      stroke: "#fff",
-                      strokeWidth: 1,
-                    }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div
-              style={{
-                position: "relative",
-                height: 220,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <div style={{ textAlign: "center", zIndex: 2 }}>
-                <Brain
-                  style={{
-                    width: 32,
-                    height: 32,
-                    color: "var(--text-muted)",
-                    margin: "0 auto 12px",
-                  }}
-                />
-                <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
-                  Complete your first interview
-                </p>
-                <p
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-muted)",
-                    marginBottom: 16,
-                  }}
-                >
-                  to see your score trend here
-                </p>
-                <Link href="/interview">
-                  <Button
-                    style={{
-                      background: "#6366F1",
-                      color: "white",
-                      border: "none",
-                      padding: "8px 20px",
-                      borderRadius: 10,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Start First Interview →
-                  </Button>
-                </Link>
+          <div className="rounded-2xl border border-white/8 bg-black/20 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.14em] text-[#6f6f82]">Current rating</div>
+                <div className="mt-2 flex items-end gap-2">
+                  <span className="text-4xl font-bold tabular-nums">{eloRating}</span>
+                  <span className="pb-1 text-sm" style={{ color: eloLevel.color }}>{eloLevel.name}</span>
+                </div>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/10">
+                <Zap className="h-5 w-5 text-indigo-300" />
               </div>
             </div>
-          )}
-        </RayCard>
-      </div>
+            <div className="mt-5 border-t border-white/8 pt-4 text-sm text-[#9292a3]">
+              {avgScore > 0 ? `Current score percentile estimate: top ${100 - percentile}%` : "Complete sessions to establish your performance baseline."}
+            </div>
+          </div>
+        </div>
+      </section>
 
-      {/* ─── Company Readiness ─── */}
-      <div className="animate-fade-up stagger-7" style={{ marginBottom: 24 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 14,
-          }}
-        >
-          <div>
-            <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>
-              Company Readiness
-            </h2>
-            <p
-              style={{
-                fontSize: 13,
-                color: "var(--text-secondary)",
-                marginTop: 2,
-              }}
-            >
-              Based on your recent sessions per company
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.label} className="rounded-2xl border border-white/7 bg-[#111116] p-5">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-[#858596]">{stat.label}</div>
+                <Icon className="h-4 w-4 text-indigo-300" />
+              </div>
+              <div className="mt-4 text-3xl font-bold tracking-tight tabular-nums">{stat.value}</div>
+            </div>
+          );
+        })}
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-[1.35fr_0.65fr]">
+        <div className="rounded-2xl border border-white/7 bg-[#111116] p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Score trend</h2>
+              <p className="mt-1 text-sm text-[#7f7f91]">Your recent completed-session performance.</p>
+            </div>
+            <Link href="/progress" className="text-sm font-medium text-indigo-300 hover:text-indigo-200">Detailed analytics</Link>
+          </div>
+
+          <div className="mt-6 h-64">
+            {chartData.length > 1 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="dashboardScore" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#818cf8" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="date" tick={{ fill: "#686879", fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={24} />
+                  <YAxis domain={[0, 100]} tick={{ fill: "#686879", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ background: "#111116", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }} />
+                  <Area type="monotone" dataKey="score" stroke="#818cf8" strokeWidth={2} fill="url(#dashboardScore)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-white/8 bg-white/[0.02] text-center">
+                <div className="max-w-sm px-6">
+                  <BarChart3 className="mx-auto h-7 w-7 text-[#5d5d70]" />
+                  <p className="mt-3 text-sm font-medium text-[#b4b4c0]">Your trend will appear after a few completed sessions.</p>
+                  <p className="mt-1 text-xs leading-5 text-[#6d6d7e]">Consistent practice creates a more useful signal than one isolated score.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-white/7 bg-[#111116] p-5 sm:p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Weekly goal</h2>
+              <p className="mt-1 text-sm text-[#7f7f91]">{sessionsThisWeek} of {weeklyGoal} sessions</p>
+            </div>
+            <Target className="h-5 w-5 text-emerald-400" />
+          </div>
+          <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/6">
+            <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${weeklyProgress}%` }} />
+          </div>
+          <div className="mt-3 text-xs text-[#6f6f80]">{weeklyProgress}% complete</div>
+
+          <div className="mt-7 border-t border-white/7 pt-5">
+            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#5f5f72]">Recommended next step</div>
+            <p className="mt-3 text-sm leading-6 text-[#a0a0ae]">
+              {recentSessions.length === 0
+                ? "Start with a DSA session to establish a baseline and practice explaining your reasoning."
+                : "Review your latest report, pick one weakness, and practice that exact skill again."}
             </p>
           </div>
         </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            overflowX: "auto",
-            paddingBottom: 8,
-            scrollSnapType: "x mandatory",
-          }}
-        >
-          {companies.map((c) => (
-            <Link
-              key={c.slug}
-              href={`/interview?company=${c.slug}`}
-              style={{
-                textDecoration: "none",
-                flexShrink: 0,
-                scrollSnapAlign: "start",
-              }}
-            >
-              <div
-                style={{
-                  width: 160,
-                  height: 130,
-                  backgroundColor: "var(--bg-surface)",
-                  border: "1px solid var(--border-subtle)",
-                  borderRadius: 14,
-                  padding: 16,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  transition: "all 200ms ease",
-                  cursor: "pointer",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "var(--border-default)";
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "var(--border-subtle)";
-                  e.currentTarget.style.transform = "translateY(0)";
-                }}
-              >
-                <div
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 10,
-                    backgroundColor: c.color + "20",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 14,
-                    fontWeight: 700,
-                    color: c.color,
-                  }}
-                >
-                  {c.letter}
-                </div>
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  {c.name}
-                </span>
-                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                  Practice →
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
+      </section>
 
-      {/* ─── Recent Activity ─── */}
-      <div className="animate-fade-up stagger-8" style={{ marginBottom: 24 }}>
-        <RayCard style={{ padding: 22 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 18,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Clock style={{ width: 16, height: 16, color: "#818CF8" }} />
-              <h2 style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
-                Recent Activity
-              </h2>
-            </div>
-            {recentSessions.length > 0 && (
-              <Link href="/history">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1 text-[#909090] hover:text-white"
-                  aria-label="View all sessions"
-                >
-                  View all <ArrowRight style={{ width: 14, height: 14 }} />
-                </Button>
-              </Link>
-            )}
+      <section>
+        <div className="mb-4 flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold">Choose your next practice focus</h2>
+            <p className="mt-1 text-sm text-[#777789]">Do not practice everything at once. Pick one interview skill.</p>
           </div>
-          {recentSessions.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {recentSessions.map((s) => {
-                const scoreColor =
-                  s.overallScore >= 80
-                    ? "#22C55E"
-                    : s.overallScore >= 60
-                      ? "#F59E0B"
-                      : "#EF4444";
-                const scoreBg =
-                  s.overallScore >= 80
-                    ? "rgba(34,197,94,0.12)"
-                    : s.overallScore >= 60
-                      ? "rgba(245,158,11,0.12)"
-                      : "rgba(239,68,68,0.12)";
-                const companyInfo = companies.find(
-                  (c) => c.slug === s.company,
-                ) ?? {
-                  color: "#6366F1",
-                  letter: s.company?.[0]?.toUpperCase() ?? "?",
-                };
-                return (
-                  <Link
-                    key={s._id}
-                    href={`/interview/${s._id}/report`}
-                    style={{ textDecoration: "none" }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                        padding: "10px 12px",
-                        borderRadius: 10,
-                        cursor: "pointer",
-                        transition: "background-color 150ms ease",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor =
-                          "var(--bg-hover)")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = "transparent")
-                      }
-                    >
-                      <div
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: "50%",
-                          backgroundColor: companyInfo.color + "20",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: 13,
-                          fontWeight: 700,
-                          color: companyInfo.color,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {companyInfo.letter}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          style={{
-                            fontSize: 14,
-                            fontWeight: 600,
-                            textTransform: "capitalize",
-                            color: "var(--text-primary)",
-                          }}
-                        >
-                          {s.type.replace(/_/g, " ")}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "var(--text-muted)",
-                            textTransform: "capitalize",
-                          }}
-                        >
-                          {s.company} · {s.difficulty} ·{" "}
-                          {formatDuration(s.duration)}
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          padding: "4px 12px",
-                          borderRadius: 999,
-                          backgroundColor: scoreBg,
-                          color: scoreColor,
-                          fontSize: 14,
-                          fontWeight: 700,
-                          fontVariantNumeric: "tabular-nums",
-                        }}
-                      >
-                        {s.overallScore || 0}/100
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          ) : (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "48px 0",
-                textAlign: "center",
-              }}
-            >
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 14,
-                  backgroundColor: "rgba(255,255,255,0.04)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 16,
-                }}
-              >
-                <Brain
-                  style={{ width: 28, height: 28, color: "var(--text-muted)" }}
-                />
-              </div>
-              <h3
-                style={{
-                  fontSize: 16,
-                  fontWeight: 600,
-                  marginBottom: 4,
-                  color: "var(--text-primary)",
-                }}
-              >
-                No sessions yet
-              </h3>
-              <p
-                style={{
-                  fontSize: 13,
-                  color: "var(--text-muted)",
-                  marginBottom: 16,
-                }}
-              >
-                Your first interview is 2 minutes away
-              </p>
-              <Link href="/interview">
-                <Button
-                  style={{
-                    background: "#6366F1",
-                    color: "white",
-                    border: "none",
-                    padding: "10px 24px",
-                    borderRadius: 10,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  <Sparkles style={{ width: 16, height: 16, marginRight: 8 }} />{" "}
-                  Start Practicing →
-                </Button>
-              </Link>
-            </div>
-          )}
-        </RayCard>
-      </div>
-
-      {/* ─── Quick Start / Jump Right In ─── */}
-      <div style={{ marginBottom: 32 }}>
-        <h2
-          style={{ fontSize: 18, fontWeight: 600, margin: 0, marginBottom: 14 }}
-        >
-          Jump Right In
-        </h2>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-            gap: 14,
-          }}
-          className="stagger"
-        >
-          {/* Voice Interview */}
-          <Link
-            href="/interview?mode=voice&company=google&type=dsa"
-            style={{ textDecoration: "none" }}
-          >
-            <div
-              style={{
-                position: "relative",
-                overflow: "hidden",
-                borderRadius: 16,
-                background:
-                  "linear-gradient(135deg, rgba(34,197,94,0.06), rgba(34,197,94,0.02))",
-                border: "1px solid rgba(34,197,94,0.12)",
-                padding: 24,
-                cursor: "pointer",
-                transition: "all 200ms ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "rgba(34,197,94,0.25)";
-                e.currentTarget.style.transform = "translateY(-2px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "rgba(34,197,94,0.12)";
-                e.currentTarget.style.transform = "translateY(0)";
-              }}
-            >
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  background: "rgba(34,197,94,0.15)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 14,
-                }}
-              >
-                <Mic style={{ width: 22, height: 22, color: "#22C55E" }} />
-              </div>
-              <h3
-                style={{
-                  fontSize: 16,
-                  fontWeight: 600,
-                  margin: 0,
-                  marginBottom: 4,
-                }}
-              >
-                Voice Interview
-              </h3>
-              <p
-                style={{
-                  fontSize: 13,
-                  color: "var(--text-secondary)",
-                  margin: 0,
-                  marginBottom: 12,
-                }}
-              >
-                Practice speaking your answers out loud
-              </p>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {["Google", "DSA", "Medium"].map((tag) => (
-                  <span
-                    key={tag}
-                    style={{
-                      fontSize: 10,
-                      padding: "3px 8px",
-                      borderRadius: 6,
-                      backgroundColor: "rgba(34,197,94,0.08)",
-                      color: "#22C55E",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </Link>
-
-          {/* Video Interview */}
-          <Link
-            href="/interview?mode=video&company=amazon&type=behavioral"
-            style={{ textDecoration: "none" }}
-          >
-            <div
-              style={{
-                position: "relative",
-                overflow: "hidden",
-                borderRadius: 16,
-                background:
-                  "linear-gradient(135deg, rgba(59,130,246,0.06), rgba(59,130,246,0.02))",
-                border: "1px solid rgba(59,130,246,0.12)",
-                padding: 24,
-                cursor: "pointer",
-                transition: "all 200ms ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "rgba(59,130,246,0.25)";
-                e.currentTarget.style.transform = "translateY(-2px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "rgba(59,130,246,0.12)";
-                e.currentTarget.style.transform = "translateY(0)";
-              }}
-            >
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  background: "rgba(59,130,246,0.15)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 14,
-                }}
-              >
-                <Video style={{ width: 22, height: 22, color: "#3B82F6" }} />
-              </div>
-              <h3
-                style={{
-                  fontSize: 16,
-                  fontWeight: 600,
-                  margin: 0,
-                  marginBottom: 4,
-                }}
-              >
-                Video Interview
-              </h3>
-              <p
-                style={{
-                  fontSize: 13,
-                  color: "var(--text-secondary)",
-                  margin: 0,
-                  marginBottom: 12,
-                }}
-              >
-                Full webcam experience with AI avatar
-              </p>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {["Amazon", "Behavioral", "All Levels"].map((tag) => (
-                  <span
-                    key={tag}
-                    style={{
-                      fontSize: 10,
-                      padding: "3px 8px",
-                      borderRadius: 6,
-                      backgroundColor: "rgba(59,130,246,0.08)",
-                      color: "#3B82F6",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </Link>
-
-          {/* Daily Challenge */}
-          <Link href="/daily" style={{ textDecoration: "none" }}>
-            <div
-              style={{
-                position: "relative",
-                overflow: "hidden",
-                borderRadius: 16,
-                background:
-                  "linear-gradient(135deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02))",
-                border: "1px solid rgba(245,158,11,0.12)",
-                padding: 24,
-                cursor: "pointer",
-                transition: "all 200ms ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "rgba(245,158,11,0.25)";
-                e.currentTarget.style.transform = "translateY(-2px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "rgba(245,158,11,0.12)";
-                e.currentTarget.style.transform = "translateY(0)";
-              }}
-            >
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  background: "rgba(245,158,11,0.15)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 14,
-                }}
-              >
-                <Flame style={{ width: 22, height: 22, color: "#F59E0B" }} />
-              </div>
-              <h3
-                style={{
-                  fontSize: 16,
-                  fontWeight: 600,
-                  margin: 0,
-                  marginBottom: 4,
-                }}
-              >
-                Daily Challenge
-              </h3>
-              <p
-                style={{
-                  fontSize: 13,
-                  color: "var(--text-secondary)",
-                  margin: 0,
-                  marginBottom: 12,
-                }}
-              >
-                Today&apos;s featured question — refreshes at midnight
-              </p>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {["Featured", "Random Category"].map((tag) => (
-                  <span
-                    key={tag}
-                    style={{
-                      fontSize: 10,
-                      padding: "3px 8px",
-                      borderRadius: 6,
-                      backgroundColor: "rgba(245,158,11,0.08)",
-                      color: "#F59E0B",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </Link>
-
-          {/* Custom Interview */}
-          <Link href="/interview" style={{ textDecoration: "none" }}>
-            <div
-              style={{
-                position: "relative",
-                overflow: "hidden",
-                borderRadius: 16,
-                background:
-                  "linear-gradient(135deg, rgba(99,102,241,0.06), rgba(99,102,241,0.02))",
-                border: "1px solid rgba(99,102,241,0.12)",
-                padding: 24,
-                cursor: "pointer",
-                transition: "all 200ms ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "rgba(99,102,241,0.25)";
-                e.currentTarget.style.transform = "translateY(-2px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "rgba(99,102,241,0.12)";
-                e.currentTarget.style.transform = "translateY(0)";
-              }}
-            >
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  background: "rgba(99,102,241,0.15)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 14,
-                }}
-              >
-                <Settings2
-                  style={{ width: 22, height: 22, color: "#6366F1" }}
-                />
-              </div>
-              <h3
-                style={{
-                  fontSize: 16,
-                  fontWeight: 600,
-                  margin: 0,
-                  marginBottom: 4,
-                }}
-              >
-                Custom Interview
-              </h3>
-              <p
-                style={{
-                  fontSize: 13,
-                  color: "var(--text-secondary)",
-                  margin: 0,
-                  marginBottom: 12,
-                }}
-              >
-                Choose your company, type, and difficulty
-              </p>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {["20+ Companies", "12 Interview Types"].map((tag) => (
-                  <span
-                    key={tag}
-                    style={{
-                      fontSize: 10,
-                      padding: "3px 8px",
-                      borderRadius: 6,
-                      backgroundColor: "rgba(99,102,241,0.08)",
-                      color: "#6366F1",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </Link>
         </div>
-      </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {practicePaths.map((path) => {
+            const Icon = path.icon;
+            return (
+              <Link key={path.title} href={path.href} className="group rounded-2xl border border-white/7 bg-[#111116] p-5 transition hover:-translate-y-1 hover:border-indigo-500/25">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10">
+                  <Icon className="h-5 w-5 text-indigo-300" />
+                </div>
+                <h3 className="mt-5 font-semibold">{path.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-[#858596]">{path.description}</p>
+                <div className="mt-5 flex items-center gap-2 text-sm font-medium text-indigo-300">Practice now <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></div>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-white/7 bg-[#111116]">
+        <div className="flex items-center justify-between border-b border-white/7 px-5 py-4 sm:px-6">
+          <div>
+            <h2 className="font-semibold">Recent sessions</h2>
+            <p className="mt-1 text-xs text-[#6f6f80]">Continue learning from your latest practice.</p>
+          </div>
+          <Link href="/history" className="text-sm font-medium text-indigo-300 hover:text-indigo-200">View history</Link>
+        </div>
+
+        {recentSessions.length > 0 ? (
+          <div className="divide-y divide-white/7">
+            {recentSessions.map((item) => (
+              <Link key={item._id} href={`/interview/${item._id}/report`} className="flex flex-col gap-3 px-5 py-4 transition hover:bg-white/[0.025] sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <div>
+                  <div className="font-medium text-[#e8e8ee]">{formatInterviewType(item.type)}</div>
+                  <div className="mt-1 text-xs text-[#717183]">
+                    {item.company && item.company !== "general" ? `${formatInterviewType(item.company)} · ` : ""}
+                    {new Date(item.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+                <div className="flex items-center gap-5 text-sm">
+                  <span className="text-[#777789]">{formatDuration(item.duration || 0)}</span>
+                  <span className="font-semibold tabular-nums text-indigo-300">{item.completed ? `${item.overallScore || 0}%` : "In progress"}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="px-6 py-10 text-center text-sm text-[#777789]">No sessions yet. Start your first interview to build a history.</div>
+        )}
+      </section>
     </div>
   );
 }

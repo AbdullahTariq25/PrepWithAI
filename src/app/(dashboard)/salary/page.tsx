@@ -1,203 +1,198 @@
 "use client";
 
-import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
-import { ChevronRight, Calculator, MessageSquare, Briefcase, TrendingUp, HelpCircle } from "lucide-react";
+import { FormEvent, useMemo, useState } from "react";
+import { Calculator, Check, Copy, MessageSquare, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
-};
+const locations = {
+  Lahore: 1,
+  Karachi: 1.08,
+  Islamabad: 1.1,
+  "Remote - International": 3.2,
+} as const;
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } }
-};
+const companyMultipliers = {
+  Startup: 0.9,
+  Medium: 1,
+  Large: 1.18,
+  Enterprise: 1.35,
+} as const;
+
+const negotiationScripts = [
+  {
+    title: "The offer is below your target",
+    text: "Thank you for the offer. Based on the scope of the role, the market range, and the value I can bring, I was targeting a higher range. Is there flexibility in the base compensation or the overall package?",
+  },
+  {
+    title: "They ask for your expectation first",
+    text: "I am focused on the responsibilities and the full package, but based on the market for comparable roles I am targeting a competitive range. I would be happy to discuss a number once I understand the complete scope and benefits.",
+  },
+  {
+    title: "You are responding to a counteroffer",
+    text: "I appreciate the movement and I am genuinely excited about the role. If we can close the remaining gap in the package, I would feel comfortable moving forward. What flexibility is still available?",
+  },
+];
 
 export default function SalaryPage() {
+  const [role, setRole] = useState("Full Stack Developer");
+  const [experience, setExperience] = useState(3);
+  const [location, setLocation] = useState<keyof typeof locations>("Lahore");
+  const [companySize, setCompanySize] = useState<keyof typeof companyMultipliers>("Medium");
   const [calculated, setCalculated] = useState(false);
+  const [copied, setCopied] = useState<number | null>(null);
 
-  const handleCalculate = (e: React.FormEvent) => {
-    e.preventDefault();
+  const estimate = useMemo(() => {
+    const experienceBase = 85_000 + experience * 34_000;
+    const roleMultiplier = /senior|lead|staff|principal/i.test(role) ? 1.35 : /junior|intern/i.test(role) ? 0.72 : 1;
+    const midpoint = Math.round(
+      experienceBase * locations[location] * companyMultipliers[companySize] * roleMultiplier,
+    );
+    return {
+      low: Math.round(midpoint * 0.78 / 5_000) * 5_000,
+      midpoint: Math.round(midpoint / 5_000) * 5_000,
+      high: Math.round(midpoint * 1.28 / 5_000) * 5_000,
+    };
+  }, [companySize, experience, location, role]);
+
+  function calculate(event: FormEvent) {
+    event.preventDefault();
     setCalculated(true);
-  };
+  }
+
+  async function copyScript(index: number, text: string) {
+    await navigator.clipboard.writeText(text);
+    setCopied(index);
+    window.setTimeout(() => setCopied(null), 1500);
+  }
 
   return (
-    <div className="min-h-screen bg-[#08080C] text-white page-enter font-sans">
-      <div className="px-4 md:px-8 py-8 md:py-12 max-w-6xl mx-auto">
-        <div className="flex items-center text-sm text-[#60607A] font-mono mb-8">
-          <Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
-          <ChevronRight className="w-4 h-4 mx-2" />
-          <span className="text-[#A0A0B0]">Salary Coach</span>
+    <div className="mx-auto max-w-6xl space-y-8 page-enter">
+      <div>
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/8 px-3 py-1.5 text-xs font-medium text-emerald-300">
+          <TrendingUp className="h-3.5 w-3.5" /> Negotiation preparation
         </div>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Prepare for the compensation conversation.</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-[#9090a0] sm:text-base">
+          Use a directional estimate to frame your research, then rehearse calm, evidence-based language before the real negotiation.
+        </p>
+      </div>
 
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-12">
-          {/* SECTION 1: HEADER */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+        <section className="rounded-2xl border border-white/7 bg-[#111116] p-5 sm:p-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10">
+              <Calculator className="h-5 w-5 text-emerald-300" />
+            </div>
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <motion.div variants={itemVariants} className="inline-flex items-center px-2.5 py-1 rounded-md border border-emerald-400/20 bg-emerald-400/10 text-[10px] font-mono font-bold text-emerald-400 mb-2 uppercase tracking-wider">
-                  AI-Powered
-                </motion.div>
-              </div>
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">Salary Negotiation Coach</h1>
-              <p className="text-[#A0A0B0] text-lg">Know your worth. Negotiate confidently.</p>
+              <h2 className="font-semibold">Directional salary estimate</h2>
+              <p className="mt-1 text-xs text-[#727284]">A planning aid, not verified market compensation data.</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* SECTION 2: CALCULATOR */}
-            <motion.div variants={itemVariants} className="space-y-6">
-              <div className="bg-[#111116] border border-white/5 rounded-3xl p-8 relative shadow-lg">
-                <h2 className="text-xl font-bold flex items-center gap-3 mb-6">
-                  <Calculator className="w-5 h-5 text-emerald-500" /> What should you be earning?
-                </h2>
+          <form onSubmit={calculate} className="mt-6 space-y-5">
+            <div>
+              <label htmlFor="salary-role" className="mb-1.5 block text-sm font-medium">Role title</label>
+              <Input id="salary-role" value={role} onChange={(event) => setRole(event.target.value)} />
+            </div>
 
-                <form onSubmit={handleCalculate} className="space-y-5">
-                  <div>
-                    <label className="block text-sm font-medium text-[#A0A0B0] mb-2">Role Title</label>
-                    <input type="text" defaultValue="Full Stack Developer" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50" />
-                  </div>
-
-                  <div>
-                    <label className="flex justify-between text-sm font-medium text-[#A0A0B0] mb-2">
-                      <span>Years of experience</span>
-                      <span className="text-white font-mono bg-white/5 px-2 py-0.5 rounded text-xs">3 years</span>
-                    </label>
-                    <input type="range" min="0" max="15" defaultValue="3" className="w-full accent-emerald-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-[#A0A0B0] mb-2">Location</label>
-                    <select className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50 appearance-none">
-                      <option>Lahore</option>
-                      <option>Karachi</option>
-                      <option>Islamabad</option>
-                      <option>Remote - International</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-[#A0A0B0] mb-2">Tech Stack (Select multiple)</label>
-                    <div className="flex flex-wrap gap-2">
-                      {["React", "Node.js", "Python", "AWS", "Go", "Docker", "TypeScript"].map((tech, idx) => (
-                        <button key={tech} type="button" className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${idx < 2 || idx === 6 ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-black/40 border-white/10 text-[#A0A0B0] hover:border-white/20'}`}>
-                          {tech}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-[#A0A0B0] mb-2">Company Size</label>
-                    <select className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50 appearance-none">
-                      <option>Startup (1-50)</option>
-                      <option>Medium (51-200)</option>
-                      <option>Large (201-1000)</option>
-                      <option>Enterprise (1000+)</option>
-                    </select>
-                  </div>
-
-                  <button type="submit" className="w-full mt-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-emerald-500/20">
-                    Calculate Estimate
-                  </button>
-                </form>
+            <div>
+              <div className="mb-2 flex items-center justify-between text-sm font-medium">
+                <label htmlFor="salary-experience">Years of experience</label>
+                <span className="rounded-lg bg-white/5 px-2 py-1 text-xs text-[#c6c6d0]">{experience} years</span>
               </div>
+              <input
+                id="salary-experience"
+                type="range"
+                min="0"
+                max="20"
+                value={experience}
+                onChange={(event) => setExperience(Number(event.target.value))}
+                className="w-full accent-emerald-400"
+              />
+            </div>
 
-              <AnimatePresence>
-                {calculated && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                    animate={{ opacity: 1, height: 'auto', marginTop: 24 }}
-                    className="bg-gradient-to-br from-[#1A1A24] to-[#111116] border border-emerald-500/30 rounded-3xl p-8 shadow-[0_0_30px_rgba(16,185,129,0.1)] overflow-hidden relative"
-                  >
-                    <div className="absolute top-0 right-0 p-8 text-emerald-500/10 pointer-events-none">
-                      <TrendingUp className="w-32 h-32" />
-                    </div>
-                    <h3 className="text-[#A0A0B0] uppercase tracking-widest text-xs font-bold mb-4">Estimated Target</h3>
-                    <div className="space-y-6 relative z-10">
-                      <div>
-                        <p className="text-3xl md:text-4xl font-bold font-mono text-white mb-2">PKR 150K - 250K <span className="text-lg text-[#60607A]">/mo</span></p>
-                        <p className="text-sm text-emerald-400 font-medium bg-emerald-400/10 px-3 py-1 rounded-full inline-block">For international remote: $2,000 - $4,500/month</p>
-                      </div>
+            <div>
+              <label htmlFor="salary-location" className="mb-1.5 block text-sm font-medium">Location context</label>
+              <select
+                id="salary-location"
+                value={location}
+                onChange={(event) => setLocation(event.target.value as keyof typeof locations)}
+                className="w-full rounded-xl border border-white/10 bg-[#0b0b10] px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/40"
+              >
+                {Object.keys(locations).map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </div>
 
-                      <div className="pt-4 border-t border-white/10 grid grid-cols-3 gap-2 text-center text-sm">
-                        <div>
-                          <p className="font-mono text-[#A0A0B0] mb-1">Low</p>
-                          <p className="font-bold">120K</p>
-                        </div>
-                        <div className="bg-white/5 rounded-lg py-1 border border-white/5">
-                          <p className="font-mono text-emerald-500 mb-1">Median</p>
-                          <p className="font-bold text-white">200K</p>
-                        </div>
-                        <div>
-                          <p className="font-mono text-[#A0A0B0] mb-1">High</p>
-                          <p className="font-bold">300K+</p>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
+            <div>
+              <label htmlFor="salary-company" className="mb-1.5 block text-sm font-medium">Company size</label>
+              <select
+                id="salary-company"
+                value={companySize}
+                onChange={(event) => setCompanySize(event.target.value as keyof typeof companyMultipliers)}
+                className="w-full rounded-xl border border-white/10 bg-[#0b0b10] px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/40"
+              >
+                {Object.keys(companyMultipliers).map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </div>
 
-            {/* SECTION 3: NEGOTIATION SCRIPTS & SIMULATOR */}
-            <motion.div variants={itemVariants} className="space-y-6">
-              <h2 className="text-xl font-bold flex items-center gap-3">
-                <MessageSquare className="w-5 h-5 text-indigo-400" /> What to say when they make an offer
-              </h2>
+            <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500">Calculate planning range</Button>
+          </form>
 
-              <div className="space-y-4">
-                {/* Scenario 1 */}
-                <div className="bg-[#111116] border border-white/5 rounded-2xl p-6 group hover:border-white/10 transition-colors">
-                  <h4 className="font-bold text-sm mb-3 text-white flex items-center justify-between">
-                    Scenario 1: They offer below your target
-                    <span className="text-xs font-mono text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">Common</span>
-                  </h4>
-                  <div className="font-mono text-sm bg-black/50 border border-white/5 rounded-xl p-4 text-[#A0A0B0] leading-relaxed relative">
-                    "Thank you for the offer. Based on my research and the value I bring, I was expecting something closer to [X]. Is there flexibility there?"
-                    <button className="absolute top-2 right-2 text-xs text-[#60607A] hover:text-white transition-colors bg-white/5 p-1.5 rounded opacity-0 group-hover:opacity-100">Copy</button>
-                  </div>
-                </div>
-
-                {/* Scenario 2 */}
-                <div className="bg-[#111116] border border-white/5 rounded-2xl p-6 group hover:border-white/10 transition-colors">
-                  <h4 className="font-bold text-sm mb-3 text-white flex items-center justify-between">
-                    Scenario 2: They ask your expected salary first
-                  </h4>
-                  <div className="font-mono text-sm bg-black/50 border border-white/5 rounded-xl p-4 text-[#A0A0B0] leading-relaxed relative">
-                    "I am looking at the market range for this role which is [X to Y]. Within that range, I am flexible depending on the full package."
-                    <button className="absolute top-2 right-2 text-xs text-[#60607A] hover:text-white transition-colors bg-white/5 p-1.5 rounded opacity-0 group-hover:opacity-100">Copy</button>
-                  </div>
-                </div>
-
-                {/* Scenario 3 */}
-                <div className="bg-[#111116] border border-white/5 rounded-2xl p-6 group hover:border-white/10 transition-colors">
-                  <h4 className="font-bold text-sm mb-3 text-white flex items-center justify-between">
-                    Scenario 3: Counter-offer response
-                  </h4>
-                  <div className="font-mono text-sm bg-black/50 border border-white/5 rounded-xl p-4 text-[#A0A0B0] leading-relaxed relative">
-                    "I appreciate you coming back. Could we meet in the middle at [X]? I am very excited about this role and want to make this work."
-                    <button className="absolute top-2 right-2 text-xs text-[#60607A] hover:text-white transition-colors bg-white/5 p-1.5 rounded opacity-0 group-hover:opacity-100">Copy</button>
-                  </div>
-                </div>
+          {calculated && (
+            <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.06] p-5">
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-300">Planning range</div>
+              <div className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
+                PKR {estimate.low.toLocaleString()} – {estimate.high.toLocaleString()}
               </div>
+              <div className="mt-2 text-sm text-[#9d9daa]">Directional midpoint: PKR {estimate.midpoint.toLocaleString()} per month.</div>
+              <p className="mt-4 text-xs leading-5 text-[#737385]">
+                This estimate is generated from a simple product heuristic, not live compensation data. Validate your target with current job postings, recruiter conversations, public salary sources, benefits, equity, and the exact responsibilities of the role.
+              </p>
+            </div>
+          )}
+        </section>
 
-              {/* SECTION 4: SIMULATOR CTA */}
-              <div className="mt-8 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 rounded-3xl p-8 text-center relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 blur-3xl rounded-full" />
-                <h3 className="text-xl font-bold mb-3 relative z-10">AI Negotiation Simulator</h3>
-                <p className="text-sm text-[#A0A0B0] mb-6 relative z-10 mx-auto max-w-[300px]">
-                  Practice your response live against a strict AI hiring manager.
-                </p>
-                <button className="relative z-10 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2.5 rounded-full font-medium transition-colors shadow-lg shadow-indigo-500/20 text-sm">
-                  Start Simulation Session
-                </button>
-              </div>
-            </motion.div>
+        <section className="rounded-2xl border border-white/7 bg-[#111116] p-5 sm:p-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10">
+              <MessageSquare className="h-5 w-5 text-indigo-300" />
+            </div>
+            <div>
+              <h2 className="font-semibold">Negotiation language</h2>
+              <p className="mt-1 text-xs text-[#727284]">Use the structure, then adapt the wording to your real situation.</p>
+            </div>
           </div>
-        </motion.div>
+
+          <div className="mt-6 space-y-4">
+            {negotiationScripts.map((script, index) => (
+              <article key={script.title} className="rounded-2xl border border-white/7 bg-black/15 p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <h3 className="font-semibold text-[#e6e6ed]">{script.title}</h3>
+                  <button
+                    type="button"
+                    onClick={() => void copyScript(index, script.text)}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/8 bg-white/5 px-2.5 py-1.5 text-xs text-[#9b9bab] transition hover:bg-white/8 hover:text-white"
+                  >
+                    {copied === index ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copied === index ? "Copied" : "Copy"}
+                  </button>
+                </div>
+                <p className="mt-4 text-sm leading-7 text-[#a1a1af]">{script.text}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-indigo-500/20 bg-indigo-500/[0.06] p-5">
+            <div className="text-sm font-semibold text-indigo-200">A stronger negotiation sequence</div>
+            <ol className="mt-4 space-y-3 text-sm leading-6 text-[#9b9baa]">
+              <li><strong className="text-white">1.</strong> Show genuine interest before discussing the gap.</li>
+              <li><strong className="text-white">2.</strong> Anchor your request in scope, market evidence, and value.</li>
+              <li><strong className="text-white">3.</strong> Negotiate the full package, not only base salary.</li>
+              <li><strong className="text-white">4.</strong> Pause after making the request and let the employer respond.</li>
+            </ol>
+          </div>
+        </section>
       </div>
     </div>
   );

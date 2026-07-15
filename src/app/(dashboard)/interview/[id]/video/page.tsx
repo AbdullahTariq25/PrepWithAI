@@ -91,7 +91,6 @@ export default function VideoInterviewPage() {
     return () => {
       stream?.getTracks().forEach((t) => t.stop());
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Timer

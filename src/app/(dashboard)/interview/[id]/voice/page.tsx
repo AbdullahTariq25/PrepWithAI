@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Mic,
-  MicOff,
   Volume2,
   VolumeX,
   Keyboard,
@@ -30,11 +29,8 @@ export default function VoiceInterviewPage() {
 
   const {
     isListening,
-    isSpeaking,
     transcript,
     interimTranscript,
-    fillerCount,
-    wordsPerMinute,
     startListening,
     stopListening,
     speakText,
@@ -47,7 +43,7 @@ export default function VoiceInterviewPage() {
     "idle" | "thinking" | "speaking" | "listening"
   >("idle");
   const [elapsed, setElapsed] = useState(0);
-  const [questionNum, setQuestionNum] = useState(1);
+  const [questionNum] = useState(1);
   const [totalQuestions] = useState(5);
   const [hintsRemaining, setHintsRemaining] = useState(3);
   const [isMuted, setIsMuted] = useState(false);
@@ -119,7 +115,6 @@ export default function VoiceInterviewPage() {
       setWaveformData(new Array(20).fill(4));
     }
     return () => cleanupAudioVisualization();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isListening]);
 
   // Silence detection — when user stops speaking for 2 seconds

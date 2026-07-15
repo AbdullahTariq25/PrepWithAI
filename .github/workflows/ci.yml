@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, "ai/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXTAUTH_SECRET: ci-only-secret-not-used-in-production
+  AUTH_SECRET: ci-only-secret-not-used-in-production
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        id: lint
+        shell: bash
+        run: |
+          set +e
+          npm run lint > lint-output.txt 2>&1
+          status=$?
+          tail -n 180 lint-output.txt
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: lint-output.txt
+          retention-days: 3
+      - name: Enforce lint result
+        if: steps.lint.outputs.exit_code != '0'
+        run: exit 1
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build

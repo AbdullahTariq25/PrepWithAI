@@ -1,147 +1,168 @@
 <div align="center">
 
-# 🎯 PrepWithAI
-### The Open-Source AI Interview Coach for Developers
+# PrepWithAI
+### AI interview preparation for developers who want measurable improvement
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?logo=tailwind-css)](https://tailwindcss.com)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white)](https://mongodb.com)
-[![Stripe](https://img.shields.io/badge/Stripe-v20-635BFF?logo=stripe&logoColor=white)](https://stripe.com)
+[![Stripe](https://img.shields.io/badge/Stripe-Subscriptions-635BFF?logo=stripe&logoColor=white)](https://stripe.com)
 [![License](https://img.shields.io/badge/License-MIT-purple)](LICENSE)
 
-[**Live Demo**](https://prepwithai.com) · [**Report Bug**](https://github.com/AbdullahTariq25/PrepWithAI/issues) · [**Request Feature**](https://github.com/AbdullahTariq25/PrepWithAI/issues)
-
----
-
-**PrepWithAI** is an AI-powered mock interview platform designed to help developers ace their technical, behavioral, and system design interviews. Built with Next.js 16 and Groq (LLaMA 3.3 70B), it offers realistic, company-specific preparation with real-time feedback and progress tracking.
+[**Live Product**](https://prepwithai.com) · [**Report an Issue**](https://github.com/AbdullahTariq25/PrepWithAI/issues) · [**Request a Feature**](https://github.com/AbdullahTariq25/PrepWithAI/issues)
 
 </div>
 
----
+## Overview
 
-## 📸 Screenshots
+PrepWithAI is a full-stack interview-preparation platform for software developers. It combines AI-led mock interviews, technical and behavioral practice, company-specific preparation, voice/video modes, progress analytics, career tools, authentication, subscriptions, and transactional email in one product.
 
-> **Note:** We're looking for community contributions to add high-quality screenshots and videos of PrepWithAI in action! Open a PR to help us out.
+The platform is built around a deliberate practice loop: **choose a target → practice under realistic constraints → review specific feedback → repeat with one improvement goal**.
 
----
+## Product capabilities
 
-## ✨ Key Features
+### Interview practice
+- Multiple interview tracks including DSA, system design, behavioral, frontend, backend, DevOps, mobile, ML, leadership, and full-loop practice.
+- AI follow-up questions and structured feedback.
+- Voice and video interview modes for communication practice.
+- Company-specific preparation contexts.
+- Monaco-based coding workspace for technical sessions.
 
-### 🎤 Immersive Interview Experience
-- **12+ Interview Types** — Specialize in DSA, System Design, Frontend, Backend, DevOps, ML, Mobile, Security, and more.
-- **Voice-to-Voice Mode** — Practice naturally using real-time speech recognition for a more authentic interview feel.
-- **20+ Company Packs** — Tailored interviewers for top companies like Google, Meta, Amazon, Microsoft, and local leaders like Systems Limited.
-- **Live Code Editor** — Integrated Monaco Editor for solving technical challenges directly in the platform.
+### Progress and career tooling
+- Session history and detailed reports.
+- Skill trends, streaks, ELO-style progression, and performance analytics.
+- Resume review and resume builder.
+- Cover-letter, job, salary, flashcard, leaderboard, and daily-practice surfaces.
 
-### 📊 Performance & Analytics
-- **Real-time AI Feedback** — Instant, detailed critiques on your communication, technical accuracy, and problem-solving skills.
-- **ELO Rating System** — Track your growth with a skill-based rating that levels up as you improve.
-- **Session Replay** — Review full transcripts, AI scores, and specific areas for improvement after every session.
-- **Historical Trends** — 30-day interactive charts showing your score trends across different categories.
+### Commercial product infrastructure
+- Credentials authentication with JWT sessions.
+- Free, Pro, Team, and Enterprise plan support in the data model.
+- Single-use 14-day Pro trial.
+- Server-side enforcement of Free-plan interview limits.
+- Stripe Checkout, subscription lifecycle webhooks, and customer records.
+- Resend-powered transactional email.
+- Vercel Analytics, Speed Insights, PostHog, and Sentry integration points.
 
-### 🛠️ Developer Career Toolkit
-- **Resume Builder & Review** — AI-assisted resume analysis to help you pass the initial screening.
-- **Cover Letter Generator** — Effortlessly create tailored cover letters for specific job descriptions.
-- **Leaderboard & Streaks** — Gamified experience to keep you motivated and consistent with daily practice.
-- **Flashcards & Daily Challenges** — Stay sharp with spaced-repetition study and fresh daily questions.
+## Access model
 
----
+The current core access model is:
 
-## 🏗️ Technical Architecture
+| Plan | Core access |
+|---|---|
+| **Free** | Up to 3 DSA text interview sessions per day and core practice access |
+| **Pro** | Unlimited sessions, premium interview tracks, voice/video modes, company packs, deeper analytics, and personalized preparation |
+| **Team** | Pro capabilities plus team-oriented access and collaboration features |
+| **Enterprise** | Data-model support for larger deployments and custom commercial arrangements |
 
-PrepWithAI is built on a modern, high-performance stack:
+A Free account can activate a **single-use 14-day Pro trial**.
+
+> Stripe price IDs and production billing secrets must be configured in the deployment environment before paid checkout is enabled.
+
+## Technical architecture
 
 | Layer | Technology |
-|:--- |:--- |
-| **Frontend** | **Next.js 16** (App Router, React 19, React Compiler) |
-| **Styling** | **Tailwind CSS v4** + Framer Motion |
-| **Database** | **MongoDB Atlas** + Mongoose 9 |
-| **AI Engine** | **Groq SDK** — LLaMA 3.3 70B Versatile |
-| **Auth** | **NextAuth v5** (Google, GitHub, Credentials) |
-| **Payments** | **Stripe** (Subscriptions & Customer Portal) |
-| **Email** | **Resend** (Transactional & Marketing Emails) |
-| **Monitoring** | **Sentry** (Session Replay & Error Tracking) |
-| **Analytics** | **Vercel Analytics** + PostHog |
+|---|---|
+| Frontend | Next.js 16 App Router, React 19, TypeScript |
+| Styling | Tailwind CSS v4, Radix UI primitives, selective Framer Motion |
+| Database | MongoDB Atlas, Mongoose |
+| AI | Groq SDK |
+| Authentication | NextAuth/Auth.js v5 credentials flow with JWT sessions |
+| Billing | Stripe Checkout and webhooks |
+| Email | Resend |
+| Monitoring | Sentry integration points |
+| Product analytics | Vercel Analytics, Speed Insights, PostHog |
 
----
+## Security and reliability notes
 
-## 🚀 Getting Started
+- Protected application routes validate authentication tokens rather than trusting only the presence of a cookie name.
+- Sensitive credentials are expected through environment variables and must never be committed.
+- Stripe webhook signatures are verified before subscription state changes are applied.
+- Database configuration is validated when a database connection is actually requested, preventing missing database configuration from crashing unrelated static build work.
+- CI runs lint and a production build independently on pull requests and relevant pushes.
 
-### Prerequisites
-- **Node.js** 18.x or higher
-- **npm**, **pnpm**, or **bun**
-- **MongoDB Atlas** (Free Tier works great)
-- **Groq API Key** (Get it free at [console.groq.com](https://console.groq.com))
+## Local development
 
-### Installation & Setup
+### Requirements
 
-1. **Clone & Install**
-   ```bash
-   git clone https://github.com/AbdullahTariq25/PrepWithAI.git
-   cd PrepWithAI
-   npm install
-   ```
+- Node.js 22 or another version supported by the current Next.js release.
+- npm.
+- MongoDB for database-backed product flows.
+- A Groq API key for AI interview functionality.
+- Optional Stripe, Resend, Sentry, and analytics credentials for their respective integrations.
 
-2. **Environment Variables**
-   Copy `.env.example` to `.env.local` and fill in your keys:
-   ```bash
-   cp .env.example .env.local
-   ```
+### Setup
 
-3. **Seed Question Bank**
-   Populate your database with 100+ high-quality interview questions:
-   ```bash
-   npx tsx src/scripts/seed-questions.ts
-   ```
+```bash
+git clone https://github.com/AbdullahTariq25/PrepWithAI.git
+cd PrepWithAI
+npm ci
+cp .env.example .env.local
+npm run dev
+```
 
-4. **Run Development Server**
-   ```bash
-   npm run dev
-   ```
-   Open [http://localhost:3000](http://localhost:3000) to start practicing!
+Open `http://localhost:3000`.
 
----
+### Quality checks
 
-## 🔌 API Reference Summary
+```bash
+npm run lint
+npm run build
+```
 
-| Method | Endpoint | Description |
-|:--- |:--- |:--- |
-| `GET` | `/api/health` | System health check (DB + AI) |
-| `POST` | `/api/interview/create` | Initialize a new interview session |
-| `POST` | `/api/interview/[id]/chat` | Send message/code for AI evaluation |
-| `GET` | `/api/sessions` | List all past interviews for the user |
-| `POST` | `/api/resume/upload` | Upload and analyze a PDF resume |
-| `GET` | `/api/leaderboard` | Global user rankings by ELO |
+The repository also includes GitHub Actions CI for these checks.
 
----
+## Important environment variables
 
-## 🤝 Contributing
+Review `.env.example` for the complete configuration. Production commonly requires values for:
 
-We love our contributors! Whether you're fixing a bug, adding a new company pack, or improving the AI's feedback loop, your help is welcome.
+```text
+MONGODB_URI
+NEXTAUTH_SECRET or AUTH_SECRET
+NEXT_PUBLIC_APP_URL
+GROQ_API_KEY
+STRIPE_SECRET_KEY
+STRIPE_WEBHOOK_SECRET
+STRIPE_PRO_MONTHLY_PRICE_ID
+STRIPE_TEAM_MONTHLY_PRICE_ID
+RESEND_API_KEY
+FROM_EMAIL
+CRON_SECRET
+```
 
-1. **Check the [Issue Tracker](https://github.com/AbdullahTariq25/PrepWithAI/issues)** for "Good First Issues".
-2. **Read the [CONTRIBUTING.md](CONTRIBUTING.md)** guide for our code standards and process.
-3. **Join the community** and help developers worldwide land their dream roles.
+Optional OAuth provider credentials may exist in the backend configuration, but the current public login/signup experience is intentionally credentials-focused.
 
-### Roadmap (Current Priorities)
-- [ ] Implement AI-assisted Code Execution (Judge0 Integration)
-- [ ] Improve Voice Mode latency and speech-to-text accuracy
-- [ ] Add "Study Groups" for collaborative practice
-- [ ] Expand company packs to 50+ companies
+## Selected API routes
 
----
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/health` | Service health information |
+| `POST` | `/api/auth/signup` | Create a credentials account |
+| `POST` | `/api/interview/create` | Create an interview session with plan enforcement |
+| `POST` | `/api/interview/[id]/chat` | Continue an AI interview session |
+| `POST` | `/api/user/start-trial` | Start the one-time Pro trial |
+| `POST` | `/api/stripe/checkout` | Create a Stripe subscription checkout session |
+| `POST` | `/api/stripe/webhook` | Synchronize subscription lifecycle changes |
+| `POST` | `/api/cron` | Run secret-protected maintenance jobs |
 
-## 📜 License & Acknowledgements
+## Deployment
 
-- **License:** Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
-- **Author:** [Abdullah Tariq](https://github.com/AbdullahTariq25) — Lahore, Pakistan.
-- **Built with:** ❤️ by modern developers for modern developers.
+The project is designed for Vercel deployment through Git integration. Keep all production secrets in the Vercel project environment and configure the Stripe webhook endpoint against the production `/api/stripe/webhook` route.
 
----
+Before a production release:
 
-<div align="center">
+1. Confirm the production environment variables.
+2. Run CI successfully.
+3. Validate authentication, account creation, interview creation, billing, and webhook flows.
+4. Test mobile and desktop navigation.
+5. Review runtime errors after deployment.
 
-**If PrepWithAI helped you land an interview, give it a ⭐ on GitHub!**
+## Contributing
 
-</div>
+Contributions are welcome. Keep changes focused, avoid committing secrets or generated local files, and run lint/build checks before opening a pull request.
+
+## License
+
+Distributed under the [MIT License](LICENSE).
+
+**Author:** [Abdullah Tariq](https://github.com/AbdullahTariq25) — Lahore, Pakistan.
