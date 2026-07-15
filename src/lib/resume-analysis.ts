@@ -170,12 +170,12 @@ function computeScores(text: string, lines: string[]) {
   const lengthScore = text.length >= 1_500 && text.length <= 12_000 ? 15 : text.length >= 700 ? 9 : 4;
   const atsScore = clampScore(structureScore * 0.7 + lengthScore + actionVerbScore * 0.08 + quantificationScore * 0.07);
 
-  return { atsScore, actionVerbScore, quantificationScore, quantifiedHits, actionHits };
+  return { atsScore, actionVerbScore, quantificationScore };
 }
 
 export async function extractPdfText(buffer: Buffer): Promise<ExtractedPdf> {
-  const module = (await import("pdf-parse")) as Record<string, unknown>;
-  const ModernPDFParse = module.PDFParse as
+  const pdfParseModule = (await import("pdf-parse")) as Record<string, unknown>;
+  const ModernPDFParse = pdfParseModule.PDFParse as
     | (new (options: { data: Uint8Array }) => {
         getText: () => Promise<{ text?: string; total?: number; pages?: unknown[] }>;
         destroy?: () => Promise<void> | void;
@@ -196,7 +196,7 @@ export async function extractPdfText(buffer: Buffer): Promise<ExtractedPdf> {
     }
   }
 
-  const legacyParser = module.default as
+  const legacyParser = pdfParseModule.default as
     | ((data: Buffer) => Promise<{ text?: string; numpages?: number }>)
     | undefined;
   if (legacyParser) {
