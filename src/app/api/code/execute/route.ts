@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
-const JUDGE0_URL = process.env.JUDGE0_API_URL || "https://judge0-ce.p.rapidapi.com";
+const JUDGE0_URL = (process.env.JUDGE0_API_URL || "https://judge0-ce.p.rapidapi.com").replace(/\/$/, "");
 const JUDGE0_KEY = process.env.JUDGE0_API_KEY || "";
+const JUDGE0_HOST = process.env.JUDGE0_RAPIDAPI_HOST || "judge0-ce.p.rapidapi.com";
+
+const MAX_CODE_LENGTH = 100_000;
+const MAX_STDIN_LENGTH = 20_000;
+const MAX_TEST_CASES = 5;
+const MAX_TEST_VALUE_LENGTH = 10_000;
 
 const LANGUAGE_IDS: Record<string, number> = {
   javascript: 63,
@@ -10,6 +16,11 @@ const LANGUAGE_IDS: Record<string, number> = {
   java: 62,
   cpp: 54,
 };
+
+interface TestCaseInput {
+  input?: string;
+  expectedOutput?: string;
+}
 
 interface SubmissionResult {
   stdout: string | null;
@@ -20,57 +31,69 @@ interface SubmissionResult {
   memory: number;
 }
 
-async function createSubmission(
-  code: string,
-  languageId: number,
-  stdin: string
-): Promise<string> {
-  const res = await fetch(`${JUDGE0_URL}/submissions?base64_encoded=true&wait=false`, {
+function judge0Configured(): boolean {
+  return !JUDGE0_URL.includes("rapidapi.com") || Boolean(JUDGE0_KEY);
+}
+
+function judge0Headers(includeJson = false): HeadersInit {
+  const headers: Record<string, string> = {};
+  if (includeJson) headers["Content-Type"] = "application/json";
+  if (JUDGE0_KEY) {
+    headers["X-RapidAPI-Key"] = JUDGE0_KEY;
+    headers["X-RapidAPI-Host"] = JUDGE0_HOST;
+  }
+  return headers;
+}
+
+async function createSubmission(code: string, languageId: number, stdin: string): Promise<string> {
+  const response = await fetch(`${JUDGE0_URL}/submissions?base64_encoded=true&wait=false`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-RapidAPI-Key": JUDGE0_KEY,
-      "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com",
-    },
+    headers: judge0Headers(true),
+    signal: AbortSignal.timeout(12_000),
     body: JSON.stringify({
       source_code: Buffer.from(code).toString("base64"),
       language_id: languageId,
       stdin: Buffer.from(stdin).toString("base64"),
       cpu_time_limit: 5,
-      memory_limit: 128000,
+      wall_time_limit: 8,
+      memory_limit: 128_000,
     }),
   });
 
-  if (!res.ok) {
-    throw new Error(`Judge0 submission failed: ${res.status}`);
+  if (!response.ok) {
+    throw new Error(`Judge0 submission failed with status ${response.status}`);
   }
 
-  const data = await res.json();
+  const data = (await response.json()) as { token?: string };
+  if (!data.token) throw new Error("Judge0 did not return a submission token");
   return data.token;
 }
 
 async function getSubmission(token: string): Promise<SubmissionResult> {
-  let attempts = 0;
-  const maxAttempts = 20;
+  const maxAttempts = 16;
 
-  while (attempts < maxAttempts) {
-    const res = await fetch(
-      `${JUDGE0_URL}/submissions/${token}?base64_encoded=true`,
-      {
-        headers: {
-          "X-RapidAPI-Key": JUDGE0_KEY,
-          "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com",
-        },
-      }
-    );
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const response = await fetch(`${JUDGE0_URL}/submissions/${encodeURIComponent(token)}?base64_encoded=true`, {
+      headers: judge0Headers(),
+      signal: AbortSignal.timeout(8_000),
+      cache: "no-store",
+    });
 
-    if (!res.ok) {
-      throw new Error(`Judge0 get submission failed: ${res.status}`);
+    if (!response.ok) {
+      throw new Error(`Judge0 status request failed with status ${response.status}`);
     }
 
-    const data = await res.json();
+    const data = (await response.json()) as {
+      stdout?: string | null;
+      stderr?: string | null;
+      compile_output?: string | null;
+      status?: { id: number; description: string };
+      time?: string;
+      memory?: number;
+    };
 
-    // Status 1 = In Queue, 2 = Processing
+    if (!data.status) throw new Error("Judge0 returned an invalid status payload");
+
     if (data.status.id > 2) {
       return {
         stdout: data.stdout ? Buffer.from(data.stdout, "base64").toString() : null,
@@ -85,10 +108,25 @@ async function getSubmission(token: string): Promise<SubmissionResult> {
     }
 
     await new Promise((resolve) => setTimeout(resolve, 500));
-    attempts++;
   }
 
-  throw new Error("Submission timed out");
+  throw new Error("Code execution timed out");
+}
+
+function validateTestCases(value: unknown): TestCaseInput[] | null {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > MAX_TEST_CASES) return null;
+
+  const normalized: TestCaseInput[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") return null;
+    const testCase = item as TestCaseInput;
+    const input = typeof testCase.input === "string" ? testCase.input : "";
+    const expectedOutput = typeof testCase.expectedOutput === "string" ? testCase.expectedOutput : "";
+    if (input.length > MAX_TEST_VALUE_LENGTH || expectedOutput.length > MAX_TEST_VALUE_LENGTH) return null;
+    normalized.push({ input, expectedOutput });
+  }
+  return normalized;
 }
 
 export async function POST(req: NextRequest) {
@@ -98,48 +136,53 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { code, language, stdin, testCases } = await req.json();
+    const body = (await req.json()) as Record<string, unknown>;
+    const code = typeof body.code === "string" ? body.code : "";
+    const language = typeof body.language === "string" ? body.language : "";
+    const stdin = typeof body.stdin === "string" ? body.stdin : "";
+    const testCases = validateTestCases(body.testCases);
 
-    if (!code || !language) {
+    if (!code.trim() || !language) {
+      return NextResponse.json({ error: "Code and language are required" }, { status: 400 });
+    }
+
+    if (code.length > MAX_CODE_LENGTH || stdin.length > MAX_STDIN_LENGTH) {
       return NextResponse.json(
-        { error: "Code and language are required" },
-        { status: 400 }
+        { error: "The submitted code or input is too large for the execution sandbox" },
+        { status: 413 },
+      );
+    }
+
+    if (testCases === null) {
+      return NextResponse.json(
+        { error: `Provide at most ${MAX_TEST_CASES} valid test cases` },
+        { status: 400 },
       );
     }
 
     const languageId = LANGUAGE_IDS[language];
     if (!languageId) {
+      return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
+    }
+
+    if (!judge0Configured()) {
       return NextResponse.json(
-        { error: "Unsupported language" },
-        { status: 400 }
+        {
+          error: "Code execution is temporarily unavailable because the execution provider is not configured.",
+          code: "EXECUTION_PROVIDER_NOT_CONFIGURED",
+        },
+        { status: 503 },
       );
     }
 
-    // If no Judge0 API key, use a mock execution for development
-    if (!JUDGE0_KEY) {
-      return NextResponse.json({
-        stdout: "// Code execution requires Judge0 API key\n// Set JUDGE0_API_KEY in your .env.local\n// Get a free key at https://rapidapi.com/judge0-official/api/judge0-ce",
-        stderr: "",
-        exitCode: 0,
-        executionTime: 0,
-        memoryUsed: 0,
-        testResults: testCases
-          ? testCases.map((tc: { input: string; expectedOutput: string }) => ({
-              input: tc.input,
-              expectedOutput: tc.expectedOutput,
-              actualOutput: "Mock output",
-              passed: false,
-              executionTime: 0,
-            }))
-          : [],
-        passedTests: 0,
-        totalTests: testCases ? testCases.length : 0,
-      });
-    }
-
-    // If test cases provided, run each one
-    if (testCases && testCases.length > 0) {
-      const results = [];
+    if (testCases.length > 0) {
+      const results: Array<{
+        input: string;
+        expectedOutput: string;
+        actualOutput: string;
+        passed: boolean;
+        executionTime: number;
+      }> = [];
       let passedCount = 0;
 
       for (const testCase of testCases) {
@@ -148,22 +191,22 @@ export async function POST(req: NextRequest) {
           const result = await getSubmission(token);
           const actualOutput = (result.stdout || "").trim();
           const expectedOutput = (testCase.expectedOutput || "").trim();
-          const passed = actualOutput === expectedOutput;
-
-          if (passed) passedCount++;
+          const passed = result.status.id === 3 && actualOutput === expectedOutput;
+          if (passed) passedCount += 1;
 
           results.push({
-            input: testCase.input,
-            expectedOutput: testCase.expectedOutput,
-            actualOutput: actualOutput || result.stderr || result.compile_output || "",
+            input: testCase.input || "",
+            expectedOutput: testCase.expectedOutput || "",
+            actualOutput: actualOutput || result.stderr || result.compile_output || result.status.description,
             passed,
-            executionTime: parseFloat(result.time) * 1000,
+            executionTime: Number.parseFloat(result.time || "0") * 1000,
           });
-        } catch {
+        } catch (error) {
+          console.error("Judge0 test case failed:", error);
           results.push({
-            input: testCase.input,
-            expectedOutput: testCase.expectedOutput,
-            actualOutput: "Execution error",
+            input: testCase.input || "",
+            expectedOutput: testCase.expectedOutput || "",
+            actualOutput: "Execution failed for this test case",
             passed: false,
             executionTime: 0,
           });
@@ -171,10 +214,10 @@ export async function POST(req: NextRequest) {
       }
 
       return NextResponse.json({
-        stdout: results.map((r) => r.actualOutput).join("\n"),
+        stdout: results.map((result) => result.actualOutput).join("\n"),
         stderr: "",
         exitCode: passedCount === testCases.length ? 0 : 1,
-        executionTime: results.reduce((sum, r) => sum + r.executionTime, 0),
+        executionTime: results.reduce((sum, result) => sum + result.executionTime, 0),
         memoryUsed: 0,
         testResults: results,
         passedTests: passedCount,
@@ -182,15 +225,15 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Single execution
-    const token = await createSubmission(code, languageId, stdin || "");
+    const token = await createSubmission(code, languageId, stdin);
     const result = await getSubmission(token);
 
     return NextResponse.json({
       stdout: result.stdout || "",
       stderr: result.stderr || result.compile_output || "",
       exitCode: result.status.id === 3 ? 0 : 1,
-      executionTime: parseFloat(result.time) * 1000,
+      status: result.status.description,
+      executionTime: Number.parseFloat(result.time || "0") * 1000,
       memoryUsed: result.memory,
       testResults: [],
       passedTests: 0,
@@ -200,7 +243,7 @@ export async function POST(req: NextRequest) {
     console.error("Code execution error:", error);
     return NextResponse.json(
       { error: "Code execution failed. Please try again." },
-      { status: 500 }
+      { status: 502 },
     );
   }
 }
