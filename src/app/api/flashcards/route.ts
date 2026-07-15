@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { NextRequest } from "next/server";
 import { withAuth, AuthContext } from "@/lib/withAuth";
 import { success, badRequest, serverError } from "@/lib/response";
@@ -6,7 +7,7 @@ import Question from "@/models/Question";
 import FlashcardProgress from "@/models/FlashcardProgress";
 
 interface QuestionDoc {
-  _id: { toString(): string };
+  _id: mongoose.Types.ObjectId;
   title: string;
   description: string;
   difficulty: "easy" | "medium" | "hard";
@@ -16,7 +17,7 @@ interface QuestionDoc {
 }
 
 interface ProgressDoc {
-  questionId: { toString(): string };
+  questionId: mongoose.Types.ObjectId;
   easeFactor: number;
   intervalDays: number;
   repetitions: number;
@@ -50,7 +51,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
     const questionIds = questions.map((question) => question._id);
     const progressRows = (await FlashcardProgress.find({
-      userId: ctx.user.id,
+      userId: new mongoose.Types.ObjectId(ctx.user.id),
       questionId: { $in: questionIds },
     }).lean()) as unknown as ProgressDoc[];
 
