@@ -1,16 +1,19 @@
 // ===========================================
-// PrepWithAI — Chat Route (MOST CRITICAL)
-// POST /api/interview/[id]/chat
-// Handles all interview actions: start, message,
-// hint, skip, end — with Groq AI + SSE streaming
-// Built by Abdullah Tariq, Lahore Pakistan
+// PrepWithAI — Interview Chat Route
+// Handles start, message, hint, skip, and end actions
+// with streaming AI responses and calibrated finalization
 // ===========================================
 
 import { NextRequest } from "next/server";
 import { withAuth, AuthContext } from "@/lib/withAuth";
 import { chatMessageSchema, validateBody } from "@/lib/validation";
-import { badRequest, notFound, forbidden, serverError } from "@/lib/response";
-import { tooManyRequests } from "@/lib/response";
+import {
+  badRequest,
+  notFound,
+  forbidden,
+  serverError,
+  tooManyRequests,
+} from "@/lib/response";
 import {
   generateInterviewResponse,
   generateInterviewResponseStream,
@@ -18,50 +21,53 @@ import {
 } from "@/lib/groq";
 import { getSystemPrompt, getEndInterviewPrompt } from "@/lib/prompts";
 import { rateLimitChat } from "@/lib/rateLimit";
+import { finalizeInterview } from "@/lib/finalizeInterview";
 import Session from "@/models/Session";
 
-// Helper: build conversation history from session
-function buildConversationHistory(
-  session: { type: string; company: string; difficulty: string; messages: { role: string; content: string }[] }
-) {
+function buildConversationHistory(session: {
+  type: string;
+  company: string;
+  difficulty: string;
+  messages: { role: string; content: string }[];
+}) {
   const systemPrompt = getSystemPrompt(
     session.type,
     session.company,
-    session.difficulty
+    session.difficulty,
   );
   const history: {
     role: "system" | "user" | "assistant";
     content: string;
   }[] = [{ role: "system", content: systemPrompt }];
 
-  // Limit to last 30 messages to save tokens, but keep system prompt
-  const msgs = session.messages;
-  const recent = msgs.length > 30 ? msgs.slice(-30) : msgs;
+  const messages = session.messages;
+  const recent = messages.length > 30 ? messages.slice(-30) : messages;
 
-  for (const msg of recent) {
+  for (const message of recent) {
     history.push({
-      role: msg.role === "interviewer" ? "assistant" : "user",
-      content: msg.content,
+      role: message.role === "interviewer" ? "assistant" : "user",
+      content: message.content,
     });
   }
 
   return history;
 }
 
-// Helper: create streaming response with DB save after completion
 function createStreamingResponse(
   session: ReturnType<typeof Object>,
-  conversationHistory: { role: "system" | "user" | "assistant"; content: string }[],
+  conversationHistory: {
+    role: "system" | "user" | "assistant";
+    content: string;
+  }[],
   userId: string,
   endpoint: string,
-  extraMeta?: { newQuestion?: boolean; hintsUsed?: number }
+  extraMeta?: { newQuestion?: boolean; hintsUsed?: number },
 ) {
   const { stream, fullContent } = generateInterviewResponseStream(
     conversationHistory,
-    { userId, endpoint }
+    { userId, endpoint },
   );
 
-  // Save complete message to DB after stream finishes
   fullContent
     .then(async (aiMessage) => {
       session.messages.push({
@@ -73,29 +79,24 @@ function createStreamingResponse(
       });
       await session.save();
     })
-    .catch((err: unknown) => {
-      console.error("Failed to save streamed message:", err);
+    .catch((error: unknown) => {
+      console.error("Failed to save streamed message:", error);
     });
 
-  // Send metadata in the first SSE event
   const encoder = new TextEncoder();
   const metaStream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const meta = {
-        meta: true,
-        ...(extraMeta || {}),
-      };
       controller.enqueue(
-        encoder.encode(`data: ${JSON.stringify(meta)}\n\n`)
+        encoder.encode(
+          `data: ${JSON.stringify({ meta: true, ...(extraMeta || {}) })}\n\n`,
+        ),
       );
       controller.close();
     },
   });
 
-  // Combine meta + AI stream
   const combined = new ReadableStream<Uint8Array>({
     async start(controller) {
-      // Send meta first
       const metaReader = metaStream.getReader();
       while (true) {
         const { done, value } = await metaReader.read();
@@ -103,7 +104,6 @@ function createStreamingResponse(
         controller.enqueue(value);
       }
 
-      // Then pipe AI stream
       const aiReader = stream.getReader();
       while (true) {
         const { done, value } = await aiReader.read();
@@ -117,7 +117,7 @@ function createStreamingResponse(
   return new Response(combined, {
     headers: {
       "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
+      "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
       "X-Accel-Buffering": "no",
     },
@@ -126,13 +126,14 @@ function createStreamingResponse(
 
 async function handler(req: NextRequest, { user, params }: AuthContext) {
   try {
-    // Rate limit per user
     const rateCheck = rateLimitChat(user.id);
     if (!rateCheck.allowed) {
-      return tooManyRequests("Slow down! Please wait before sending another message.", 5);
+      return tooManyRequests(
+        "Slow down! Please wait before sending another message.",
+        5,
+      );
     }
 
-    // Validate input
     const { data, error } = await validateBody(req, chatMessageSchema);
     if (error || !data) {
       return badRequest(error || "Invalid input");
@@ -141,30 +142,39 @@ async function handler(req: NextRequest, { user, params }: AuthContext) {
     const { id } = params;
     const { action, content } = data;
 
-    // Check daily API limit
     const apiLimit = await checkApiLimit(user.id);
     if (!apiLimit.allowed) {
       return tooManyRequests(
-        "AI responses are temporarily limited due to high usage. Please try again shortly."
+        "AI responses are temporarily limited due to high usage. Please try again shortly.",
       );
     }
 
-    // Fetch session
     const session = await Session.findById(id);
-    if (!session) {
-      return notFound("Session not found");
-    }
+    if (!session) return notFound("Session not found");
     if (session.userId.toString() !== user.id) {
       return forbidden("You do not have access to this session");
     }
+
     if (session.completed && action !== "end") {
       return badRequest("This interview session has already ended");
     }
 
-    // Build conversation history (with 30-message window)
-    const conversationHistory = buildConversationHistory(session);
+    if (action === "end" && session.reportGenerated) {
+      const feedback = await finalizeInterview(id, user.id);
+      return Response.json({
+        completed: true,
+        feedback,
+        score: feedback.overallScore,
+        grades: feedback.grades,
+        duration: feedback.duration,
+        strengths: feedback.strengths,
+        weaknesses: feedback.improvements,
+        summary: feedback.summary,
+        seniorTip: feedback.seniorTip,
+      });
+    }
 
-    // ─── Handle Actions ─────────────────────────────
+    const conversationHistory = buildConversationHistory(session);
 
     switch (action) {
       case "start": {
@@ -179,7 +189,7 @@ async function handler(req: NextRequest, { user, params }: AuthContext) {
           conversationHistory,
           user.id,
           "chat-start",
-          { newQuestion: true }
+          { newQuestion: true },
         );
       }
 
@@ -188,7 +198,6 @@ async function handler(req: NextRequest, { user, params }: AuthContext) {
           return badRequest("Message content cannot be empty");
         }
 
-        // Add user message to DB immediately
         session.messages.push({
           id: `msg-${Date.now()}-user`,
           role: "candidate",
@@ -205,7 +214,7 @@ async function handler(req: NextRequest, { user, params }: AuthContext) {
           conversationHistory,
           user.id,
           "chat-message",
-          { newQuestion: false }
+          { newQuestion: false },
         );
       }
 
@@ -213,7 +222,7 @@ async function handler(req: NextRequest, { user, params }: AuthContext) {
         conversationHistory.push({
           role: "user",
           content:
-            "I'm stuck. Can you give me a small hint without revealing the full solution?",
+            "I'm stuck. Give me one small hint that helps me make progress without revealing the full solution.",
         });
 
         session.hintsUsed = (session.hintsUsed || 0) + 1;
@@ -224,7 +233,7 @@ async function handler(req: NextRequest, { user, params }: AuthContext) {
           conversationHistory,
           user.id,
           "chat-hint",
-          { hintsUsed: session.hintsUsed }
+          { hintsUsed: session.hintsUsed },
         );
       }
 
@@ -232,7 +241,7 @@ async function handler(req: NextRequest, { user, params }: AuthContext) {
         conversationHistory.push({
           role: "user",
           content:
-            "I'd like to skip this question. Please briefly explain the optimal approach, then move to the next question.",
+            "I'd like to skip this question. Give a concise explanation of the key approach, then move to the next appropriate question.",
         });
 
         return createStreamingResponse(
@@ -240,94 +249,48 @@ async function handler(req: NextRequest, { user, params }: AuthContext) {
           conversationHistory,
           user.id,
           "chat-skip",
-          { newQuestion: true }
+          { newQuestion: true },
         );
       }
 
       case "end": {
-        // End remains non-streaming — needs full JSON parsing
         conversationHistory.push({
           role: "user",
           content: getEndInterviewPrompt(),
         });
 
-        const { content: endMessage } = await generateInterviewResponse(
+        const { content: closingMessage } = await generateInterviewResponse(
           conversationHistory,
           {
-            temperature: 0.4,
-            maxTokens: 1000,
+            temperature: 0.25,
+            maxTokens: 260,
             userId: user.id,
             endpoint: "chat-end",
-          }
+          },
         );
 
-        // Parse scores from AI response
-        let overallScore = 0;
-        let grades = {
-          problemSolving: 0,
-          communication: 0,
-          codeQuality: 0,
-          edgeCases: 0,
-          timeManagement: 0,
-        };
-        let strengths: string[] = [];
-        let weaknesses: string[] = [];
-        let summary = "";
-        let seniorTip = "";
-
-        try {
-          const jsonMatch = endMessage.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            overallScore = parsed.score || 0;
-            if (parsed.grades) grades = { ...grades, ...parsed.grades };
-            strengths = parsed.strengths || [];
-            weaknesses = parsed.weaknesses || [];
-            summary = parsed.summary || "";
-            seniorTip = parsed.tip || "";
-          }
-        } catch {
-          // JSON parsing failed — use defaults
-        }
-
-        // Calculate duration
-        const duration =
-          session.messages.length > 0
-            ? Math.floor(
-              (Date.now() -
-                new Date(session.createdAt).getTime()) /
-              1000
-            )
-            : 0;
-
-        // Update session
-        session.completed = true;
-        session.overallScore = overallScore;
-        session.grades = grades;
-        session.duration = duration;
-        session.strengths = strengths;
-        session.improvements = weaknesses;
-        session.summary = summary;
-        session.seniorTip = seniorTip;
         session.messages.push({
           id: `msg-${Date.now()}-end`,
           role: "interviewer",
-          content: endMessage,
+          content: closingMessage,
           timestamp: new Date(),
           isVoice: false,
         });
         await session.save();
 
+        const feedback = await finalizeInterview(id, user.id);
+
         return Response.json({
-          message: endMessage,
+          message: closingMessage,
           completed: true,
-          score: overallScore,
-          grades,
-          duration,
-          strengths,
-          weaknesses,
-          summary,
-          seniorTip,
+          feedback,
+          score: feedback.overallScore,
+          grades: feedback.grades,
+          duration: feedback.duration,
+          strengths: feedback.strengths,
+          weaknesses: feedback.improvements,
+          summary: feedback.summary,
+          seniorTip: feedback.seniorTip,
         });
       }
 
