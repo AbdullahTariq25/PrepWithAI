@@ -24,6 +24,7 @@ import {
   MessageSquare,
   Settings,
   Sparkles,
+  Target,
   Trophy,
   Users,
   Wand2,
@@ -36,6 +37,7 @@ const sections = [
     label: "Practice",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/plan", label: "My Prep Plan", icon: Target },
       { href: "/interview", label: "New Interview", icon: MessageSquare },
       { href: "/daily", label: "Daily Challenge", icon: Flame },
       { href: "/questions", label: "Questions", icon: BookOpen },
@@ -65,10 +67,17 @@ const sections = [
 ];
 
 function isActivePath(currentPath: string, href: string) {
-  return currentPath === href || (href !== "/dashboard" && currentPath.startsWith(`${href}/`));
+  return (
+    currentPath === href ||
+    (href !== "/dashboard" && currentPath.startsWith(`${href}/`))
+  );
 }
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname() || "";
   const { data: session } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -105,7 +114,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }`}
       >
         <div className="flex h-16 items-center justify-between border-b border-white/7 px-4">
-          <Link href="/dashboard" className="flex items-center gap-3" onClick={() => setSidebarOpen(false)}>
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3"
+            onClick={() => setSidebarOpen(false)}
+          >
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-950/40">
               <Brain className="h-5 w-5" />
             </div>
@@ -135,7 +148,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </span>
             </div>
             <div className="mt-2 text-xs text-[#747487]">
-              {user?.currentStreak ? `${user.currentStreak}-day practice streak` : "Start a session to build your streak"}
+              {user?.currentStreak
+                ? `${user.currentStreak}-day practice streak`
+                : "Start a session to build your streak"}
             </div>
           </div>
         </div>
@@ -161,7 +176,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           : "text-[#9696a5] hover:bg-white/4 hover:text-white"
                       }`}
                     >
-                      <Icon className={`h-4 w-4 ${active ? "text-indigo-300" : "text-[#6c6c7c]"}`} />
+                      <Icon
+                        className={`h-4 w-4 ${
+                          active ? "text-indigo-300" : "text-[#6c6c7c]"
+                        }`}
+                      />
                       <span>{item.label}</span>
                     </Link>
                   );
@@ -200,8 +219,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Menu className="h-4 w-4" />
             </button>
             <div>
-              <div className="text-sm font-semibold text-[#e9e9ef]">Your interview workspace</div>
-              <div className="hidden text-xs text-[#69697a] sm:block">Practice deliberately. Measure improvement.</div>
+              <div className="text-sm font-semibold text-[#e9e9ef]">
+                Your interview workspace
+              </div>
+              <div className="hidden text-xs text-[#69697a] sm:block">
+                Practice deliberately. Measure improvement.
+              </div>
             </div>
           </div>
 
@@ -215,8 +238,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {initials}
               </div>
               <div className="hidden text-left sm:block">
-                <div className="max-w-36 truncate text-xs font-medium text-[#ededf3]">{user?.name || "PrepWithAI user"}</div>
-                <div className="max-w-36 truncate text-[10px] text-[#6d6d7d]">{user?.email || ""}</div>
+                <div className="max-w-36 truncate text-xs font-medium text-[#ededf3]">
+                  {user?.name || "PrepWithAI user"}
+                </div>
+                <div className="max-w-36 truncate text-[10px] text-[#6d6d7d]">
+                  {user?.email || ""}
+                </div>
               </div>
               <ChevronDown className="h-4 w-4 text-[#777789]" />
             </button>
@@ -224,8 +251,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {profileOpen && (
               <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-white/8 bg-[#111116] p-2 shadow-2xl shadow-black/40">
                 <div className="border-b border-white/7 px-3 py-2.5">
-                  <div className="text-xs font-medium text-white">{user?.name || "Account"}</div>
-                  <div className="mt-1 text-[11px] capitalize text-[#777789]">{user?.plan || "free"} plan</div>
+                  <div className="text-xs font-medium text-white">
+                    {user?.name || "Account"}
+                  </div>
+                  <div className="mt-1 text-[11px] capitalize text-[#777789]">
+                    {user?.plan || "free"} plan
+                  </div>
                 </div>
                 <Link
                   href="/settings"
@@ -252,7 +283,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main className="min-h-[calc(100vh-4rem)] px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="min-h-[calc(100vh-4rem)] px-4 py-6 sm:px-6 lg:px-8">
+          {children}
+        </main>
       </div>
     </div>
   );
