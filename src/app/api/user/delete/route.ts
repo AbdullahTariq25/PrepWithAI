@@ -6,6 +6,7 @@ import Session from "@/models/Session";
 import UserProgress from "@/models/UserProgress";
 import StudyGroup from "@/models/StudyGroup";
 import FlashcardProgress from "@/models/FlashcardProgress";
+import JobTarget from "@/models/JobTarget";
 import ApiUsage from "@/models/ApiUsage";
 
 async function handler(_req: NextRequest, { user }: AuthContext) {
@@ -14,6 +15,7 @@ async function handler(_req: NextRequest, { user }: AuthContext) {
       Session.deleteMany({ userId: user.id }),
       UserProgress.deleteMany({ userId: user.id }),
       FlashcardProgress.deleteMany({ userId: user.id }),
+      JobTarget.deleteMany({ userId: user.id }),
       ApiUsage.deleteMany({ userId: user.id }),
       StudyGroup.deleteMany({ ownerId: user.id }),
       StudyGroup.updateMany(
