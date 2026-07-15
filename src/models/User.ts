@@ -15,8 +15,15 @@ export interface IUser extends Document {
   currentRole?: string;
   targetRole?: string;
   experienceYears?: number;
-  experienceLevel?: "student" | "junior" | "mid" | "senior" | "staff" | "principal";
+  experienceLevel?:
+    | "student"
+    | "junior"
+    | "mid"
+    | "senior"
+    | "staff"
+    | "principal";
   targetCompanies: string[];
+  preferredInterviewTypes: string[];
   targetDate?: Date;
   resumeUrl?: string;
   resumeParsed?: Record<string, unknown>;
@@ -80,7 +87,10 @@ const UserSchema = new Schema<IUser>(
       lowercase: true,
       minlength: 3,
       maxlength: 30,
-      match: [/^[a-z0-9_-]+$/, "Username can only contain lowercase letters, numbers, hyphens, underscores"],
+      match: [
+        /^[a-z0-9_-]+$/,
+        "Username can only contain lowercase letters, numbers, hyphens, underscores",
+      ],
     },
     bio: { type: String, maxlength: 500 },
     location: { type: String, maxlength: 100 },
@@ -95,6 +105,25 @@ const UserSchema = new Schema<IUser>(
       enum: ["student", "junior", "mid", "senior", "staff", "principal"],
     },
     targetCompanies: [{ type: String, trim: true }],
+    preferredInterviewTypes: [
+      {
+        type: String,
+        enum: [
+          "dsa",
+          "system_design",
+          "behavioral",
+          "frontend",
+          "backend",
+          "full_stack",
+          "full_loop",
+          "machine_learning",
+          "mobile",
+          "devops",
+          "data_engineering",
+          "security",
+        ],
+      },
+    ],
     targetDate: { type: Date },
     resumeUrl: { type: String },
     resumeParsed: { type: Schema.Types.Mixed },
@@ -113,7 +142,11 @@ const UserSchema = new Schema<IUser>(
     voiceEnabled: { type: Boolean, default: false },
     preferredLanguage: { type: String, default: "javascript" },
     timezone: { type: String },
-    theme: { type: String, enum: ["dark", "light", "system"], default: "dark" },
+    theme: {
+      type: String,
+      enum: ["dark", "light", "system"],
+      default: "dark",
+    },
     totalSessions: { type: Number, default: 0, min: 0 },
     avgScore: { type: Number, default: 0, min: 0, max: 100 },
     currentStreak: { type: Number, default: 0, min: 0 },
@@ -150,19 +183,26 @@ UserSchema.pre("save", async function () {
     this.password = await bcrypt.hash(this.password, 12);
   }
 
-  if (this.isModified("currentStreak") && this.currentStreak > this.maxStreak) {
+  if (
+    this.isModified("currentStreak") &&
+    this.currentStreak > this.maxStreak
+  ) {
     this.maxStreak = this.currentStreak;
   }
 });
 
-UserSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
+UserSchema.methods.comparePassword = async function (
+  candidatePassword: string,
+): Promise<boolean> {
   if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 
 UserSchema.methods.updateStreak = async function (): Promise<void> {
   const now = new Date();
-  const lastActive = this.lastActiveDate ? new Date(this.lastActiveDate) : null;
+  const lastActive = this.lastActiveDate
+    ? new Date(this.lastActiveDate)
+    : null;
 
   if (!lastActive) {
     this.currentStreak = 1;
@@ -183,6 +223,7 @@ UserSchema.methods.updateStreak = async function (): Promise<void> {
   await this.save();
 };
 
-const UserModel: Model<IUser> = mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+const UserModel: Model<IUser> =
+  mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
 
 export default UserModel;
