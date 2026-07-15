@@ -1,0 +1,66 @@
+name: One-time video cleanup
+
+on:
+  push:
+    branches: ["ai/state-of-the-art-product-polish"]
+    paths: [".github/workflows/one-time-video-cleanup.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ai/state-of-the-art-product-polish
+      - name: Fix video effect cleanup
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("src/app/(dashboard)/interview/[id]/video/page.tsx")
+          text = path.read_text(encoding="utf-8-sig")
+          old = '''  useEffect(() => {
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
+      .then((s) => {
+        setStream(s);
+        if (userVideoRef.current) userVideoRef.current.srcObject = s;
+      })
+      .catch(() => setCamOn(false));
+    return () => {
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);'''
+          new = '''  useEffect(() => {
+    let mediaStream: MediaStream | null = null;
+
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
+      .then((nextStream) => {
+        mediaStream = nextStream;
+        setStream(nextStream);
+        if (userVideoRef.current) userVideoRef.current.srcObject = nextStream;
+      })
+      .catch(() => setCamOn(false));
+
+    return () => {
+      mediaStream?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);'''
+          if old not in text:
+              raise SystemExit("Expected camera effect block not found")
+          text = text.replace(old, new, 1)
+          text = text.replace('    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, [isListening]);', '  }, [isListening]);', 1)
+          path.write_text(text, encoding="utf-8")
+          PY
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 'src/app/(dashboard)/interview/[id]/video/page.tsx'
+          git commit -m "fix: clean video media lifecycle and lint warnings"
+          git push origin HEAD:ai/state-of-the-art-product-polish
