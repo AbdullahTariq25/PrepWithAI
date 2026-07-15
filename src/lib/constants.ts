@@ -10,7 +10,7 @@ export const APP_NAME = "PrepWithAI";
 export const APP_DESCRIPTION =
   "The complete developer career platform. AI-powered mock interviews, code execution, voice mode, progress analytics, resume builder, and career tools — all in one place.";
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-export const APP_TAGLINE = "From your first line of code → to your first $200K job offer.";
+export const APP_TAGLINE = "Practice deliberately. Improve with evidence.";
 
 // ─── Interview Types (12) ───────────────────────
 
@@ -126,7 +126,7 @@ export const INTERVIEW_TYPES: {
     id: "full_loop",
     name: "Full Loop",
     label: "Full Interview Loop",
-    description: "3-hour FAANG simulation — all types, multiple interviewers",
+    description: "Compact multi-stage simulation across technical and behavioral signals",
     icon: "Trophy",
     color: "from-indigo-500 to-violet-500",
     free: true,

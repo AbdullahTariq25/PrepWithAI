@@ -1,36 +1,36 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { useSession } from "next-auth/react";
 import {
-  Brain,
-  ArrowRight,
   ArrowLeft,
-  Loader2,
-  Sparkles,
-  Code2,
-  Network,
-  MessageSquare,
-  Layout,
-  Server,
-  Trophy,
+  ArrowRight,
+  Brain,
   Building2,
+  Cloud,
+  Code2,
+  Crown,
+  Keyboard,
+  Layers,
+  Layout,
+  Loader2,
+  LockKeyhole,
+  MessageSquare,
   Mic,
   Monitor,
-  Layers,
-  Cloud,
+  Network,
+  Server,
   Smartphone,
+  Sparkles,
   Target,
-  Crown,
+  Trophy,
   Users,
   Video,
-  Keyboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { INTERVIEW_TYPES, COMPANY_PACKS } from "@/lib/constants";
-import { useSession } from "next-auth/react";
+import { COMPANY_PACKS, INTERVIEW_TYPES } from "@/lib/constants";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Code2,
@@ -51,22 +51,46 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const difficulties = [
   { id: "junior", name: "Junior", desc: "New grad / 0-2 years", emoji: "🌱" },
-  { id: "mid", name: "Mid-Level", desc: "Mid-level / 2-5 years", emoji: "🚀" },
-  { id: "senior", name: "Senior", desc: "Senior / 5+ years", emoji: "⭐" },
+  { id: "mid", name: "Mid-Level", desc: "Independent contributor / 2-5 years", emoji: "🚀" },
+  { id: "senior", name: "Senior", desc: "Senior ownership / 5+ years", emoji: "⭐" },
+  { id: "staff", name: "Staff+", desc: "Cross-team technical leadership", emoji: "👑" },
+] as const;
+
+const modeCards = [
   {
-    id: "staff",
-    name: "Staff+",
-    desc: "Staff engineer / 10+ years",
-    emoji: "👑",
+    id: "text" as const,
+    name: "Text",
+    desc: "Type answers and use the coding workspace.",
+    icon: Keyboard,
+    gradient: "from-zinc-500 to-zinc-700",
+    pro: false,
+  },
+  {
+    id: "voice" as const,
+    name: "Voice",
+    desc: "Practice speaking answers naturally.",
+    icon: Mic,
+    gradient: "from-violet-500 to-purple-600",
+    pro: true,
+  },
+  {
+    id: "video" as const,
+    name: "Video",
+    desc: "Add camera presence to the interview simulation.",
+    icon: Video,
+    gradient: "from-indigo-500 to-cyan-500",
+    pro: true,
   },
 ];
+
+type InterviewMode = (typeof modeCards)[number]["id"];
 
 export default function InterviewSetupPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center min-h-96">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        <div className="flex min-h-96 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
         </div>
       }
     >
@@ -78,356 +102,339 @@ export default function InterviewSetupPage() {
 function InterviewSetupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  useSession(); // keep session alive
-  const preselectedType = searchParams?.get("type") ?? null;
+  const { data: authSession } = useSession();
+
+  const preselectedType = searchParams?.get("type")?.replace(/-/g, "_") ?? null;
   const preselectedCompany = searchParams?.get("company") ?? null;
-  const preselectedMode = searchParams?.get("mode") ?? null;
+  const preselectedMode = searchParams?.get("mode") as InterviewMode | null;
 
   const [step, setStep] = useState(preselectedType ? 1 : 0);
   const [type, setType] = useState(preselectedType ?? "");
   const [company, setCompany] = useState(preselectedCompany ?? "general");
   const [difficulty, setDifficulty] = useState("mid");
-  const [interviewMode, setInterviewMode] = useState<
-    "text" | "voice" | "video"
-  >((preselectedMode as "text" | "voice" | "video") ?? "text");
+  const [interviewMode, setInterviewMode] = useState<InterviewMode>(
+    preselectedMode && modeCards.some((mode) => mode.id === preselectedMode)
+      ? preselectedMode
+      : "text",
+  );
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const steps = ["Type", "Company", "Difficulty", "Start"];
+  const hasProAccess = Boolean(
+    authSession?.user &&
+      (authSession.user.plan === "pro" ||
+        authSession.user.plan === "team" ||
+        authSession.user.plan === "enterprise" ||
+        authSession.user.isOnProTrial),
+  );
 
-  const startInterview = async () => {
+  const selectedTrack = useMemo(
+    () => INTERVIEW_TYPES.find((item) => item.id === type),
+    [type],
+  );
+  const selectedCompany = useMemo(
+    () => COMPANY_PACKS.find((item) => item.id === company),
+    [company],
+  );
+  const trackRequiresPro = type !== "dsa";
+  const selectedModeRequiresPro = interviewMode !== "text";
+  const requiresUpgrade = !hasProAccess && (trackRequiresPro || selectedModeRequiresPro);
+
+  const steps = ["Track", "Company", "Level", "Start"];
+
+  function chooseMode(mode: InterviewMode) {
+    setError("");
+    setInterviewMode(mode);
+  }
+
+  async function startInterview() {
+    setError("");
+
+    if (requiresUpgrade) {
+      router.push("/pricing");
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await fetch("/api/interview/create", {
+      const response = await fetch("/api/interview/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type,
           company,
           difficulty,
-          voiceMode: interviewMode !== "text",
+          voiceMode: interviewMode === "voice",
+          videoMode: interviewMode === "video",
         }),
       });
-      const data = await res.json();
-      if (data.sessionId) {
-        if (interviewMode === "video") {
-          router.push(`/interview/${data.sessionId}/video`);
-        } else if (interviewMode === "voice") {
-          router.push(`/interview/${data.sessionId}/voice`);
-        } else {
-          router.push(`/interview/${data.sessionId}`);
-        }
+      const data = await response.json();
+
+      if (!response.ok || !data.sessionId) {
+        throw new Error(data.error || "Unable to create the interview session");
       }
-    } catch (error) {
-      console.error("Failed to create session:", error);
+
+      if (interviewMode === "video") {
+        router.push(`/interview/${data.sessionId}/video`);
+      } else if (interviewMode === "voice") {
+        router.push(`/interview/${data.sessionId}/voice`);
+      } else {
+        router.push(`/interview/${data.sessionId}`);
+      }
+    } catch (startError) {
+      setError(
+        startError instanceof Error
+          ? startError.message
+          : "Unable to create the interview session",
+      );
     } finally {
       setLoading(false);
     }
-  };
-
-  const modeCards = [
-    {
-      id: "text" as const,
-      name: "Text Chat",
-      desc: "Type your answers in a chat interface",
-      icon: Keyboard,
-      gradient: "from-gray-500 to-zinc-600",
-      border: "border-white/8",
-      activeBorder: "border-indigo-500",
-    },
-    {
-      id: "voice" as const,
-      name: "Voice Mode",
-      desc: "Speak your answers naturally with AI voice",
-      icon: Mic,
-      gradient: "from-violet-500 to-purple-600",
-      border: "border-white/8",
-      activeBorder: "border-violet-500",
-    },
-    {
-      id: "video" as const,
-      name: "Video Interview",
-      desc: "Webcam + AI avatar with real-time feedback",
-      icon: Video,
-      gradient: "from-indigo-500 to-cyan-500",
-      border: "border-white/8",
-      activeBorder: "border-indigo-500",
-      isNew: true,
-    },
-  ];
+  }
 
   return (
-    <div className="max-w-5xl mx-auto page-enter bg-[#080808]">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-8"
-      >
-        <h1 className="text-3xl font-bold mb-2 tracking-tight">
-          Start New Interview
-        </h1>
-        <p className="text-[#888]">
-          Choose your interview type, target company, and difficulty
+    <div className="mx-auto max-w-6xl space-y-8 page-enter">
+      <header className="text-center">
+        <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/8 px-3 py-1.5 text-xs font-medium text-indigo-300">
+          <Sparkles className="h-3.5 w-3.5" /> Calibrated interview simulation
+        </div>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Build the session you actually need.</h1>
+        <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-[#8b8b9b] sm:text-base">
+          Choose one interview signal, a preparation context, and the level you want the evaluator to hold you against.
         </p>
-      </motion.div>
+      </header>
 
-      {/* Progress Steps */}
-      <div className="flex items-center justify-center gap-2 mb-10">
-        {steps.map((s, i) => (
-          <div key={s} className="flex items-center gap-2">
+      <div className="flex items-center justify-center gap-2">
+        {steps.map((label, index) => (
+          <div key={label} className="flex items-center gap-2">
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
-                i <= step
-                  ? "bg-indigo-600 text-white"
-                  : "bg-[#1A1A1A] text-[#555]"
+              className={`grid h-8 w-8 place-items-center rounded-full text-sm font-medium transition ${
+                index <= step ? "bg-indigo-600 text-white" : "bg-[#16161d] text-[#626274]"
               }`}
             >
-              {i + 1}
+              {index + 1}
             </div>
-            <span
-              className={`text-sm hidden sm:block ${i <= step ? "text-white" : "text-[#555]"}`}
-            >
-              {s}
+            <span className={`hidden text-sm sm:block ${index <= step ? "text-white" : "text-[#626274]"}`}>
+              {label}
             </span>
-            {i < steps.length - 1 && (
-              <div
-                className={`w-8 h-0.5 ${i < step ? "bg-indigo-600" : "bg-[#1A1A1A]"}`}
-              />
+            {index < steps.length - 1 && (
+              <div className={`h-px w-7 sm:w-10 ${index < step ? "bg-indigo-500" : "bg-white/8"}`} />
             )}
           </div>
         ))}
       </div>
 
-      <AnimatePresence mode="wait">
-        {/* Step 0: Interview Type */}
-        {step === 0 && (
-          <motion.div
-            key="type"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 slide-up-stagger"
-          >
-            {INTERVIEW_TYPES.map((t) => {
-              const Icon = iconMap[t.icon] || Code2;
-              return (
-                <div
-                  key={t.id}
-                  className={`card-3d premium-card bg-[#111] border rounded-2xl p-5 cursor-pointer transition-all ${
-                    type === t.id
-                      ? "border-indigo-500 shadow-lg shadow-indigo-500/10"
-                      : "border-white/8 hover:border-white/15"
-                  }`}
-                  onClick={() => setType(t.id)}
-                >
-                  <div
-                    className={`w-10 h-10 rounded-lg bg-linear-to-br ${t.color} flex items-center justify-center mb-3`}
-                  >
-                    <Icon className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-sm">{t.name}</h3>
-                    <Badge className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                      Free
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-[#666]">{t.description}</p>
-                </div>
-              );
-            })}
-          </motion.div>
-        )}
-
-        {/* Step 1: Company */}
-        {step === 1 && (
-          <motion.div
-            key="company"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-          >
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 slide-up-stagger">
-              <div
-                className={`card-3d premium-card bg-[#111] border rounded-2xl p-4 flex items-center gap-3 cursor-pointer transition-all ${
-                  company === "general"
-                    ? "border-indigo-500 shadow-lg shadow-indigo-500/10"
-                    : "border-white/8 hover:border-white/15"
+      {step === 0 && (
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {INTERVIEW_TYPES.map((track) => {
+            const Icon = iconMap[track.icon] || Code2;
+            const isFreeTrack = track.id === "dsa";
+            const selected = type === track.id;
+            return (
+              <button
+                key={track.id}
+                type="button"
+                onClick={() => {
+                  setType(track.id);
+                  setError("");
+                }}
+                className={`relative rounded-2xl border p-5 text-left transition hover:-translate-y-0.5 ${
+                  selected
+                    ? "border-indigo-500 bg-indigo-500/[0.06] shadow-lg shadow-indigo-950/30"
+                    : "border-white/8 bg-[#111116] hover:border-white/15"
                 }`}
-                onClick={() => setCompany("general")}
               >
-                <div className="w-10 h-10 rounded-lg bg-linear-to-br from-gray-500 to-zinc-600 flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-white" />
+                <div className={`mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${track.color}`}>
+                  <Icon className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold">{track.name}</h2>
+                  <Badge
+                    className={`text-[10px] ${
+                      isFreeTrack
+                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                        : "border-violet-500/20 bg-violet-500/10 text-violet-300"
+                    }`}
+                  >
+                    {isFreeTrack ? "Free" : "Pro"}
+                  </Badge>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-[#737384]">{track.description}</p>
+              </button>
+            );
+          })}
+        </section>
+      )}
+
+      {step === 1 && (
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <button
+            type="button"
+            onClick={() => setCompany("general")}
+            className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition ${
+              company === "general"
+                ? "border-indigo-500 bg-indigo-500/[0.06]"
+                : "border-white/8 bg-[#111116] hover:border-white/15"
+            }`}
+          >
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-zinc-500 to-zinc-700">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-sm font-medium">General</div>
+              <div className="text-xs text-[#6f6f80]">No company-specific lens</div>
+            </div>
+          </button>
+
+          {COMPANY_PACKS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setCompany(item.id)}
+              className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition ${
+                company === item.id
+                  ? "border-indigo-500 bg-indigo-500/[0.06]"
+                  : "border-white/8 bg-[#111116] hover:border-white/15"
+              }`}
+            >
+              <div
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-sm font-bold text-white"
+                style={{ backgroundColor: item.color }}
+              >
+                {item.name.charAt(0)}
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium">{item.name}</div>
+                <div className="text-xs capitalize text-[#6f6f80]">{item.region.replace("_", " ")}</div>
+              </div>
+            </button>
+          ))}
+        </section>
+      )}
+
+      {step === 2 && (
+        <section className="mx-auto grid max-w-3xl gap-4 sm:grid-cols-2">
+          {difficulties.map((level) => (
+            <button
+              key={level.id}
+              type="button"
+              onClick={() => setDifficulty(level.id)}
+              className={`rounded-2xl border p-6 text-left transition ${
+                difficulty === level.id
+                  ? "border-indigo-500 bg-indigo-500/[0.06]"
+                  : "border-white/8 bg-[#111116] hover:border-white/15"
+              }`}
+            >
+              <div className="text-3xl">{level.emoji}</div>
+              <h2 className="mt-4 font-semibold">{level.name}</h2>
+              <p className="mt-1 text-sm text-[#737384]">{level.desc}</p>
+            </button>
+          ))}
+        </section>
+      )}
+
+      {step === 3 && (
+        <section className="mx-auto max-w-3xl rounded-3xl border border-white/8 bg-[#111116] p-6 sm:p-8">
+          <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
+            <div className="rounded-2xl border border-white/7 bg-black/20 p-5">
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#666678]">Session calibration</div>
+              <dl className="mt-5 space-y-4 text-sm">
+                <div>
+                  <dt className="text-[#6f6f80]">Track</dt>
+                  <dd className="mt-1 font-medium">{selectedTrack?.label || type.replace(/_/g, " ")}</dd>
                 </div>
                 <div>
-                  <span className="font-medium text-sm">General</span>
-                  <p className="text-[10px] text-[#666]">No specific company</p>
+                  <dt className="text-[#6f6f80]">Preparation context</dt>
+                  <dd className="mt-1 font-medium">{selectedCompany?.name || "General"}</dd>
                 </div>
-                {company === "general" && (
-                  <Badge className="ml-auto text-[10px] bg-indigo-500/20 text-indigo-400 border-indigo-500/30">
-                    Selected
-                  </Badge>
-                )}
-              </div>
-
-              {COMPANY_PACKS.map((c) => (
-                <div
-                  key={c.id}
-                  className={`card-3d premium-card bg-[#111] border rounded-2xl p-4 flex items-center gap-3 cursor-pointer transition-all ${
-                    company === c.id
-                      ? "border-indigo-500 shadow-lg shadow-indigo-500/10"
-                      : "border-white/8 hover:border-white/15"
-                  }`}
-                  onClick={() => setCompany(c.id)}
-                >
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-                    style={{ backgroundColor: c.color }}
-                  >
-                    {c.name.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium text-sm truncate block">
-                      {c.name}
-                    </span>
-                    <p className="text-[10px] text-[#666] capitalize">
-                      {c.region.replace("_", " ")}
-                    </p>
-                  </div>
-                  {company === c.id && (
-                    <Badge className="ml-auto text-[10px] shrink-0 bg-indigo-500/20 text-indigo-400 border-indigo-500/30">
-                      Selected
-                    </Badge>
-                  )}
+                <div>
+                  <dt className="text-[#6f6f80]">Requested level</dt>
+                  <dd className="mt-1 font-medium capitalize">{difficulty}</dd>
                 </div>
-              ))}
+              </dl>
             </div>
-          </motion.div>
-        )}
 
-        {/* Step 2: Difficulty */}
-        {step === 2 && (
-          <motion.div
-            key="difficulty"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="grid sm:grid-cols-2 gap-4 max-w-2xl mx-auto slide-up-stagger"
-          >
-            {difficulties.map((d) => (
-              <div
-                key={d.id}
-                className={`card-3d premium-card bg-[#111] border rounded-2xl p-5 text-center cursor-pointer transition-all ${
-                  difficulty === d.id
-                    ? "border-indigo-500 shadow-lg shadow-indigo-500/10"
-                    : "border-white/8 hover:border-white/15"
-                }`}
-                onClick={() => setDifficulty(d.id)}
-              >
-                <div className="text-3xl mb-2">{d.emoji}</div>
-                <h3 className="font-semibold">{d.name}</h3>
-                <p className="text-sm text-[#666]">{d.desc}</p>
-              </div>
-            ))}
-          </motion.div>
-        )}
-
-        {/* Step 3: Summary & Start */}
-        {step === 3 && (
-          <motion.div
-            key="summary"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="max-w-lg mx-auto"
-          >
-            <div className="bg-[#111] border border-white/8 rounded-2xl p-8 space-y-6 premium-card glow-border">
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-indigo-600 to-violet-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/30">
-                  <Brain className="w-8 h-8 text-white" />
+            <div>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold">Choose interview mode</h2>
+                  <p className="mt-1 text-sm text-[#777789]">The same final evidence-based evaluator is used across modes.</p>
                 </div>
-                <h2 className="text-xl font-bold">Ready to Start!</h2>
+                <Brain className="h-6 w-6 text-indigo-300" />
               </div>
 
-              <div className="space-y-3 bg-[#0A0A0A] rounded-xl p-4 border border-white/6">
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#666]">Type</span>
-                  <span className="font-medium capitalize">
-                    {type.replace(/_/g, " ")}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#666]">Company</span>
-                  <span className="font-medium capitalize">{company}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#666]">Difficulty</span>
-                  <span className="font-medium capitalize">{difficulty}</span>
-                </div>
-              </div>
-
-              {/* Interview mode selection */}
-              <div>
-                <p className="text-xs text-[#666] uppercase tracking-wider mb-3 font-medium">
-                  Interview Mode
-                </p>
-                <div className="grid grid-cols-3 gap-3">
-                  {modeCards.map((m) => (
-                    <div
-                      key={m.id}
-                      className={`relative p-3 rounded-xl border cursor-pointer transition-all text-center ${
-                        interviewMode === m.id
-                          ? `${m.activeBorder} bg-white/3`
-                          : `${m.border} hover:border-white/15`
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                {modeCards.map((mode) => {
+                  const ModeIcon = mode.icon;
+                  const locked = mode.pro && !hasProAccess;
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => chooseMode(mode.id)}
+                      className={`relative rounded-2xl border p-4 text-left transition ${
+                        interviewMode === mode.id
+                          ? "border-indigo-500 bg-indigo-500/[0.06]"
+                          : "border-white/8 bg-black/15 hover:border-white/15"
                       }`}
-                      onClick={() => setInterviewMode(m.id)}
                     >
-                      {m.isNew && (
-                        <Badge className="absolute -top-2 -right-2 bg-indigo-500/20 text-indigo-400 border-indigo-500/30 text-[9px] px-1.5">
-                          NEW
+                      {mode.pro && (
+                        <Badge className="absolute right-2 top-2 border-violet-500/20 bg-violet-500/10 text-[9px] text-violet-300">
+                          {locked ? "PRO" : "INCLUDED"}
                         </Badge>
                       )}
-                      <div
-                        className={`w-8 h-8 rounded-lg bg-linear-to-br ${m.gradient} flex items-center justify-center mx-auto mb-2`}
-                      >
-                        <m.icon className="w-4 h-4 text-white" />
+                      <div className={`grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br ${mode.gradient}`}>
+                        <ModeIcon className="h-4 w-4 text-white" />
                       </div>
-                      <div className="text-xs font-medium">{m.name}</div>
-                    </div>
-                  ))}
-                </div>
+                      <div className="mt-4 text-sm font-medium">{mode.name}</div>
+                      <p className="mt-1 text-xs leading-5 text-[#717182]">{mode.desc}</p>
+                    </button>
+                  );
+                })}
               </div>
+
+              {requiresUpgrade && (
+                <div className="mt-5 flex items-start gap-3 rounded-xl border border-violet-500/20 bg-violet-500/[0.06] p-4 text-sm text-violet-100/80">
+                  <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-violet-300" />
+                  This track or interview mode requires Pro or an active Pro trial. The button below will take you to plans instead of creating a blocked session.
+                </div>
+              )}
+
+              {error && (
+                <div className="mt-5 rounded-xl border border-red-500/20 bg-red-500/[0.06] p-4 text-sm text-red-200">
+                  {error}
+                </div>
+              )}
 
               <Button
                 onClick={startInterview}
                 variant="glow"
-                className="w-full gap-2"
                 size="lg"
+                className="mt-6 w-full gap-2"
                 disabled={loading}
               >
-                {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Sparkles className="w-5 h-5" />
-                )}
-                {interviewMode === "video"
-                  ? "Start Video Interview"
-                  : interviewMode === "voice"
-                    ? "Start Voice Interview"
-                    : "Start Interview"}
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : requiresUpgrade ? <LockKeyhole className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+                {requiresUpgrade
+                  ? "View Pro access"
+                  : interviewMode === "video"
+                    ? "Start video interview"
+                    : interviewMode === "voice"
+                      ? "Start voice interview"
+                      : "Start interview"}
               </Button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </section>
+      )}
 
-      {/* Navigation */}
-      <div className="flex items-center justify-between mt-8">
+      <div className="flex items-center justify-between">
         <Button
           variant="ghost"
           onClick={() => setStep(Math.max(0, step - 1))}
           disabled={step === 0}
           className="gap-2 text-[#888]"
         >
-          <ArrowLeft className="w-4 h-4" /> Back
+          <ArrowLeft className="h-4 w-4" /> Back
         </Button>
         {step < 3 && (
           <Button
@@ -435,7 +442,7 @@ function InterviewSetupContent() {
             disabled={step === 0 && !type}
             className="gap-2"
           >
-            Next <ArrowRight className="w-4 h-4" />
+            Next <ArrowRight className="h-4 w-4" />
           </Button>
         )}
       </div>

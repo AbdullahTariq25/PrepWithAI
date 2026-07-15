@@ -18,7 +18,14 @@ const interviewTypeSchema = z.enum([
   "devops",
   "data_engineering",
   "security",
+  "product_management",
+  "leadership",
 ]);
+
+const passwordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(128, "Password cannot exceed 128 characters");
 
 export const signupSchema = z.object({
   name: z
@@ -31,10 +38,7 @@ export const signupSchema = z.object({
     .email("Please provide a valid email")
     .toLowerCase()
     .trim(),
-  password: z
-    .string()
-    .min(6, "Password must be at least 6 characters")
-    .max(128, "Password cannot exceed 128 characters"),
+  password: passwordSchema,
 });
 
 export const forgotPasswordSchema = z.object({
@@ -43,18 +47,12 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   token: z.string().min(1, "Reset token is required"),
-  password: z
-    .string()
-    .min(6, "Password must be at least 6 characters")
-    .max(128, "Password cannot exceed 128 characters"),
+  password: passwordSchema,
 });
 
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
-  newPassword: z
-    .string()
-    .min(6, "New password must be at least 6 characters")
-    .max(128, "New password cannot exceed 128 characters"),
+  newPassword: passwordSchema,
 });
 
 export const createInterviewSchema = z.object({
@@ -69,7 +67,7 @@ export const createInterviewSchema = z.object({
 
 export const chatMessageSchema = z.object({
   action: z.enum(["start", "message", "hint", "skip", "end"]),
-  content: z.string().max(20_000).optional().default(""),
+  content: z.string().max(12_000, "Message is too long").optional().default(""),
 });
 
 export const updateProfileSchema = z.object({
@@ -86,7 +84,7 @@ export const updateProfileSchema = z.object({
     .enum(["student", "junior", "mid", "senior", "staff", "principal"])
     .optional(),
   targetCompanies: z.array(z.string().max(100)).max(20).optional(),
-  preferredInterviewTypes: z.array(interviewTypeSchema).max(12).optional(),
+  preferredInterviewTypes: z.array(interviewTypeSchema).max(14).optional(),
   targetDate: z.string().datetime().optional().or(z.literal("")),
   preferredLanguage: z.string().max(50).optional(),
   timezone: z.string().max(100).optional(),
@@ -109,7 +107,7 @@ export const onboardingSchema = z.object({
         .pipe(interviewTypeSchema),
     )
     .min(1, "Choose at least one interview type")
-    .max(6)
+    .max(8)
     .optional(),
   targetCompany: z.string().max(100).trim().optional(),
   targetRole: z.string().max(100).trim().optional(),
@@ -123,8 +121,8 @@ export const questionsQuerySchema = z.object({
   search: z.string().max(200).optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
-  company: z.string().optional(),
-  tags: z.string().optional(),
+  company: z.string().max(100).optional(),
+  tags: z.string().max(300).optional(),
 });
 
 export const leaderboardQuerySchema = z.object({
@@ -136,8 +134,8 @@ export const settingsSchema = z.object({
   emailNotifications: z.boolean().optional(),
   weeklyReport: z.boolean().optional(),
   voiceEnabled: z.boolean().optional(),
-  preferredLanguage: z.string().optional(),
-  timezone: z.string().optional(),
+  preferredLanguage: z.string().max(50).optional(),
+  timezone: z.string().max(100).optional(),
   theme: z.enum(["dark", "light", "system"]).optional(),
   weeklyGoal: z.number().min(1).max(30).optional(),
 });
