@@ -1,9 +1,10 @@
+import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
-import bcrypt from "bcryptjs";
+import Google from "next-auth/providers/google";
 import connectDB from "./mongodb";
+import { rateLimitAuth } from "@/lib/rateLimit";
 import User from "@/models/User";
 
 declare module "next-auth" {
@@ -24,8 +25,8 @@ declare module "next-auth" {
 }
 
 // Providers are enabled only when their credentials exist. The public auth UI
-// currently exposes credentials sign-in only, but keeping optional provider
-// configuration here avoids breaking existing OAuth-linked accounts.
+// exposes credentials sign-in only, while optional provider configuration keeps
+// existing OAuth-linked accounts from being stranded.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const allProviders: any[] = [];
 
@@ -34,7 +35,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    })
+    }),
   );
 }
 
@@ -43,7 +44,7 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
     GitHub({
       clientId: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    })
+    }),
   );
 }
 
@@ -53,9 +54,18 @@ allProviders.push(
       email: { label: "Email", type: "email" },
       password: { label: "Password", type: "password" },
     },
-    async authorize(credentials) {
+    async authorize(credentials, request) {
       const email = (credentials?.email as string | undefined)?.trim().toLowerCase();
       const password = credentials?.password as string | undefined;
+      const ip =
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        request.headers.get("x-real-ip") ||
+        "unknown";
+
+      const rateCheck = await rateLimitAuth(ip);
+      if (!rateCheck.allowed) {
+        throw new Error("Too many sign-in attempts. Please try again later.");
+      }
 
       if (!email || !password) {
         throw new Error("Please enter email and password");
@@ -64,7 +74,7 @@ allProviders.push(
       await connectDB();
       const user = await User.findOne({ email }).select("+password");
 
-      if (!user || !user.password) {
+      if (!user?.password) {
         throw new Error("Invalid email or password");
       }
 
@@ -80,7 +90,7 @@ allProviders.push(
         image: user.image,
       };
     },
-  })
+  }),
 );
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -122,7 +132,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.currentStreak = dbUser.currentStreak;
           token.proTrialEndsAt = trialEnd?.toISOString() || null;
           token.isOnProTrial = Boolean(
-            dbUser.plan === "free" && trialEnd && trialEnd.getTime() > Date.now()
+            dbUser.plan === "free" && trialEnd && trialEnd.getTime() > Date.now(),
           );
         }
       }
@@ -150,5 +160,5 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
     strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
 });
