@@ -6,42 +6,52 @@ import UserProgress from "@/models/UserProgress";
 import Session from "@/models/Session";
 import StudyGroup from "@/models/StudyGroup";
 import FlashcardProgress from "@/models/FlashcardProgress";
+import JobTarget from "@/models/JobTarget";
 import ApiUsage from "@/models/ApiUsage";
 
 async function handler(_req: NextRequest, ctx: AuthContext) {
   try {
-    const [account, progress, sessions, studyGroups, flashcards, apiUsage] =
-      await Promise.all([
-        User.findById(ctx.user.id)
-          .select("-password -passwordResetToken -passwordResetExpires")
-          .lean(),
-        UserProgress.findOne({ userId: ctx.user.id }).lean(),
-        Session.find({ userId: ctx.user.id }).sort({ createdAt: 1 }).lean(),
-        StudyGroup.find({
-          $or: [{ ownerId: ctx.user.id }, { memberIds: ctx.user.id }],
-        })
-          .select("name description category tags maxMembers isPublic ownerId memberIds nextSessionAt createdAt updatedAt")
-          .sort({ createdAt: 1 })
-          .lean(),
-        FlashcardProgress.find({ userId: ctx.user.id })
-          .sort({ createdAt: 1 })
-          .lean(),
-        ApiUsage.find({ userId: ctx.user.id }).sort({ date: 1 }).lean(),
-      ]);
+    const [
+      account,
+      progress,
+      sessions,
+      studyGroups,
+      flashcards,
+      jobTargets,
+      apiUsage,
+    ] = await Promise.all([
+      User.findById(ctx.user.id)
+        .select("-password -passwordResetToken -passwordResetExpires")
+        .lean(),
+      UserProgress.findOne({ userId: ctx.user.id }).lean(),
+      Session.find({ userId: ctx.user.id }).sort({ createdAt: 1 }).lean(),
+      StudyGroup.find({
+        $or: [{ ownerId: ctx.user.id }, { memberIds: ctx.user.id }],
+      })
+        .select("name description category tags maxMembers isPublic ownerId memberIds nextSessionAt createdAt updatedAt")
+        .sort({ createdAt: 1 })
+        .lean(),
+      FlashcardProgress.find({ userId: ctx.user.id })
+        .sort({ createdAt: 1 })
+        .lean(),
+      JobTarget.find({ userId: ctx.user.id }).sort({ createdAt: 1 }).lean(),
+      ApiUsage.find({ userId: ctx.user.id }).sort({ date: 1 }).lean(),
+    ]);
 
     const exportedAt = new Date();
     const payload = {
       export: {
         product: "PrepWithAI",
-        schemaVersion: "1.0",
+        schemaVersion: "1.1",
         exportedAt: exportedAt.toISOString(),
-        note: "This archive contains the core account and practice data associated with your PrepWithAI user id.",
+        note: "This archive contains the core account, career, and practice data associated with your PrepWithAI user id.",
       },
       account,
       progress,
       sessions,
       studyGroups,
       flashcardProgress: flashcards,
+      jobTargets,
       aiUsage: apiUsage,
     };
 
