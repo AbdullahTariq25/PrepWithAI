@@ -1,178 +1,204 @@
 "use client";
 
-import React, { useState } from "react";
-import { motion } from "framer-motion";
+import { ChangeEvent, DragEvent, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, FileText, UploadCloud, CheckCircle2, AlertCircle, XCircle } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  FileText,
+  Loader2,
+  Sparkles,
+  UploadCloud,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } }
-};
+interface ResumeAnalysis {
+  skills?: string[];
+  experience?: string;
+  education?: string;
+  projects?: string[];
+}
 
 export default function ResumePage() {
-  const [isUploaded, setIsUploaded] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState("");
+  const [analysis, setAnalysis] = useState<ResumeAnalysis | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [dragging, setDragging] = useState(false);
+
+  async function uploadResume(file: File) {
+    setError("");
+    setAnalysis(null);
+
+    if (file.type !== "application/pdf") {
+      setError("Please upload a PDF resume.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("The PDF must be 10 MB or smaller.");
+      return;
+    }
+
+    setLoading(true);
+    setFileName(file.name);
+    try {
+      const body = new FormData();
+      body.append("resume", file);
+      const response = await fetch("/api/resume/upload", { method: "POST", body });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to analyze the resume");
+      setAnalysis(data.parsed || null);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Unable to analyze the resume");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleInput(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (file) void uploadResume(file);
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDragging(false);
+    const file = event.dataTransfer.files?.[0];
+    if (file) void uploadResume(file);
+  }
 
   return (
-    <div className="min-h-screen bg-[#08080C] text-white page-enter">
-      <div className="px-4 md:px-8 py-8 md:py-12 max-w-5xl mx-auto">
-        {/* Breadcrumb */}
-        <div className="flex items-center text-sm text-[#60607A] font-mono mb-8">
-          <Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
-          <ChevronRight className="w-4 h-4 mx-2" />
-          <span className="text-[#A0A0B0]">Resume Review</span>
+    <div className="mx-auto max-w-6xl space-y-8 page-enter">
+      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/8 px-3 py-1.5 text-xs font-medium text-indigo-300">
+            <Sparkles className="h-3.5 w-3.5" /> Resume intelligence
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Turn your resume into better interview preparation.</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-[#9090a0] sm:text-base">
+            Upload a PDF to extract useful experience and skills context. PrepWithAI can use that profile to make future interview preparation more relevant.
+          </p>
         </div>
+        <Link href="/resume/builder" className="inline-flex items-center gap-2 text-sm font-medium text-indigo-300 hover:text-indigo-200">
+          Open resume builder <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
 
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-12">
-          {/* SECTION 1: HEADER */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <motion.div variants={itemVariants} className="inline-flex items-center px-2.5 py-1 rounded-md border border-indigo-400/20 bg-indigo-400/10 text-[10px] font-mono font-bold text-indigo-400 mb-2 uppercase tracking-wider">
-                  ATS Score + Feedback
-                </motion.div>
-              </div>
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">Resume Review</h1>
-              <p className="text-[#A0A0B0] text-lg">Get AI feedback on your resume before applying.</p>
+      <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+        <section className="rounded-2xl border border-white/7 bg-[#111116] p-5 sm:p-6">
+          <h2 className="text-lg font-semibold">Upload resume</h2>
+          <p className="mt-2 text-sm leading-6 text-[#7f7f91]">PDF only, up to 10 MB. The current analyzer extracts preparation context from the document workflow.</p>
+
+          <input ref={inputRef} type="file" accept="application/pdf" onChange={handleInput} className="hidden" />
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => inputRef.current?.click()}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") inputRef.current?.click();
+            }}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={handleDrop}
+            className={`mt-6 flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 text-center transition ${
+              dragging ? "border-indigo-400 bg-indigo-500/10" : "border-white/10 bg-black/15 hover:border-indigo-500/30 hover:bg-indigo-500/[0.04]"
+            }`}
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10">
+              {loading ? <Loader2 className="h-6 w-6 animate-spin text-indigo-300" /> : <UploadCloud className="h-6 w-6 text-indigo-300" />}
             </div>
+            <h3 className="mt-5 font-semibold">{loading ? "Analyzing resume…" : "Drop a PDF here or browse"}</h3>
+            <p className="mt-2 text-xs leading-5 text-[#6f6f80]">Your selected file is processed through the authenticated resume endpoint.</p>
           </div>
 
-          {!isUploaded ? (
-            /* SECTION 2: UPLOAD AREA */
-            <motion.div variants={itemVariants} className="bg-[#111116]/50 border-2 border-dashed border-white/10 rounded-3xl p-12 text-center hover:bg-[#111116] hover:border-[#6366F1]/50 transition-all duration-300 group cursor-pointer" onClick={() => setIsUploaded(true)}>
-              <div className="w-20 h-20 mx-auto bg-[#6366F1]/10 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-[#6366F1]/20 transition-all duration-300">
-                <UploadCloud className="w-10 h-10 text-[#6366F1]" />
-              </div>
-              <h3 className="text-2xl font-bold mb-2">Upload your resume</h3>
-              <p className="text-[#A0A0B0] mb-8">PDF or DOCX — max 5MB</p>
-              <button className="bg-white/5 hover:bg-white/10 border border-white/10 px-8 py-3 rounded-xl font-medium transition-colors">
-                Browse Files
-              </button>
-            </motion.div>
-          ) : (
-            /* SECTION 3 & 4: RESULTS (Mocked) */
-            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
-              <div className="flex items-center justify-between bg-[#111116] border border-white/5 rounded-2xl p-4 px-6">
-                <div className="flex items-center gap-4">
-                  <FileText className="w-8 h-8 text-[#A0A0B0]" />
-                  <div>
-                    <p className="font-medium text-white">abdullah_tariq_resume_v2.pdf</p>
-                    <p className="text-xs text-[#60607A]">Analyzed just now</p>
-                  </div>
-                </div>
-                <button onClick={() => setIsUploaded(false)} className="text-sm text-[#A0A0B0] hover:text-white transition-colors">Re-upload</button>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Overall Score Chart */}
-                <motion.div variants={itemVariants} className="lg:col-span-1 bg-[#111116] border border-white/5 rounded-3xl p-8 flex flex-col items-center justify-center text-center shadow-lg">
-                  <div className="relative w-48 h-48 flex items-center justify-center mb-6">
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
-                      <motion.circle
-                        cx="50" cy="50" r="40" fill="none" stroke="#F59E0B" strokeWidth="8"
-                        strokeDasharray="251.2" strokeDashoffset={251.2 * (1 - 0.72)}
-                        strokeLinecap="round"
-                        initial={{ strokeDashoffset: 251.2 }}
-                        animate={{ strokeDashoffset: 251.2 * (1 - 0.72) }}
-                        transition={{ duration: 1.5, ease: "easeOut" }}
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-5xl font-bold text-white mb-1">72</span>
-                      <span className="text-xs font-mono text-amber-500 uppercase tracking-widest">/ 100</span>
-                    </div>
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">Needs Polish</h3>
-                  <p className="text-sm text-[#A0A0B0] max-w-[200px]">Your resume passes basic ATS checks but lacks quantifiable impact in experience bullets.</p>
-                </motion.div>
-
-                {/* Dimensions */}
-                <motion.div variants={itemVariants} className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="bg-[#111116] border border-white/5 rounded-2xl p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <h4 className="font-bold flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-amber-500" /> Keyword Match
-                      </h4>
-                      <span className="text-amber-500 font-mono font-bold">68%</span>
-                    </div>
-                    <p className="text-sm text-[#A0A0B0] mb-3">Missing some common core keywords for Full Stack roles.</p>
-                    <p className="text-xs text-[#60607A]">Missing: CI/CD, Docker, Microservices</p>
-                  </div>
-
-                  <div className="bg-[#111116] border border-white/5 rounded-2xl p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <h4 className="font-bold flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-green-500" /> Format & Structure
-                      </h4>
-                      <span className="text-green-500 font-mono font-bold">95%</span>
-                    </div>
-                    <p className="text-sm text-[#A0A0B0] mb-3">Excellent structure. Standard section headers detected perfectly.</p>
-                    <p className="text-xs text-[#60607A]">Easily readable by ATS.</p>
-                  </div>
-
-                  <div className="bg-[#111116] border border-white/5 rounded-2xl p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <h4 className="font-bold flex items-center gap-2">
-                        <XCircle className="w-4 h-4 text-red-500" /> Quantified Impact
-                      </h4>
-                      <span className="text-red-500 font-mono font-bold">45%</span>
-                    </div>
-                    <p className="text-sm text-[#A0A0B0] mb-3">You describe responsibilities instead of achievements.</p>
-                    <p className="text-xs text-[#60607A]">Only 2/8 bullets contain numbers.</p>
-                  </div>
-
-                  <div className="bg-[#111116] border border-white/5 rounded-2xl p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <h4 className="font-bold flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-green-500" /> Clarity
-                      </h4>
-                      <span className="text-green-500 font-mono font-bold">85%</span>
-                    </div>
-                    <p className="text-sm text-[#A0A0B0] mb-3">Language is active and concise in most areas.</p>
-                    <p className="text-xs text-[#60607A]">Good use of action verbs.</p>
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* Section 4: Actionable Suggestions */}
-              <motion.div variants={itemVariants}>
-                <h3 className="text-xl font-bold mb-6">High Impact Suggestions</h3>
-                <div className="space-y-4">
-                  <div className="bg-[#111116] border border-red-500/20 rounded-2xl p-6 relative overflow-hidden group">
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" />
-                    <span className="absolute top-4 right-6 text-[10px] font-mono uppercase text-red-400 font-bold bg-red-400/10 px-2 py-0.5 rounded border border-red-400/20">Critical</span>
-                    <p className="text-sm text-white font-medium mb-1">Rewrite your most recent job's first bullet point.</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                      <div className="bg-black/30 rounded-xl p-4 border border-white/5">
-                        <p className="text-xs text-[#60607A] uppercase font-mono mb-2">Your Current Text</p>
-                        <p className="text-sm text-white/70 italic">"Responsible for building and maintaining the frontend using React and Next.js."</p>
-                      </div>
-                      <div className="bg-green-500/5 rounded-xl p-4 border border-green-500/20">
-                        <p className="text-xs text-green-500 uppercase font-mono mb-2">AI Suggestion</p>
-                        <p className="text-sm text-white">"Spearheaded development of the core merchant dashboard using Next.js, reducing loading time by 40% and serving 10,000+ daily active users."</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-[#111116] border border-amber-500/20 rounded-2xl p-6 relative overflow-hidden group">
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />
-                    <span className="absolute top-4 right-6 text-[10px] font-mono uppercase text-amber-500 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">Medium</span>
-                    <p className="text-sm text-white font-medium mb-1">Add missing technical skills directly demanded by the market.</p>
-                    <div className="mt-4 p-4 bg-black/30 rounded-xl border border-white/5 text-sm text-[#A0A0B0]">
-                      Your skill section lists "Java, Python, C++" but your application target is Full Stack. Consider explicitly adding <span className="text-white font-mono bg-white/10 px-1 py-0.5 rounded text-xs mx-1">Docker</span> and <span className="text-white font-mono bg-white/10 px-1 py-0.5 rounded text-xs mx-1">AWS/GCP</span> if you have arbitrary experience, as 85% of job descriptions require them.
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
+          {fileName && (
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-white/7 bg-white/[0.03] p-3">
+              <FileText className="h-5 w-5 text-indigo-300" />
+              <span className="min-w-0 flex-1 truncate text-sm text-[#c7c7d1]">{fileName}</span>
+              {analysis && <CheckCircle2 className="h-4 w-4 text-emerald-400" />}
+            </div>
           )}
-        </motion.div>
+
+          {error && (
+            <div className="mt-4 flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/8 px-4 py-3 text-sm text-red-200">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-white/7 bg-[#111116] p-5 sm:p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold">Preparation profile</h2>
+              <p className="mt-1 text-sm text-[#777789]">Context extracted from your latest resume analysis.</p>
+            </div>
+            {analysis && (
+              <Button variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={loading}>
+                Replace PDF
+              </Button>
+            )}
+          </div>
+
+          {!analysis ? (
+            <div className="mt-6 flex min-h-[28rem] items-center justify-center rounded-2xl border border-dashed border-white/8 bg-white/[0.02] px-8 text-center">
+              <div className="max-w-md">
+                <FileText className="mx-auto h-8 w-8 text-[#5f5f72]" />
+                <h3 className="mt-4 font-semibold text-[#d6d6df]">No resume analyzed yet</h3>
+                <p className="mt-2 text-sm leading-6 text-[#767687]">Upload a PDF to create a preparation profile. You will see extracted skills, experience context, education, and project signals here.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-5">
+              <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.05] p-5">
+                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-300"><CheckCircle2 className="h-4 w-4" /> Resume processed</div>
+                <p className="mt-2 text-sm leading-6 text-[#a2a2b0]">Your profile context is ready for more personalized preparation workflows.</p>
+              </div>
+
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#646476]">Detected skills</div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(analysis.skills || []).map((skill) => (
+                    <span key={skill} className="rounded-lg border border-white/8 bg-white/5 px-3 py-1.5 text-xs text-[#c7c7d2]">{skill}</span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-white/7 bg-black/15 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.1em] text-[#666678]">Experience context</div>
+                  <p className="mt-3 text-sm leading-6 text-[#a0a0ae]">{analysis.experience || "No experience summary was returned."}</p>
+                </div>
+                <div className="rounded-xl border border-white/7 bg-black/15 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.1em] text-[#666678]">Education context</div>
+                  <p className="mt-3 text-sm leading-6 text-[#a0a0ae]">{analysis.education || "No education summary was returned."}</p>
+                </div>
+              </div>
+
+              {(analysis.projects || []).length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#646476]">Project signals</div>
+                  <div className="mt-3 space-y-3">
+                    {(analysis.projects || []).map((project) => (
+                      <div key={project} className="flex gap-3 rounded-xl border border-white/7 bg-black/15 p-4 text-sm leading-6 text-[#a8a8b5]">
+                        <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-indigo-300" />
+                        {project}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-amber-500/15 bg-amber-500/[0.05] p-4 text-xs leading-6 text-amber-100/70">
+                Resume analysis quality depends on the current parsing pipeline. Review generated context before relying on it for important career decisions.
+              </div>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
