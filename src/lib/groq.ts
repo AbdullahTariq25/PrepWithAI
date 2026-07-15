@@ -1,15 +1,16 @@
 // ===========================================
 // PrepWithAI — Groq AI Client
 // Centralized AI client with retry logic,
-// usage tracking, and response generation
-// Built by Abdullah Tariq, Lahore Pakistan
+// usage tracking, streaming, and calibrated evaluation
 // ===========================================
 
 import Groq from "groq-sdk";
 import dbConnect from "./mongodb";
 import ApiUsage from "@/models/ApiUsage";
-
-// ─── Client Singleton ───────────────────────────────
+import {
+  InterviewFeedback,
+  normalizeInterviewFeedback,
+} from "@/lib/interviewEvaluation";
 
 let groqClient: Groq | null = null;
 
@@ -24,22 +25,18 @@ export function getGroqClient(): Groq {
   return groqClient;
 }
 
-// ─── Model Config ───────────────────────────────────
-
-const MODEL = "llama-3.3-70b-versatile";
+const MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 const DAILY_LIMIT = parseInt(process.env.GROQ_DAILY_LIMIT || "1000", 10);
 
 function getTodayDate(): string {
   return new Date().toISOString().split("T")[0];
 }
 
-// ─── API Usage Tracking ─────────────────────────────
-
 export async function trackApiCall(
   tokens: number = 0,
   isError: boolean = false,
   userId?: string,
-  endpoint?: string
+  endpoint?: string,
 ): Promise<void> {
   try {
     await dbConnect();
@@ -61,10 +58,9 @@ export async function trackApiCall(
     await ApiUsage.findOneAndUpdate(
       { date: today, provider: "groq", userId: userId || null },
       updateOps,
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
   } catch (error) {
-    // Never let tracking failures break the main flow
     console.error("API usage tracking error:", error);
   }
 }
@@ -92,8 +88,12 @@ export async function checkApiLimit(userId?: string): Promise<{
       limit: DAILY_LIMIT,
     };
   } catch {
-    // Fail open — if we can't check, allow the call
-    return { allowed: true, remaining: DAILY_LIMIT, total: 0, limit: DAILY_LIMIT };
+    return {
+      allowed: true,
+      remaining: DAILY_LIMIT,
+      total: 0,
+      limit: DAILY_LIMIT,
+    };
   }
 }
 
@@ -104,41 +104,40 @@ export async function getUsageStats(days: number = 7) {
     startDate.setDate(startDate.getDate() - days);
     const startStr = startDate.toISOString().split("T")[0];
 
-    const stats = await ApiUsage.find({
+    return await ApiUsage.find({
       provider: "groq",
       date: { $gte: startStr },
     }).sort({ date: -1 });
-
-    return stats;
   } catch {
     return [];
   }
 }
 
-// ─── AI Response Generation ─────────────────────────
-
-// Retry helper with exponential backoff
 async function withRetry<T>(
   fn: () => Promise<T>,
   maxRetries: number = 2,
-  baseDelay: number = 1000
+  baseDelay: number = 1000,
 ): Promise<T> {
   let lastError: unknown;
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     try {
       return await fn();
     } catch (error: unknown) {
       lastError = error;
       const status = (error as { status?: number })?.status;
-      // Only retry on 429 (rate limit) or 500+ (server errors)
-      if (attempt < maxRetries && (status === 429 || (status && status >= 500))) {
-        const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
+      const retryable = status === 429 || Boolean(status && status >= 500);
+
+      if (attempt < maxRetries && retryable) {
+        const delay = baseDelay * 2 ** attempt + Math.random() * 500;
         await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }
+
       throw error;
     }
   }
+
   throw lastError;
 }
 
@@ -149,7 +148,7 @@ export async function generateInterviewResponse(
     maxTokens?: number;
     userId?: string;
     endpoint?: string;
-  } = {}
+  } = {},
 ): Promise<{ content: string; tokensUsed: number }> {
   const {
     temperature = 0.7,
@@ -167,7 +166,7 @@ export async function generateInterviewResponse(
         messages,
         temperature,
         max_tokens: maxTokens,
-      })
+      }),
     );
 
     const content =
@@ -175,17 +174,13 @@ export async function generateInterviewResponse(
       "I apologize, I encountered an issue. Could you repeat that?";
     const tokensUsed = completion.usage?.total_tokens || 0;
 
-    // Track usage asynchronously — don't await
-    trackApiCall(tokensUsed, false, userId, endpoint).catch(() => { });
-
+    trackApiCall(tokensUsed, false, userId, endpoint).catch(() => {});
     return { content, tokensUsed };
   } catch (error) {
-    trackApiCall(0, true, userId, endpoint).catch(() => { });
+    trackApiCall(0, true, userId, endpoint).catch(() => {});
     throw error;
   }
 }
-
-// ─── Streaming AI Response ──────────────────────────
 
 export function generateInterviewResponseStream(
   messages: { role: "system" | "user" | "assistant"; content: string }[],
@@ -194,7 +189,7 @@ export function generateInterviewResponseStream(
     maxTokens?: number;
     userId?: string;
     endpoint?: string;
-  } = {}
+  } = {},
 ): {
   stream: ReadableStream<Uint8Array>;
   fullContent: Promise<string>;
@@ -231,32 +226,32 @@ export function generateInterviewResponseStream(
 
         for await (const chunk of completion) {
           const delta = chunk.choices[0]?.delta?.content || "";
-          if (delta) {
-            accumulated += delta;
-            // SSE format
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ content: delta })}\n\n`)
-            );
-          }
+          if (!delta) continue;
+
+          accumulated += delta;
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ content: delta })}\n\n`),
+          );
         }
 
-        // Send done signal
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ done: true, fullContent: accumulated })}\n\n`)
+          encoder.encode(
+            `data: ${JSON.stringify({ done: true, fullContent: accumulated })}\n\n`,
+          ),
         );
         controller.close();
 
-        // Track usage (estimated tokens for streaming)
         const estimatedTokens = Math.ceil(accumulated.length / 4);
-        trackApiCall(estimatedTokens, false, userId, endpoint).catch(() => { });
-
+        trackApiCall(estimatedTokens, false, userId, endpoint).catch(() => {});
         resolveFullContent(accumulated);
       } catch (error) {
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ error: "AI response failed" })}\n\n`)
+          encoder.encode(
+            `data: ${JSON.stringify({ error: "AI response failed" })}\n\n`,
+          ),
         );
         controller.close();
-        trackApiCall(0, true, userId, endpoint).catch(() => { });
+        trackApiCall(0, true, userId, endpoint).catch(() => {});
         rejectFullContent(error);
       }
     },
@@ -265,110 +260,140 @@ export function generateInterviewResponseStream(
   return { stream, fullContent };
 }
 
+function extractJsonObject(text: string): Record<string, unknown> {
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+
+  if (firstBrace === -1 || lastBrace <= firstBrace) {
+    throw new Error("No JSON object found in AI evaluation response");
+  }
+
+  return JSON.parse(text.slice(firstBrace, lastBrace + 1)) as Record<
+    string,
+    unknown
+  >;
+}
+
 export async function generateFeedback(
   transcript: string,
   type: string,
   difficulty: string,
   company: string,
-  userId?: string
-): Promise<{
-  overallScore: number;
-  grades: Record<string, number>;
-  strengths: string[];
-  improvements: string[];
-  summary: string;
-  seniorTip: string;
-  recommendedTopics: string[];
-}> {
+  userId?: string,
+): Promise<InterviewFeedback> {
   const groq = getGroqClient();
+  const safeTranscript = transcript.slice(0, 12_000);
 
   const messages: { role: "system" | "user"; content: string }[] = [
     {
       role: "system",
-      content:
-        "You are an expert interview evaluator. Analyze the interview transcript and provide detailed, actionable feedback. Return valid JSON only — no markdown fences, no extra text.",
+      content: `You are PrepWithAI's senior interview evaluator. Evaluate only evidence that appears in the transcript. Do not infer knowledge the candidate never demonstrated. Be demanding but fair.
+
+SCORING CALIBRATION:
+- 90-100: exceptional evidence, consistently strong and interview-ready at the requested level
+- 75-89: strong evidence with limited, non-critical gaps
+- 60-74: mixed but promising; meaningful gaps remain
+- 40-59: below the requested level; several important gaps
+- 0-39: little usable evidence or major fundamental gaps
+
+Rules:
+- Keep the five grade dimensions internally consistent with the overall score.
+- Quote short, exact candidate phrases as evidence. Never fabricate quotes.
+- If the transcript is short or ambiguous, lower evaluationConfidence instead of pretending certainty.
+- For behavioral interviews, emphasize specificity, ownership, impact, reflection, and communication.
+- For system design, emphasize requirements, trade-offs, failure modes, scale, and communication.
+- For technical interviews, emphasize correctness, reasoning, complexity, edge cases, code quality, and communication.
+- Company context is a preparation lens, not a claim about proprietary or current hiring processes.
+- Return valid JSON only. No markdown fences and no text outside the JSON object.`,
     },
     {
       role: "user",
-      content: `Analyze this ${type.replace(/_/g, " ")} interview (${difficulty} level, ${company}).
+      content: `Evaluate this interview.
+
+Interview type: ${type.replace(/_/g, " ")}
+Requested level: ${difficulty}
+Preparation context: ${company}
 
 Transcript:
-${transcript.slice(0, 6000)}
+${safeTranscript}
 
-Return exactly this JSON:
+Return exactly this JSON shape:
 {
-  "overallScore": <0-100>,
+  "overallScore": 0,
   "grades": {
-    "problemSolving": <0-100>,
-    "communication": <0-100>,
-    "codeQuality": <0-100>,
-    "edgeCases": <0-100>,
-    "timeManagement": <0-100>
+    "problemSolving": 0,
+    "communication": 0,
+    "codeQuality": 0,
+    "edgeCases": 0,
+    "timeManagement": 0
   },
-  "strengths": ["str1", "str2", "str3"],
-  "improvements": ["imp1", "imp2", "imp3"],
-  "summary": "2-3 sentence assessment",
-  "recommendedTopics": ["topic1", "topic2"],
-  "seniorTip": "one advanced tip for improvement"
+  "strengths": ["specific strength with evidence"],
+  "improvements": ["specific improvement with action"],
+  "summary": "2-4 sentence calibrated assessment",
+  "recommendedTopics": ["specific topic"],
+  "seniorTip": "one high-leverage advanced coaching tip",
+  "evidence": [
+    {
+      "dimension": "problemSolving",
+      "quote": "exact short quote from the candidate",
+      "reason": "why this quote supports the score"
+    }
+  ],
+  "evaluationConfidence": 0,
+  "nextPracticeFocus": "one narrowly scoped skill for the next session",
+  "hiringSignal": "strong_no | no | mixed | yes | strong_yes"
 }`,
     },
   ];
 
   try {
-    const completion = await groq.chat.completions.create({
-      model: MODEL,
-      messages,
-      max_tokens: 1200,
-      temperature: 0.3,
-    });
+    const completion = await withRetry(() =>
+      groq.chat.completions.create({
+        model: MODEL,
+        messages,
+        max_tokens: 1800,
+        temperature: 0.15,
+      }),
+    );
 
     const tokensUsed = completion.usage?.total_tokens || 0;
-    trackApiCall(tokensUsed, false, userId, "feedback").catch(() => { });
+    trackApiCall(tokensUsed, false, userId, "feedback-v2").catch(() => {});
 
     const text = completion.choices[0]?.message?.content ?? "{}";
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("No JSON in response");
-
-    const parsed = JSON.parse(match[0]);
-
-    return {
-      overallScore: parsed.overallScore || 60,
-      grades: {
-        problemSolving: parsed.grades?.problemSolving || 60,
-        communication: parsed.grades?.communication || 60,
-        codeQuality: parsed.grades?.codeQuality || 60,
-        edgeCases: parsed.grades?.edgeCases || 50,
-        timeManagement: parsed.grades?.timeManagement || 60,
-      },
-      strengths: parsed.strengths || ["Attempted the problem"],
-      improvements: parsed.improvements || ["Could improve clarity"],
-      summary:
-        parsed.summary ||
-        "Basic understanding shown. More practice recommended.",
-      seniorTip:
-        parsed.seniorTip ||
-        "Focus on articulating your thought process clearly.",
-      recommendedTopics: parsed.recommendedTopics || [],
-    };
+    const parsed = extractJsonObject(text);
+    return normalizeInterviewFeedback(parsed, transcript, type);
   } catch (error) {
-    trackApiCall(0, true, userId, "feedback").catch(() => { });
+    trackApiCall(0, true, userId, "feedback-v2").catch(() => {});
     console.error("Feedback generation error:", error);
 
-    // Return safe defaults instead of throwing
-    return {
-      overallScore: 60,
-      grades: {
-        problemSolving: 60,
-        communication: 60,
-        codeQuality: 60,
-        edgeCases: 50,
-        timeManagement: 60,
+    return normalizeInterviewFeedback(
+      {
+        overallScore: 50,
+        grades: {
+          problemSolving: 50,
+          communication: 50,
+          codeQuality: 50,
+          edgeCases: 50,
+          timeManagement: 50,
+        },
+        strengths: [
+          "The session was completed and contains enough information for a cautious baseline.",
+        ],
+        improvements: [
+          "Repeat the session with more explicit reasoning so the evaluation can be more evidence-based.",
+        ],
+        summary:
+          "The evaluator could not produce a fully structured assessment, so this report uses a neutral baseline rather than inventing precision.",
+        recommendedTopics: [],
+        seniorTip:
+          "Narrate assumptions, decisions, and verification steps explicitly; stronger evidence produces more trustworthy coaching.",
+        evidence: [],
+        evaluationConfidence: 20,
+        nextPracticeFocus: "Make your reasoning explicit from assumption to verification.",
+        hiringSignal: "mixed",
       },
-      strengths: ["Attempted the problem"],
-      improvements: ["Could improve clarity"],
-      summary: "Basic understanding shown. More practice recommended.",
-      seniorTip: "Focus on articulating your thought process clearly.",
-      recommendedTopics: [],
-    };
+      transcript,
+      type,
+    );
   }
 }

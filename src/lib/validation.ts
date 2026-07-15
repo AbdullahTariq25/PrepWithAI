@@ -1,12 +1,24 @@
 // ===========================================
 // PrepWithAI — Zod Validation Schemas
-// Centralized input validation for all routes
-// Built by Abdullah Tariq, Lahore Pakistan
+// Centralized input validation for application routes
 // ===========================================
 
 import { z } from "zod";
 
-// ─── Auth Schemas ───────────────────────────────────
+const interviewTypeSchema = z.enum([
+  "dsa",
+  "system_design",
+  "behavioral",
+  "frontend",
+  "backend",
+  "full_stack",
+  "full_loop",
+  "machine_learning",
+  "mobile",
+  "devops",
+  "data_engineering",
+  "security",
+]);
 
 export const signupSchema = z.object({
   name: z
@@ -45,11 +57,9 @@ export const changePasswordSchema = z.object({
     .max(128, "New password cannot exceed 128 characters"),
 });
 
-// ─── Interview Schemas ──────────────────────────────
-
 export const createInterviewSchema = z.object({
-  type: z.string().min(1, "Interview type is required").default("dsa"),
-  company: z.string().default("general"),
+  type: interviewTypeSchema.default("dsa"),
+  company: z.string().max(100).trim().default("general"),
   difficulty: z
     .enum(["junior", "mid", "senior", "staff"])
     .default("mid"),
@@ -59,18 +69,11 @@ export const createInterviewSchema = z.object({
 
 export const chatMessageSchema = z.object({
   action: z.enum(["start", "message", "hint", "skip", "end"]),
-  content: z.string().optional().default(""),
+  content: z.string().max(20_000).optional().default(""),
 });
 
-// ─── User Schemas ───────────────────────────────────
-
 export const updateProfileSchema = z.object({
-  name: z
-    .string()
-    .min(2, "Name must be at least 2 characters")
-    .max(100)
-    .trim()
-    .optional(),
+  name: z.string().min(2).max(100).trim().optional(),
   bio: z.string().max(500).optional(),
   location: z.string().max(100).optional(),
   linkedinUrl: z.string().url().optional().or(z.literal("")),
@@ -82,10 +85,11 @@ export const updateProfileSchema = z.object({
   experienceLevel: z
     .enum(["student", "junior", "mid", "senior", "staff", "principal"])
     .optional(),
-  targetCompanies: z.array(z.string()).max(20).optional(),
+  targetCompanies: z.array(z.string().max(100)).max(20).optional(),
+  preferredInterviewTypes: z.array(interviewTypeSchema).max(12).optional(),
   targetDate: z.string().datetime().optional().or(z.literal("")),
-  preferredLanguage: z.string().optional(),
-  timezone: z.string().optional(),
+  preferredLanguage: z.string().max(50).optional(),
+  timezone: z.string().max(100).optional(),
   theme: z.enum(["dark", "light", "system"]).optional(),
   emailNotifications: z.boolean().optional(),
   weeklyReport: z.boolean().optional(),
@@ -97,11 +101,21 @@ export const onboardingSchema = z.object({
   experienceLevel: z
     .enum(["student", "junior", "mid", "senior", "staff", "principal"])
     .optional(),
-  targetCompany: z.string().optional(),
-  targetRole: z.string().optional(),
+  interviewTypes: z
+    .array(
+      z
+        .string()
+        .transform((value) => value.trim().replace(/-/g, "_"))
+        .pipe(interviewTypeSchema),
+    )
+    .min(1, "Choose at least one interview type")
+    .max(6)
+    .optional(),
+  targetCompany: z.string().max(100).trim().optional(),
+  targetRole: z.string().max(100).trim().optional(),
+  targetDate: z.string().datetime().optional().or(z.literal("")),
+  weeklyGoal: z.number().int().min(1).max(14).optional(),
 });
-
-// ─── Questions Schema ───────────────────────────────
 
 export const questionsQuerySchema = z.object({
   category: z.string().optional(),
@@ -113,14 +127,10 @@ export const questionsQuerySchema = z.object({
   tags: z.string().optional(),
 });
 
-// ─── Leaderboard Schema ─────────────────────────────
-
 export const leaderboardQuerySchema = z.object({
   period: z.enum(["all", "weekly", "monthly"]).default("all"),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
-
-// ─── Settings Schema ────────────────────────────────
 
 export const settingsSchema = z.object({
   emailNotifications: z.boolean().optional(),
@@ -131,8 +141,6 @@ export const settingsSchema = z.object({
   theme: z.enum(["dark", "light", "system"]).optional(),
   weeklyGoal: z.number().min(1).max(30).optional(),
 });
-
-// ─── Cover Letter Schema ────────────────────────────
 
 export const coverLetterSchema = z.object({
   companyName: z.string().min(1, "Company name is required").max(200).trim(),
@@ -145,40 +153,33 @@ export const coverLetterSchema = z.object({
   whyCompany: z.string().max(1000).optional().default(""),
 });
 
-// ─── Flashcards Schema ──────────────────────────────
-
 export const flashcardsQuerySchema = z.object({
   category: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
-// ─── Helper: Validate Request Body ──────────────────
-
 export async function validateBody<T>(
   request: Request,
-  schema: z.ZodSchema<T>
+  schema: z.ZodSchema<T>,
 ): Promise<{ data: T; error: null } | { data: null; error: string }> {
   try {
     const body = await request.json();
     const data = schema.parse(body);
     return { data, error: null };
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      const firstIssue = err.issues[0];
+  } catch (error) {
+    if (error instanceof z.ZodError) {
       return {
         data: null,
-        error: firstIssue?.message || "Validation failed",
+        error: error.issues[0]?.message || "Validation failed",
       };
     }
     return { data: null, error: "Invalid request body" };
   }
 }
 
-// ─── Helper: Validate Query Params ──────────────────
-
 export function validateQuery<T>(
   url: string,
-  schema: z.ZodSchema<T>
+  schema: z.ZodSchema<T>,
 ): { data: T; error: null } | { data: null; error: string } {
   try {
     const { searchParams } = new URL(url);
@@ -188,12 +189,11 @@ export function validateQuery<T>(
     });
     const data = schema.parse(params);
     return { data, error: null };
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      const firstIssue = err.issues[0];
+  } catch (error) {
+    if (error instanceof z.ZodError) {
       return {
         data: null,
-        error: firstIssue?.message || "Invalid query parameters",
+        error: error.issues[0]?.message || "Invalid query parameters",
       };
     }
     return { data: null, error: "Invalid query parameters" };
