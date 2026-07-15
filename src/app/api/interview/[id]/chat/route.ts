@@ -126,7 +126,7 @@ function createStreamingResponse(
 
 async function handler(req: NextRequest, { user, params }: AuthContext) {
   try {
-    const rateCheck = rateLimitChat(user.id);
+    const rateCheck = await rateLimitChat(user.id);
     if (!rateCheck.allowed) {
       return tooManyRequests(
         "Slow down! Please wait before sending another message.",
