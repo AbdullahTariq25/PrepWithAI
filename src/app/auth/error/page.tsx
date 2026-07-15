@@ -1,6 +1,3 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, ArrowLeft, Brain, RefreshCw } from "lucide-react";
 
@@ -11,14 +8,14 @@ const friendlyMessages: Record<string, string> = {
   Verification: "This sign-in link is invalid or has expired.",
 };
 
-export default function AuthErrorPage() {
-  const [code, setCode] = useState("AuthenticationError");
-
-  useEffect(() => {
-    const value = new URLSearchParams(window.location.search).get("error");
-    if (value) setCode(value);
-  }, []);
-
+export default async function AuthErrorPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const rawCode = Array.isArray(params.error) ? params.error[0] : params.error;
+  const code = rawCode || "AuthenticationError";
   const message =
     friendlyMessages[code] ||
     "We could not complete authentication. Your account data has not been changed.";
