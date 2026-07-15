@@ -1,109 +1,149 @@
-# PrepWithAI — Production Environment Checklist
+# PrepWithAI — Production Environment & Release Checklist
 
-> All environment variables needed for a full production deployment on Vercel.
+Use this document as the minimum operational gate for a production release. Secrets must be configured in the deployment platform or secret manager—never committed to the repository.
 
----
+## Core runtime — required
 
-## ✅ REQUIRED (App will not work without these)
-
-| Variable | Description | Example |
-|---|---|---|
-| `MONGODB_URI` | MongoDB Atlas connection string | `mongodb+srv://user:pass@cluster.mongodb.net/prepwithai` |
-| `NEXTAUTH_SECRET` | Random secret for NextAuth session encryption | `openssl rand -base64 32` |
-| `NEXTAUTH_URL` | Full production URL (Vercel sets this automatically) | `https://prepwithai.vercel.app` |
-| `GROQ_API_KEY` | Groq API key for LLaMA 3.3 70B AI responses | `gsk_...` |
-
----
-
-## 🟡 OPTIONAL — OAuth Providers (app works without, Google/GitHub login disabled)
-
-| Variable | Description |
+| Variable | Purpose |
 |---|---|
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `GITHUB_CLIENT_ID` | GitHub OAuth client ID |
-| `GITHUB_CLIENT_SECRET` | GitHub OAuth client secret |
+| `MONGODB_URI` | MongoDB connection used by authentication, sessions, progress, study groups, distributed rate limits, and product data. |
+| `NEXTAUTH_SECRET` or `AUTH_SECRET` | Strong random secret used for authenticated sessions and JWT validation. |
+| `NEXT_PUBLIC_APP_URL` | Canonical public application URL used for links and application flows. |
+| `GROQ_API_KEY` | AI interview and evaluation provider credential. |
 
----
-
-## 🟡 OPTIONAL — Payments (Stripe)
-
-| Variable | Description |
-|---|---|
-| `STRIPE_SECRET_KEY` | Stripe API secret key |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
-| `STRIPE_PRO_MONTHLY_PRICE_ID` | Stripe price ID for Pro plan |
-| `STRIPE_TEAM_MONTHLY_PRICE_ID` | Stripe price ID for Team plan |
-| `NEXT_PUBLIC_STRIPE_PRO_PRICE_ID` | Public Stripe Pro price ID (for client) |
-| `NEXT_PUBLIC_STRIPE_TEAM_PRICE_ID` | Public Stripe Team price ID (for client) |
-
----
-
-## 🟡 OPTIONAL — Email (Resend)
-
-| Variable | Description |
-|---|---|
-| `RESEND_API_KEY` | Resend API key for transactional emails |
-| `FROM_EMAIL` | Sender email address (default: `PrepWithAI <noreply@prepwithai.com>`) |
-
----
-
-## 🟡 OPTIONAL — Code Execution (Judge0)
-
-| Variable | Description |
-|---|---|
-| `JUDGE0_API_URL` | Judge0 API endpoint |
-| `JUDGE0_API_KEY` | Judge0 RapidAPI key |
-
----
-
-## 🟡 OPTIONAL — Monitoring & Analytics
-
-| Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_SENTRY_DSN` | Sentry DSN for error tracking |
-| `SENTRY_ORG` | Sentry organization slug |
-| `SENTRY_PROJECT` | Sentry project slug |
-| `NEXT_PUBLIC_POSTHOG_KEY` | PostHog project API key |
-| `NEXT_PUBLIC_POSTHOG_HOST` | PostHog host (default: `https://us.i.posthog.com`) |
-
----
-
-## 🟡 OPTIONAL — Other
-
-| Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_APP_URL` | Full production URL (used for share links, emails) |
-| `CRON_SECRET` | Secret for Vercel cron job authentication |
-| `GROQ_DAILY_LIMIT` | Max Groq API calls per day (default: `1000`) |
-
----
-
-## 🚀 Deployment Steps
+Recommended generation for the auth secret:
 
 ```bash
-# 1. Set env vars in Vercel dashboard or CLI
-vercel env add MONGODB_URI
-vercel env add NEXTAUTH_SECRET
-vercel env add GROQ_API_KEY
-# ... add all required vars
-
-# 2. Build locally to verify zero errors
-npm run build
-
-# 3. Deploy to production
-vercel --prod
+openssl rand -base64 48
 ```
 
-## 📝 Post-Deploy Verification
+## AI configuration
 
-- [ ] Landing page loads with real stats from `/api/stats`
-- [ ] Signup/Login works (email + optional OAuth)
-- [ ] Interview session starts and AI responds
-- [ ] Dashboard shows real data from MongoDB
-- [ ] Leaderboard loads from `/api/leaderboard`
-- [ ] Daily challenges load from `/api/daily`
-- [ ] Progress page shows charts from `/api/progress`
-- [ ] Study Groups page shows "Coming Soon"
-- [ ] All footer links resolve (no 404s)
-- [ ] Stripe checkout flow works (if Stripe keys set)
+| Variable | Purpose |
+|---|---|
+| `GROQ_API_KEY` | Required AI provider credential. |
+| `GROQ_MODEL` | Optional model override. Defaults to the application-tested model. |
+| `GROQ_DAILY_LIMIT` | Optional daily application call ceiling. Defaults to `1000`. |
+
+The readiness endpoint reports AI configuration as degraded when the required AI key is missing.
+
+## Code execution — optional feature
+
+| Variable | Purpose |
+|---|---|
+| `JUDGE0_API_URL` | Judge0-compatible API base URL. Defaults to the RapidAPI endpoint when omitted. |
+| `JUDGE0_API_KEY` | Required when using the default RapidAPI Judge0 endpoint. |
+| `JUDGE0_RAPIDAPI_HOST` | Optional RapidAPI host override. |
+
+When the execution provider is not configured, the API returns `503 EXECUTION_PROVIDER_NOT_CONFIGURED`. It does **not** return a fabricated successful run.
+
+## Payments — required only when paid checkout is enabled
+
+| Variable | Purpose |
+|---|---|
+| `STRIPE_SECRET_KEY` | Stripe server credential. |
+| `STRIPE_WEBHOOK_SECRET` | Signature-verification secret for `/api/stripe/webhook`. |
+| `STRIPE_PRO_MONTHLY_PRICE_ID` | Server-side Pro recurring price ID. |
+| `STRIPE_TEAM_MONTHLY_PRICE_ID` | Server-side Team recurring price ID. |
+
+Production release gate for billing:
+
+- [ ] Stripe is in the intended live/test mode for the environment.
+- [ ] Webhook endpoint targets the exact production `/api/stripe/webhook` URL.
+- [ ] `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted` are delivered successfully.
+- [ ] A real upgrade and cancellation cycle has been tested end to end.
+
+## Transactional email — optional
+
+| Variable | Purpose |
+|---|---|
+| `RESEND_API_KEY` | Transactional email provider credential. |
+| `FROM_EMAIL` | Verified sender identity. |
+
+Password reset remains safe from account enumeration, but production password-reset delivery requires a working email provider.
+
+## Health checks and scheduled work
+
+| Variable | Purpose |
+|---|---|
+| `HEALTH_CHECK_SECRET` | Preferred bearer secret for protected deep readiness checks. |
+| `CRON_SECRET` | Secret for scheduled jobs; also used as readiness fallback only when `HEALTH_CHECK_SECRET` is absent. |
+
+Endpoints:
+
+- `GET /api/health` — public minimal liveness only.
+- `HEAD /api/health` — lightweight liveness probe.
+- `GET /api/health?deep=1` with `Authorization: Bearer <HEALTH_CHECK_SECRET>` — protected readiness diagnostics.
+
+Do not expose the deep-check secret in browser code or public monitoring URLs.
+
+## Monitoring and analytics — recommended
+
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_SENTRY_DSN` | Client/server error reporting DSN. |
+| `SENTRY_ORG` | Sentry organization slug for release tooling. |
+| `SENTRY_PROJECT` | Sentry project slug for release tooling. |
+| `SENTRY_AUTH_TOKEN` | Optional release/source-map upload token used only in secure build environments. |
+| `NEXT_PUBLIC_POSTHOG_KEY` | PostHog project key. |
+| `NEXT_PUBLIC_POSTHOG_HOST` | PostHog host. |
+
+Do not fail the application merely because optional analytics are unavailable.
+
+## Optional OAuth compatibility
+
+The public sign-in and sign-up screens are credentials-only. Optional OAuth provider configuration may remain enabled in the backend for previously linked accounts.
+
+| Variable | Purpose |
+|---|---|
+| `GOOGLE_CLIENT_ID` | Optional Google provider ID. |
+| `GOOGLE_CLIENT_SECRET` | Optional Google provider secret. |
+| `GITHUB_CLIENT_ID` | Optional GitHub provider ID. |
+| `GITHUB_CLIENT_SECRET` | Optional GitHub provider secret. |
+
+## Data and infrastructure prerequisites
+
+- [ ] MongoDB network access is restricted appropriately for the deployment platform.
+- [ ] Database credentials use least privilege and are not shared with local development.
+- [ ] MongoDB backups or point-in-time recovery are configured according to the business recovery objective.
+- [ ] TTL cleanup for rate-limit buckets is allowed to operate.
+- [ ] Production and preview environments use separate secrets where practical.
+- [ ] A domain and HTTPS are configured before sending password-reset or billing links to customers.
+
+## Release gate
+
+Before promoting any commit to production:
+
+```bash
+npm ci
+npm run lint
+npm run build
+```
+
+Then verify:
+
+- [ ] The exact commit intended for release passed CI.
+- [ ] `/api/health` returns `200` without leaking configuration details.
+- [ ] Protected deep readiness returns `200`; any `503` is investigated before release.
+- [ ] Credentials signup, login, logout, forgot-password, and reset-password flows work.
+- [ ] A Free user can start the allowed Free interview flow and is blocked from Pro-only tracks/modes server-side.
+- [ ] A Pro/trial user can start text, voice, and video modes.
+- [ ] Interview completion produces one report only; repeated report requests do not duplicate ELO or progress.
+- [ ] Evidence shown in the report is attributable to candidate transcript text.
+- [ ] Resume upload extracts the actual PDF and rejects image-only PDFs honestly.
+- [ ] Code execution either runs against the configured sandbox or returns an explicit unavailable state.
+- [ ] Study groups persist after refresh; join, leave, capacity, privacy, and owner deletion behave correctly.
+- [ ] Stripe upgrade/cancel lifecycle works when billing is enabled.
+- [ ] Error monitoring receives a controlled test error when monitoring is enabled.
+- [ ] Mobile and desktop smoke tests cover the landing page, auth, dashboard, interview setup, active interview, report, resume, pricing, and study groups.
+
+## Rollback readiness
+
+Before release, record:
+
+- the exact Git commit SHA,
+- the deployment ID/URL,
+- the previous known-good deployment,
+- the database migration or schema-change impact, if any.
+
+Prefer promoting a validated immutable deployment and retain a known-good rollback candidate. Never describe a deployment as current until the deployed commit SHA has been verified.
