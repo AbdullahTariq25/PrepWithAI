@@ -1,7 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Brain, RefreshCw } from "lucide-react";
 
 const friendlyMessages: Record<string, string> = {
@@ -12,8 +12,13 @@ const friendlyMessages: Record<string, string> = {
 };
 
 export default function AuthErrorPage() {
-  const searchParams = useSearchParams();
-  const code = searchParams.get("error") || "AuthenticationError";
+  const [code, setCode] = useState("AuthenticationError");
+
+  useEffect(() => {
+    const value = new URLSearchParams(window.location.search).get("error");
+    if (value) setCode(value);
+  }, []);
+
   const message =
     friendlyMessages[code] ||
     "We could not complete authentication. Your account data has not been changed.";
