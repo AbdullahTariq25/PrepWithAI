@@ -16,10 +16,13 @@ export async function POST(req: NextRequest) {
   try {
     const forwardedFor = req.headers.get("x-forwarded-for");
     const ip = forwardedFor?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-    const rateCheck = rateLimitAuth(ip);
+    const rateCheck = await rateLimitAuth(ip);
 
     if (!rateCheck.allowed) {
-      return tooManyRequests("Too many signup attempts. Please try again later.", 900);
+      return tooManyRequests(
+        "Too many signup attempts. Please try again later.",
+        Math.max(1, Math.ceil((rateCheck.resetAt - Date.now()) / 1000)),
+      );
     }
 
     const { data, error } = await validateBody(req, signupSchema);
