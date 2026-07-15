@@ -1,0 +1,81 @@
+name: V3 lint cleanup
+
+on:
+  push:
+    branches: [ai/production-hardening-v3]
+    paths:
+      - .github/workflows/v3-lint-cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ai/production-hardening-v3
+          fetch-depth: 0
+
+      - name: Fix blocking lint issue and video lifecycle warnings
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          resume = Path('src/lib/resume-analysis.ts')
+          text = resume.read_text()
+          text = text.replace(
+              'const module = (await import("pdf-parse")) as Record<string, unknown>;',
+              'const pdfParseModule = (await import("pdf-parse")) as Record<string, unknown>;',
+              1,
+          )
+          text = text.replace('const ModernPDFParse = module.PDFParse as', 'const ModernPDFParse = pdfParseModule.PDFParse as', 1)
+          text = text.replace('const legacyParser = module.default as', 'const legacyParser = pdfParseModule.default as', 1)
+          resume.write_text(text)
+
+          video = Path('src/app/(dashboard)/interview/[id]/video/page.tsx')
+          text = video.read_text()
+          old_camera = '''  useEffect(() => {
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
+      .then((s) => {
+        setStream(s);
+        if (userVideoRef.current) userVideoRef.current.srcObject = s;
+      })
+      .catch(() => setCamOn(false));
+    return () => {
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);'''
+          new_camera = '''  useEffect(() => {
+    let mediaStream: MediaStream | null = null;
+
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
+      .then((nextStream) => {
+        mediaStream = nextStream;
+        setStream(nextStream);
+        if (userVideoRef.current) userVideoRef.current.srcObject = nextStream;
+      })
+      .catch(() => setCamOn(false));
+
+    return () => {
+      mediaStream?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);'''
+          if old_camera not in text:
+              raise SystemExit('Expected camera lifecycle block not found')
+          text = text.replace(old_camera, new_camera, 1)
+          text = text.replace('    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, [isListening]);', '  }, [isListening]);', 1)
+          video.write_text(text)
+          PY
+
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/resume-analysis.ts src/app/'(dashboard)'/interview/'[id]'/video/page.tsx
+          git diff --cached --quiet || git commit -m "fix: clear v3 lint findings"
+          git push origin HEAD:ai/production-hardening-v3
