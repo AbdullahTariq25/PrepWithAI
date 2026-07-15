@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
+import { analyzeResumeText, extractPdfText } from "@/lib/resume-analysis";
 import User from "@/models/User";
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MIN_EXTRACTED_TEXT = 120;
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,50 +15,70 @@ export async function POST(req: NextRequest) {
     }
 
     const formData = await req.formData();
-    const file = formData.get("resume") as File | null;
+    const file = formData.get("resume");
 
-    if (!file) {
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+    if (!(file instanceof File)) {
+      return NextResponse.json({ error: "No PDF resume was uploaded" }, { status: 400 });
     }
 
-    if (file.type !== "application/pdf") {
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
       return NextResponse.json({ error: "Only PDF files are supported" }, { status: 400 });
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: "File too large. Max 10MB" }, { status: 400 });
+    if (file.size === 0 || file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: "The PDF must be larger than 0 bytes and no more than 10 MB" },
+        { status: 400 },
+      );
     }
 
-    // Read file content - in production you'd upload to cloud storage
-    // and use a PDF parsing service. For now, simulate AI parsing.
-    const parsed = {
-      skills: [
-        "JavaScript", "TypeScript", "React", "Node.js", "Python",
-        "SQL", "MongoDB", "Git", "Docker", "AWS",
-      ],
-      experience: "Based on your resume, you appear to have 2-4 years of experience as a Full Stack Developer with focus on web technologies and cloud services.",
-      education: "Bachelor's in Computer Science with relevant coursework in Data Structures, Algorithms, and Software Engineering.",
-      projects: [
-        "Built a real-time collaboration tool using WebSockets and React",
-        "Designed and implemented REST APIs serving 10k+ daily requests",
-        "Developed CI/CD pipeline reducing deployment time by 60%",
-      ],
-    };
+    const buffer = Buffer.from(await file.arrayBuffer());
+    if (buffer.subarray(0, 5).toString("ascii") !== "%PDF-") {
+      return NextResponse.json(
+        { error: "The uploaded file does not appear to be a valid PDF" },
+        { status: 400 },
+      );
+    }
+
+    const extracted = await extractPdfText(buffer);
+    if (extracted.text.length < MIN_EXTRACTED_TEXT) {
+      return NextResponse.json(
+        {
+          error:
+            "We could not extract enough selectable text from this PDF. It may be image-only or scanned; export a text-based PDF and try again.",
+        },
+        { status: 422 },
+      );
+    }
+
+    const parsed = analyzeResumeText(extracted.text, extracted.pages, extracted.parser);
 
     await connectDB();
     await User.findByIdAndUpdate(session.user.id, {
-      resumeUrl: `resume_${session.user.id}_${Date.now()}.pdf`,
-      resumeParsed: {
-        skills: parsed.skills,
-        experience: parsed.experience,
-        education: parsed.education,
-        targetRoles: ["Full Stack Developer", "Frontend Engineer"],
+      $set: {
+        resumeParsed: {
+          ...parsed,
+          sourceFileName: file.name.slice(0, 180),
+          analyzedAt: new Date(),
+        },
+      },
+      $unset: {
+        resumeUrl: 1,
       },
     });
 
-    return NextResponse.json({ parsed });
+    return NextResponse.json({
+      parsed,
+      message: "Resume text extracted and analyzed successfully",
+    });
   } catch (error) {
-    console.error("Resume upload error:", error);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    console.error("Resume analysis error:", error);
+    return NextResponse.json(
+      {
+        error:
+          "We could not analyze this PDF. Try exporting it again as a standard text-based PDF.",
+      },
+      { status: 500 },
+    );
   }
 }
