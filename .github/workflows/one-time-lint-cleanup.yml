@@ -1,0 +1,64 @@
+name: One-time lint cleanup
+
+on:
+  push:
+    branches: ["ai/state-of-the-art-product-polish"]
+    paths: [".github/workflows/one-time-lint-cleanup.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ai/state-of-the-art-product-polish
+      - name: Apply targeted warning cleanup
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace(path, old, new, count=-1):
+              file = Path(path)
+              text = file.read_text(encoding="utf-8")
+              if old not in text:
+                  raise SystemExit(f"Expected text not found in {path}: {old!r}")
+              file.write_text(text.replace(old, new, count), encoding="utf-8")
+
+          voice = Path("src/app/(dashboard)/interview/[id]/voice/page.tsx")
+          text = voice.read_text(encoding="utf-8")
+          text = text.replace('import { useState, useEffect, useRef, useCallback } from "react";', 'import { useState, useEffect, useRef } from "react";')
+          text = text.replace('  MicOff,\n', '')
+          text = text.replace('    isSpeaking,\n', '')
+          text = text.replace('    fillerCount,\n', '')
+          text = text.replace('    wordsPerMinute,\n', '')
+          text = text.replace('  const [questionNum, setQuestionNum] = useState(1);', '  const [questionNum] = useState(1);')
+          marker = '    // eslint-disable-next-line react-hooks/exhaustive-deps\n'
+          occurrences = [i for i in range(len(text)) if text.startswith(marker, i)]
+          if len(occurrences) >= 2:
+              index = occurrences[1]
+              text = text[:index] + text[index + len(marker):]
+          voice.write_text(text, encoding="utf-8")
+
+          video = Path("src/app/(dashboard)/interview/[id]/video/page.tsx")
+          text = video.read_text(encoding="utf-8")
+          text = text.replace('    // eslint-disable-next-line react-hooks/exhaustive-deps\n', '', 1)
+          video.write_text(text, encoding="utf-8")
+
+          replace("src/app/(marketing)/blog/page.tsx", 'import { ArrowRight, Calendar, Clock } from "lucide-react";', 'import { Calendar, Clock } from "lucide-react";')
+          replace("src/app/(marketing)/changelog/page.tsx", 'import { Activity, Bug, CheckCircle2, Sparkles, Zap } from "lucide-react";', 'import { Bug, CheckCircle2, Sparkles, Zap } from "lucide-react";')
+          replace("src/components/marketing/MarketingFooter.tsx", 'import { Github, Linkedin, Twitter, Instagram, Facebook } from "lucide-react";', 'import { Github, Linkedin, Twitter } from "lucide-react";')
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No cleanup changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src
+          git commit -m "chore: clear remaining lint warnings"
+          git push origin HEAD:ai/state-of-the-art-product-polish
