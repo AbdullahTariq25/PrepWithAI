@@ -1,14 +1,11 @@
 // ===========================================
 // PrepWithAI — Session Model
 // Complete interview session with messages,
-// scoring, voice/video metrics, and sharing
-// Built by Abdullah Tariq, Lahore Pakistan
+// scoring, voice/video metrics, evaluation evidence, and sharing
 // ===========================================
 
 import mongoose, { Schema, Document, Model } from "mongoose";
 import { nanoid } from "nanoid";
-
-// ─── Sub-interfaces ─────────────────────────────────
 
 export interface IMessage {
   id: string;
@@ -70,7 +67,16 @@ export interface IGrades {
   timeManagement: number;
 }
 
-// ─── Main Interface ─────────────────────────────────
+export interface IFeedbackEvidence {
+  dimension:
+    | "problemSolving"
+    | "communication"
+    | "codeQuality"
+    | "edgeCases"
+    | "timeManagement";
+  quote: string;
+  reason: string;
+}
 
 export interface ISession extends Document {
   userId: mongoose.Types.ObjectId;
@@ -81,50 +87,47 @@ export interface ISession extends Document {
   videoMode: boolean;
   whiteboardData?: Record<string, unknown>;
 
-  // Conversation
   messages: IMessage[];
   questions: ISessionQuestion[];
   codeSubmissions: ICodeSubmission[];
 
-  // Scoring
   overallScore: number;
   grades: IGrades;
   eloChange: number;
   eloAfter: number;
 
-  // Metrics
   duration: number;
   hintsUsed: number;
   questionsAnswered: number;
   wordsSpoken: number;
 
-  // Voice/Video metrics
   avgTranscriptConfidence: number;
   avgWordsPerMinute: number;
 
-  // Status
   completed: boolean;
   reportGenerated: boolean;
+  feedbackProcessing: boolean;
 
-  // Sharing
   shareToken?: string;
   isPublic: boolean;
 
-  // AI feedback summary
   strengths: string[];
   improvements: string[];
   summary?: string;
   seniorTip?: string;
   recommendedTopics: string[];
+  feedbackEvidence: IFeedbackEvidence[];
+  evaluationConfidence: number;
+  nextPracticeFocus?: string;
+  hiringSignal?: "strong_no" | "no" | "mixed" | "yes" | "strong_yes";
+  rubricVersion?: string;
+  feedbackGeneratedAt?: Date;
 
   createdAt: Date;
   updatedAt: Date;
 
-  // Instance methods
   generateShareToken(): string;
 }
-
-// ─── Schema ─────────────────────────────────────────
 
 const SessionSchema = new Schema<ISession>(
   {
@@ -156,7 +159,6 @@ const SessionSchema = new Schema<ISession>(
     videoMode: { type: Boolean, default: false },
     whiteboardData: { type: Schema.Types.Mixed },
 
-    // Conversation
     messages: [
       {
         id: { type: String, required: true },
@@ -217,7 +219,6 @@ const SessionSchema = new Schema<ISession>(
       },
     ],
 
-    // Scoring
     overallScore: { type: Number, default: 0, min: 0, max: 100 },
     grades: {
       problemSolving: { type: Number, default: 0, min: 0, max: 100 },
@@ -229,82 +230,100 @@ const SessionSchema = new Schema<ISession>(
     eloChange: { type: Number, default: 0 },
     eloAfter: { type: Number, default: 0 },
 
-    // Metrics
     duration: { type: Number, default: 0, min: 0 },
     hintsUsed: { type: Number, default: 0, min: 0 },
     questionsAnswered: { type: Number, default: 0, min: 0 },
     wordsSpoken: { type: Number, default: 0, min: 0 },
 
-    // Voice/Video metrics
     avgTranscriptConfidence: { type: Number, default: 0, min: 0, max: 1 },
     avgWordsPerMinute: { type: Number, default: 0, min: 0 },
 
-    // Status
     completed: { type: Boolean, default: false },
     reportGenerated: { type: Boolean, default: false },
+    feedbackProcessing: { type: Boolean, default: false },
 
-    // Sharing
     shareToken: { type: String, unique: true, sparse: true },
     isPublic: { type: Boolean, default: false },
 
-    // AI feedback
     strengths: [{ type: String }],
     improvements: [{ type: String }],
     summary: { type: String },
     seniorTip: { type: String },
     recommendedTopics: [{ type: String }],
+    feedbackEvidence: [
+      {
+        dimension: {
+          type: String,
+          enum: [
+            "problemSolving",
+            "communication",
+            "codeQuality",
+            "edgeCases",
+            "timeManagement",
+          ],
+        },
+        quote: { type: String, maxlength: 240 },
+        reason: { type: String, maxlength: 320 },
+      },
+    ],
+    evaluationConfidence: { type: Number, default: 0, min: 0, max: 100 },
+    nextPracticeFocus: { type: String, maxlength: 400 },
+    hiringSignal: {
+      type: String,
+      enum: ["strong_no", "no", "mixed", "yes", "strong_yes"],
+    },
+    rubricVersion: { type: String },
+    feedbackGeneratedAt: { type: Date },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
-
-// ─── Indexes ────────────────────────────────────────
 
 SessionSchema.index({ userId: 1, createdAt: -1 });
 SessionSchema.index({ userId: 1, completed: 1 });
 SessionSchema.index({ userId: 1, type: 1 });
-// shareToken index is already defined via field-level unique:true
 SessionSchema.index({ completed: 1, createdAt: -1 });
 SessionSchema.index({ company: 1, overallScore: -1 });
 
-// ─── Pre-save Middleware ────────────────────────────
-
 SessionSchema.pre("save", function () {
-  // Auto-calculate voice metrics from messages
-  const voiceMessages = this.messages.filter((m) => m.isVoice && m.role === "candidate");
+  const voiceMessages = this.messages.filter(
+    (message) => message.isVoice && message.role === "candidate",
+  );
+
   if (voiceMessages.length > 0) {
     const confidences = voiceMessages
-      .map((m) => m.transcriptConfidence)
-      .filter((c): c is number => c !== undefined && c !== null);
+      .map((message) => message.transcriptConfidence)
+      .filter((value): value is number => value !== undefined && value !== null);
     if (confidences.length > 0) {
-      this.avgTranscriptConfidence = confidences.reduce((a, b) => a + b, 0) / confidences.length;
+      this.avgTranscriptConfidence =
+        confidences.reduce((sum, value) => sum + value, 0) / confidences.length;
     }
 
     const wpms = voiceMessages
-      .map((m) => m.wordsPerMinute)
-      .filter((w): w is number => w !== undefined && w !== null);
+      .map((message) => message.wordsPerMinute)
+      .filter((value): value is number => value !== undefined && value !== null);
     if (wpms.length > 0) {
-      this.avgWordsPerMinute = wpms.reduce((a, b) => a + b, 0) / wpms.length;
+      this.avgWordsPerMinute =
+        wpms.reduce((sum, value) => sum + value, 0) / wpms.length;
     }
   }
 
-  // Auto-count questions answered
-  this.questionsAnswered = this.questions.filter((q) => q.userAnswer || q.codeAnswer).length;
+  this.questionsAnswered = this.questions.filter(
+    (question) => question.userAnswer || question.codeAnswer,
+  ).length;
 
-  // Auto-count words spoken by candidate
   this.wordsSpoken = this.messages
-    .filter((m) => m.role === "candidate")
-    .reduce((sum, m) => sum + (m.content?.split(/\s+/).length || 0), 0);
+    .filter((message) => message.role === "candidate")
+    .reduce(
+      (sum, message) => sum + (message.content?.split(/\s+/).length || 0),
+      0,
+    );
 });
-
-// ─── Instance Methods ───────────────────────────────
 
 SessionSchema.methods.generateShareToken = function (): string {
   this.shareToken = nanoid(12);
   this.isPublic = true;
   return this.shareToken;
 };
-
-// ─── Export ─────────────────────────────────────────
 
 const SessionModel: Model<ISession> =
   mongoose.models.Session || mongoose.model<ISession>("Session", SessionSchema);
