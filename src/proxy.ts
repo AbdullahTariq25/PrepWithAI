@@ -1,12 +1,14 @@
 import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { resolveAuthSecret } from "@/lib/auth-secret";
 
 const PUBLIC_EXACT_ROUTES = new Set([
   "/",
   "/demo",
   "/login",
   "/signup",
+  "/auth/error",
   "/reset-password",
   "/forgot-password",
 ]);
@@ -70,9 +72,12 @@ export async function proxy(request: NextRequest) {
 
   let token = null;
   try {
+    const secret = resolveAuthSecret();
+    if (!secret) throw new Error("Authentication secret is not configured");
+
     token = await getToken({
       req: request,
-      secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+      secret,
       secureCookie: request.nextUrl.protocol === "https:",
     });
   } catch (error) {
