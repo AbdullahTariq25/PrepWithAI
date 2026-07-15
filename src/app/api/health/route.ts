@@ -1,94 +1,86 @@
-// ===========================================
-// PrepWithAI — Health Check API
-// Monitors DB, Groq API, and system health
-// Built by Abdullah Tariq, Lahore Pakistan
-// ===========================================
-
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
-import { checkApiLimit } from "@/lib/groq";
 
 export const dynamic = "force-dynamic";
 
-// ─── Service Health Types ───────────────────────────
-
-interface ServiceHealth {
-  status: "healthy" | "degraded" | "unhealthy" | "unknown" | "rate_limited";
-  latency?: number;
-  message?: string;
+function buildVersion() {
+  return (
+    process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ||
+    process.env.NEXT_PUBLIC_APP_VERSION ||
+    "development"
+  );
 }
 
-// ─── GET Health ─────────────────────────────────────
+function liveness() {
+  return {
+    status: "ok",
+    service: "PrepWithAI",
+    version: buildVersion(),
+    timestamp: new Date().toISOString(),
+  };
+}
 
-export async function GET() {
-  const services: Record<string, ServiceHealth> = {};
-  let overallStatus: "healthy" | "degraded" | "unhealthy" = "healthy";
+export async function GET(request: NextRequest) {
+  const deep = request.nextUrl.searchParams.get("deep") === "1";
+  if (!deep) {
+    return NextResponse.json(liveness(), {
+      status: 200,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
 
-  // 1. Check MongoDB
-  const dbStart = Date.now();
+  const expectedSecret = process.env.HEALTH_CHECK_SECRET || process.env.CRON_SECRET;
+  const providedSecret = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+
+  if (!expectedSecret || providedSecret !== expectedSecret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const checks: Record<string, { status: "ok" | "error"; latencyMs?: number }> = {};
+  let databaseHealthy = false;
+
+  const databaseStarted = Date.now();
   try {
     await dbConnect();
-    services.database = {
-      status: "healthy",
-      latency: Date.now() - dbStart,
-    };
+    if (!mongoose.connection.db) throw new Error("MongoDB connection is not ready");
+    await mongoose.connection.db.admin().ping();
+    databaseHealthy = true;
+    checks.database = { status: "ok", latencyMs: Date.now() - databaseStarted };
   } catch (error) {
-    overallStatus = "degraded";
-    services.database = {
-      status: "unhealthy",
-      latency: Date.now() - dbStart,
-      message: error instanceof Error ? error.message : "Connection failed",
-    };
+    console.error("Health check database failure:", error);
+    checks.database = { status: "error", latencyMs: Date.now() - databaseStarted };
   }
 
-  // 2. Check Groq API availability
-  try {
-    const usage = await checkApiLimit();
-    services.ai = {
-      status: usage.allowed ? "healthy" : "rate_limited",
-      message: usage.allowed
-        ? `${usage.remaining}/${usage.limit} calls remaining`
-        : "Daily API limit reached",
-    };
-    if (!usage.allowed) overallStatus = "degraded";
-  } catch {
-    services.ai = {
-      status: "unknown",
-      message: "Could not check API usage",
-    };
-  }
-
-  // 3. Check required environment variables
-  const requiredEnvVars = [
-    "MONGODB_URI",
-    "NEXTAUTH_SECRET",
-    "GROQ_API_KEY",
-  ];
-  const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
-  services.config = {
-    status: missingVars.length === 0 ? "healthy" : "unhealthy",
-    message:
-      missingVars.length === 0
-        ? "All required environment variables present"
-        : `Missing: ${missingVars.join(", ")}`,
-  };
-  if (missingVars.length > 0) overallStatus = "unhealthy";
-
-  // 4. Memory usage
-  const mem = process.memoryUsage();
-  services.memory = {
-    status: mem.heapUsed / mem.heapTotal < 0.9 ? "healthy" : "degraded",
-    message: `${Math.round(mem.heapUsed / 1024 / 1024)}MB / ${Math.round(mem.heapTotal / 1024 / 1024)}MB`,
+  checks.aiConfiguration = { status: process.env.GROQ_API_KEY ? "ok" : "error" };
+  checks.authConfiguration = {
+    status: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET ? "ok" : "error",
   };
 
-  const statusCode = overallStatus === "healthy" ? 200 : 503;
+  const healthy =
+    databaseHealthy &&
+    checks.aiConfiguration.status === "ok" &&
+    checks.authConfiguration.status === "ok";
+
   return NextResponse.json(
     {
-      status: overallStatus,
-      timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version || "1.0.0",
-      services,
+      ...liveness(),
+      status: healthy ? "ok" : "degraded",
+      checks,
     },
-    { status: statusCode }
+    {
+      status: healthy ? 200 : 503,
+      headers: { "Cache-Control": "no-store" },
+    },
   );
+}
+
+export async function HEAD() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Cache-Control": "no-store",
+      "X-PrepWithAI-Version": buildVersion(),
+    },
+  });
 }
