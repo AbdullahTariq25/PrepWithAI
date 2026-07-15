@@ -5,6 +5,10 @@ on:
     branches: [ai/package-v4-deploy-source]
     paths:
       - .github/workflows/package-v4-deploy-source.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/package-v4-deploy-source.yml
 
 permissions:
   contents: read
