@@ -1,0 +1,34 @@
+name: Package v4 deployment source
+
+on:
+  push:
+    branches: [ai/package-v4-deploy-source]
+    paths:
+      - .github/workflows/package-v4-deploy-source.yml
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ai/package-v4-deploy-source
+          fetch-depth: 1
+      - name: Build exact main source archive
+        run: |
+          rm -f .github/workflows/package-v4-deploy-source.yml
+          zip -qr prepwithai-v4-source.zip . \
+            -x '.git/*' \
+            -x 'node_modules/*' \
+            -x '.next/*' \
+            -x '*.log'
+      - name: Upload source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: prepwithai-v4-source
+          path: prepwithai-v4-source.zip
+          retention-days: 1
