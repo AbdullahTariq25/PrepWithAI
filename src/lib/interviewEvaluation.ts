@@ -1,4 +1,4 @@
-export const FEEDBACK_RUBRIC_VERSION = "2.0";
+export const FEEDBACK_RUBRIC_VERSION = "2.1";
 
 export const FEEDBACK_DIMENSIONS = [
   "problemSolving",
@@ -40,14 +40,6 @@ const DEFAULT_GRADES: Record<FeedbackDimension, number> = {
   timeManagement: 50,
 };
 
-const HIRING_SIGNALS = new Set<HiringSignal>([
-  "strong_no",
-  "no",
-  "mixed",
-  "yes",
-  "strong_yes",
-]);
-
 function clampScore(value: unknown, fallback = 50): number {
   const numeric = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(numeric)) return fallback;
@@ -73,8 +65,28 @@ function cleanStringArray(value: unknown, fallback: string[], maxItems = 5): str
   return cleaned.length > 0 ? cleaned : fallback;
 }
 
-function normalizeEvidence(value: unknown): FeedbackEvidence[] {
+function normalizeForEvidenceMatch(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[“”"'`]/g, "")
+    .replace(/[^a-z0-9+#.\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function candidateEvidenceText(transcript: string): string {
+  return transcript
+    .split("\n")
+    .filter((line) => line.startsWith("Candidate:"))
+    .map((line) => line.slice("Candidate:".length))
+    .join(" ");
+}
+
+function normalizeEvidence(value: unknown, transcript: string): FeedbackEvidence[] {
   if (!Array.isArray(value)) return [];
+
+  const candidateText = normalizeForEvidenceMatch(candidateEvidenceText(transcript));
+  if (!candidateText) return [];
 
   return value
     .map((item) => {
@@ -85,11 +97,30 @@ function normalizeEvidence(value: unknown): FeedbackEvidence[] {
 
       const quote = cleanText(raw.quote, "", 240);
       const reason = cleanText(raw.reason, "", 320);
-      if (!quote || !reason) return null;
+      const normalizedQuote = normalizeForEvidenceMatch(quote);
+
+      // Evidence must be attributable to the candidate, not merely plausible text
+      // produced by the evaluator. Very short fragments are too easy to match by chance.
+      if (
+        !quote ||
+        !reason ||
+        normalizedQuote.split(" ").filter(Boolean).length < 3 ||
+        !candidateText.includes(normalizedQuote)
+      ) {
+        return null;
+      }
 
       return { dimension, quote, reason };
     })
     .filter((item): item is FeedbackEvidence => Boolean(item))
+    .filter(
+      (item, index, all) =>
+        all.findIndex(
+          (candidate) =>
+            candidate.dimension === item.dimension &&
+            normalizeForEvidenceMatch(candidate.quote) === normalizeForEvidenceMatch(item.quote),
+        ) === index,
+    )
     .slice(0, 8);
 }
 
@@ -124,6 +155,26 @@ function getWeights(type: string): Record<FeedbackDimension, number> {
       communication: 0.25,
       codeQuality: 0.05,
       edgeCases: 0.25,
+      timeManagement: 0.1,
+    };
+  }
+
+  if (type === "product_management" || type === "leadership") {
+    return {
+      problemSolving: 0.3,
+      communication: 0.35,
+      codeQuality: 0.05,
+      edgeCases: 0.15,
+      timeManagement: 0.15,
+    };
+  }
+
+  if (type === "machine_learning" || type === "data_engineering") {
+    return {
+      problemSolving: 0.35,
+      communication: 0.2,
+      codeQuality: 0.15,
+      edgeCases: 0.2,
       timeManagement: 0.1,
     };
   }
@@ -163,20 +214,27 @@ export function normalizeInterviewFeedback(
 
   const weights = getWeights(interviewType);
   const weightedGradeScore = Math.round(
-    FEEDBACK_DIMENSIONS.reduce((sum, dimension) => sum + grades[dimension] * weights[dimension], 0),
+    FEEDBACK_DIMENSIONS.reduce(
+      (sum, dimension) => sum + grades[dimension] * weights[dimension],
+      0,
+    ),
   );
   const modelOverall = clampScore(raw.overallScore, weightedGradeScore);
   const overallScore = Math.round(weightedGradeScore * 0.65 + modelOverall * 0.35);
 
-  const evidence = normalizeEvidence(raw.evidence);
+  const evidence = normalizeEvidence(raw.evidence, transcript);
   const transcriptQuality = getTranscriptQuality(transcript);
   const modelConfidence = clampScore(raw.evaluationConfidence, transcriptQuality);
   let evaluationConfidence = Math.round(modelConfidence * 0.7 + transcriptQuality * 0.3);
 
-  if (evidence.length === 0) evaluationConfidence = Math.min(evaluationConfidence, 45);
+  if (evidence.length === 0) evaluationConfidence = Math.min(evaluationConfidence, 40);
   if (transcriptQuality < 30) evaluationConfidence = Math.min(evaluationConfidence, 35);
 
-  const strengths = cleanStringArray(raw.strengths, ["Completed the interview and provided usable evidence for evaluation."], 5);
+  const strengths = cleanStringArray(
+    raw.strengths,
+    ["Completed the interview and provided usable evidence for evaluation."],
+    5,
+  );
   const improvements = cleanStringArray(
     raw.improvements,
     ["Make reasoning more explicit and support important decisions with concrete trade-offs."],
@@ -184,8 +242,6 @@ export function normalizeInterviewFeedback(
   );
   const recommendedTopics = cleanStringArray(raw.recommendedTopics, [], 6);
   const nextPracticeFocus = cleanText(raw.nextPracticeFocus, improvements[0], 280);
-  const requestedSignal = raw.hiringSignal as HiringSignal;
-  const hiringSignal = HIRING_SIGNALS.has(requestedSignal) ? requestedSignal : deriveHiringSignal(overallScore);
 
   return {
     overallScore,
@@ -206,7 +262,9 @@ export function normalizeInterviewFeedback(
     evidence,
     evaluationConfidence,
     nextPracticeFocus,
-    hiringSignal,
+    // The practice signal is derived from the normalized score so it cannot
+    // contradict the rubric after evidence validation and score calibration.
+    hiringSignal: deriveHiringSignal(overallScore),
     rubricVersion: FEEDBACK_RUBRIC_VERSION,
   };
 }
