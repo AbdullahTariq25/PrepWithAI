@@ -1,46 +1,64 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Menu, X } from "lucide-react";
+import { ArrowRight, Menu, ShieldCheck, X } from "lucide-react";
 
 const navLinks = [
-  { label: "Demo", href: "/demo" },
+  { label: "Product", href: "/#workspace" },
   { label: "Features", href: "/#features" },
   { label: "How it works", href: "/#how-it-works" },
-  { label: "Interview tracks", href: "/#tracks" },
+  { label: "Tracks", href: "/#tracks" },
   { label: "Pricing", href: "/#pricing" },
+  { label: "Demo", href: "/demo" },
 ];
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 16);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 px-4 pt-4">
+    <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-4 sm:pt-4">
       <nav
         aria-label="Primary navigation"
-        className="mx-auto max-w-6xl rounded-2xl border border-white/10 bg-[#0a0a0f]/85 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl"
+        className={`mx-auto max-w-6xl overflow-hidden rounded-2xl border backdrop-blur-xl transition duration-300 ${
+          scrolled
+            ? "border-white/12 bg-[#09090e]/94 shadow-[0_18px_60px_rgba(0,0,0,0.5)]"
+            : "border-white/8 bg-[#0a0a0f]/78 shadow-[0_18px_60px_rgba(0,0,0,0.28)]"
+        }`}
       >
-        <div className="flex h-16 items-center justify-between px-4 sm:px-5">
+        <div className="flex h-16 items-center justify-between px-3 sm:px-5">
           <Link
             href="/"
             aria-label="PrepWithAI home"
             className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
           >
-            <span className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-sm font-bold text-white shadow-[0_0_24px_rgba(99,102,241,0.35)]">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-sm font-bold text-white shadow-[0_0_28px_rgba(99,102,241,0.38)]">
               P
             </span>
-            <span className="text-[15px] font-semibold tracking-[-0.02em] text-white">
-              Prep<span className="text-indigo-300">WithAI</span>
+            <span>
+              <span className="block text-[15px] font-semibold tracking-[-0.02em] text-white">
+                Prep<span className="text-indigo-300">WithAI</span>
+              </span>
+              <span className="hidden items-center gap-1 text-[9px] font-medium uppercase tracking-[0.14em] text-zinc-600 sm:flex">
+                <ShieldCheck className="h-2.5 w-2.5" /> Interview intelligence
+              </span>
             </span>
           </Link>
 
-          <div className="hidden items-center gap-1 md:flex">
+          <div className="hidden items-center gap-0.5 lg:flex">
             {navLinks.map((link) => (
               <Link
                 key={link.label}
                 href={link.href}
-                className="rounded-lg px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                className="rounded-lg px-2.5 py-2 text-sm text-zinc-400 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 xl:px-3"
               >
                 {link.label}
               </Link>
@@ -56,7 +74,7 @@ export default function Navbar() {
             </Link>
             <Link
               href="/signup"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 shadow-[0_8px_30px_rgba(255,255,255,0.08)] transition hover:-translate-y-0.5 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
             >
               Start free <ArrowRight className="h-4 w-4" />
             </Link>
@@ -64,7 +82,7 @@ export default function Navbar() {
 
           <button
             type="button"
-            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-white md:hidden"
+            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.035] text-white transition hover:bg-white/[0.07] md:hidden"
             aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((open) => !open)}
@@ -74,14 +92,14 @@ export default function Navbar() {
         </div>
 
         {mobileOpen && (
-          <div className="border-t border-white/10 px-4 pb-4 pt-3 md:hidden">
-            <div className="grid gap-1">
+          <div className="border-t border-white/10 bg-black/15 px-3 pb-4 pt-3 md:hidden">
+            <div className="grid grid-cols-2 gap-1">
               {navLinks.map((link) => (
                 <Link
                   key={link.label}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
-                  className="rounded-xl px-3 py-3 text-sm text-zinc-300 hover:bg-white/5 hover:text-white"
+                  className="rounded-xl px-3 py-3 text-sm text-zinc-300 transition hover:bg-white/5 hover:text-white"
                 >
                   {link.label}
                 </Link>
@@ -91,7 +109,7 @@ export default function Navbar() {
               <Link
                 href="/login"
                 onClick={() => setMobileOpen(false)}
-                className="rounded-xl border border-white/10 px-4 py-3 text-center text-sm font-medium text-white"
+                className="rounded-xl border border-white/10 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/5"
               >
                 Log in
               </Link>
