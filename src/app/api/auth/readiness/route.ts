@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const mode = getAuthSecretMode();
-  const ready = mode !== "missing";
+  const ready = mode === "explicit" || mode === "server-derived" || mode === "development";
 
   return NextResponse.json(
     {
@@ -13,7 +13,7 @@ export async function GET() {
       environment:
         process.env.VERCEL_ENV ||
         (process.env.NODE_ENV === "production" ? "production" : "development"),
-      configuration: mode === "preview-derived" ? "preview-fallback" : mode,
+      configuration: mode,
     },
     {
       status: ready ? 200 : 503,
