@@ -55,7 +55,11 @@ async function getOffers(req: NextRequest, ctx: AuthContext) {
     if (status && STATUSES.has(status)) filter.status = status;
 
     const offers = await Offer.find(filter).sort({ deadline: 1, updatedAt: -1 }).lean();
-    return success({ offers: offers.map((offer) => serializeOffer(offer as unknown as Record<string, unknown>)) });
+    return success({
+      offers: offers.map((offer) =>
+        serializeOffer(offer as unknown as Record<string, unknown>),
+      ),
+    });
   } catch (error) {
     return serverError("Failed to load offers", error);
   }
@@ -102,7 +106,11 @@ async function createOffer(req: NextRequest, ctx: AuthContext) {
       notes: cleanString(body.notes, 5000),
     });
 
-    return created({ offer: serializeOffer(offer.toObject() as Record<string, unknown>) });
+    return created({
+      offer: serializeOffer(
+        offer.toObject() as unknown as Record<string, unknown>,
+      ),
+    });
   } catch (error) {
     return serverError("Failed to create offer", error);
   }
