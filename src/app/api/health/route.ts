@@ -61,9 +61,9 @@ export async function GET(request: NextRequest) {
   const authMode = getAuthSecretMode();
   checks.authConfiguration = {
     status:
-      authMode === "missing"
+      authMode === "missing" || authMode === "build-only"
         ? "error"
-        : authMode === "preview-derived"
+        : authMode === "server-derived"
           ? "warning"
           : "ok",
     mode: authMode,
