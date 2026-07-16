@@ -18,6 +18,8 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
     }
 
     const authMode = getAuthSecretMode();
+    const authenticationReady =
+      authMode === "explicit" || authMode === "server-derived" || authMode === "development";
     const aiReady = Boolean(process.env.GROQ_API_KEY);
     const codeExecutionReady = Boolean(process.env.JUDGE0_API_URL);
     const emailReady = Boolean(process.env.RESEND_API_KEY);
@@ -26,7 +28,7 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
     );
 
     return success({
-      ready: databaseReady && aiReady && authMode !== "missing",
+      ready: databaseReady && aiReady && authenticationReady,
       latencyMs: Date.now() - started,
       account: {
         authenticated: true,
@@ -35,8 +37,8 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
       },
       critical: {
         authentication: {
-          ready: authMode !== "missing",
-          mode: authMode === "preview-derived" ? "preview-fallback" : authMode,
+          ready: authenticationReady,
+          mode: authMode,
         },
         database: { ready: databaseReady },
         aiInterview: { ready: aiReady },
