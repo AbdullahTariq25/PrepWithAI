@@ -28,20 +28,19 @@ export default function Hero() {
         <div className="mx-auto max-w-4xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-indigo-400/20 bg-indigo-400/[0.07] px-3.5 py-2 text-xs font-medium text-indigo-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
             <Sparkles className="h-3.5 w-3.5 text-indigo-300" />
-            Evidence-based AI interview practice for software engineers
+            Evidence-based interview and career preparation for software engineers
           </div>
 
           <h1 className="mt-7 text-balance text-5xl font-semibold tracking-[-0.055em] text-white sm:text-6xl lg:text-[76px] lg:leading-[0.98]">
-            Practice under pressure.
+            Prepare the whole journey.
             <span className="block bg-gradient-to-r from-indigo-300 via-violet-300 to-fuchsia-300 bg-clip-text text-transparent">
-              Improve with evidence.
+              Improve every decision with evidence.
             </span>
           </h1>
 
-          <p className="mx-auto mt-7 max-w-2xl text-pretty text-base leading-7 text-zinc-400 sm:text-lg sm:leading-8">
-            Run realistic technical, behavioral, coding, and system-design interviews.
-            Get a calibrated report with transcript evidence, evaluation confidence, and one
-            focused skill to practice next.
+          <p className="mx-auto mt-7 max-w-3xl text-pretty text-base leading-7 text-zinc-400 sm:text-lg sm:leading-8">
+            Target the right role, run realistic mock interviews, build reusable behavioral stories,
+            retain weak concepts, manage applications, and compare offers in one connected workspace.
           </p>
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -49,21 +48,21 @@ export default function Hero() {
               href="/signup"
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-zinc-950 shadow-[0_10px_40px_rgba(255,255,255,0.12)] transition hover:-translate-y-0.5 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
             >
-              Build your baseline <ArrowRight className="h-4 w-4" />
+              Build your career workspace <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
-              href="/demo"
+              href="/case-study"
               className="inline-flex min-h-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.035] px-6 text-sm font-medium text-zinc-200 transition hover:border-white/20 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
             >
-              Explore the product demo
+              Explore the engineering case study
             </Link>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-zinc-500">
             {[
               "No credit card required",
-              "Calibrated multi-skill rubric",
-              "Voice, video and code modes",
+              "Persistent learning and career data",
+              "Voice, video, code and evidence reports",
             ].map((item) => (
               <span key={item} className="inline-flex items-center gap-1.5">
                 <Check className="h-3.5 w-3.5 text-emerald-400" />
