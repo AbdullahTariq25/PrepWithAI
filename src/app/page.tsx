@@ -2,6 +2,7 @@ import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
 import SocialProof from "@/components/landing/SocialProof";
 import ProductWorkflowShowcase from "@/components/landing/ProductWorkflowShowcase";
+import CareerIntelligenceShowcase from "@/components/landing/CareerIntelligenceShowcase";
 import Features from "@/components/landing/Features";
 import HowItWorks from "@/components/landing/HowItWorks";
 import InterviewTracks from "@/components/landing/InterviewTracks";
@@ -21,6 +22,7 @@ export default function Home() {
       <Hero />
       <SocialProof />
       <ProductWorkflowShowcase />
+      <CareerIntelligenceShowcase />
       <div id="features" className="scroll-mt-28">
         <Features />
       </div>
