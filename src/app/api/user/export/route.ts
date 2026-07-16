@@ -7,6 +7,8 @@ import Session from "@/models/Session";
 import StudyGroup from "@/models/StudyGroup";
 import FlashcardProgress from "@/models/FlashcardProgress";
 import JobTarget from "@/models/JobTarget";
+import BehaviorStory from "@/models/BehaviorStory";
+import Offer from "@/models/Offer";
 import ApiUsage from "@/models/ApiUsage";
 
 async function handler(_req: NextRequest, ctx: AuthContext) {
@@ -18,6 +20,8 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
       studyGroups,
       flashcards,
       jobTargets,
+      behaviorStories,
+      offers,
       apiUsage,
     ] = await Promise.all([
       User.findById(ctx.user.id)
@@ -35,6 +39,8 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
         .sort({ createdAt: 1 })
         .lean(),
       JobTarget.find({ userId: ctx.user.id }).sort({ createdAt: 1 }).lean(),
+      BehaviorStory.find({ userId: ctx.user.id }).sort({ createdAt: 1 }).lean(),
+      Offer.find({ userId: ctx.user.id }).sort({ createdAt: 1 }).lean(),
       ApiUsage.find({ userId: ctx.user.id }).sort({ date: 1 }).lean(),
     ]);
 
@@ -42,7 +48,7 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
     const payload = {
       export: {
         product: "PrepWithAI",
-        schemaVersion: "1.1",
+        schemaVersion: "1.2",
         exportedAt: exportedAt.toISOString(),
         note: "This archive contains the core account, career, and practice data associated with your PrepWithAI user id.",
       },
@@ -52,6 +58,8 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
       studyGroups,
       flashcardProgress: flashcards,
       jobTargets,
+      behaviorStories,
+      offers,
       aiUsage: apiUsage,
     };
 

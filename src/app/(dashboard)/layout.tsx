@@ -19,10 +19,12 @@ import {
   History,
   Layers,
   LayoutDashboard,
+  LibraryBig,
   LogOut,
   Mail,
   Menu,
   MessageSquare,
+  Scale,
   Settings,
   Sparkles,
   Target,
@@ -44,6 +46,7 @@ const sections = [
       { href: "/daily", label: "Daily Challenge", icon: Flame },
       { href: "/questions", label: "Questions", icon: BookOpen },
       { href: "/flashcards", label: "Flashcards", icon: Layers },
+      { href: "/stories", label: "Story Bank", icon: LibraryBig },
     ],
   },
   {
@@ -64,6 +67,7 @@ const sections = [
       { href: "/cover-letter", label: "Cover Letter", icon: Mail },
       { href: "/jobs", label: "Jobs", icon: Briefcase },
       { href: "/salary", label: "Salary Coach", icon: DollarSign },
+      { href: "/offers", label: "Offer Lab", icon: Scale },
     ],
   },
 ];

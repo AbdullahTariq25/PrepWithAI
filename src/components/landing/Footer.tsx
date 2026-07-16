@@ -11,6 +11,7 @@ const productLinks = [
     { label: "Daily Challenge", href: "/daily" },
 ];
 const companyLinks = [
+    { label: "Case Study", href: "/case-study" },
     { label: "About", href: "/about" },
     { label: "Blog", href: "/blog" },
     { label: "Changelog", href: "/changelog" },
@@ -43,7 +44,6 @@ export default function Footer() {
         >
             <div style={{ maxWidth: 1140, margin: "0 auto" }}>
                 <div className="grid grid-cols-1 md:grid-cols-4" style={{ gap: 48 }}>
-                    {/* Brand column */}
                     <div style={{ gridColumn: "span 1" }} className="md:col-span-1">
                         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", marginBottom: 16 }}>
                             <div
@@ -68,13 +68,16 @@ export default function Footer() {
                             </span>
                         </Link>
                         <p style={{ fontSize: 14, color: "#60607A", lineHeight: 1.6, marginBottom: 20 }}>
-                            The complete AI interview coach for developers.
+                            Evidence-based interview practice and career preparation for software professionals.
                         </p>
                         <div style={{ display: "flex", gap: 8 }}>
                             {socialIcons.map(({ icon: Icon, href }) => (
                                 <a
                                     key={href + Icon.displayName}
                                     href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label={`Open ${Icon.displayName || "social profile"}`}
                                     style={{
                                         width: 32,
                                         height: 32,
@@ -102,7 +105,6 @@ export default function Footer() {
                         </div>
                     </div>
 
-                    {/* Link columns */}
                     {[
                         { heading: "Product", links: productLinks },
                         { heading: "Company", links: companyLinks },
@@ -136,7 +138,6 @@ export default function Footer() {
                     ))}
                 </div>
 
-                {/* Bottom bar */}
                 <div
                     style={{
                         borderTop: "1px solid rgba(255,255,255,0.06)",
@@ -149,7 +150,7 @@ export default function Footer() {
                     }}
                 >
                     <span style={{ fontSize: 13, color: "#60607A" }}>© 2026 PrepWithAI. All rights reserved.</span>
-                    <span style={{ fontSize: 13, color: "#60607A" }}>Made with ❤️ in Lahore, Pakistan</span>
+                    <span style={{ fontSize: 13, color: "#60607A" }}>Designed and engineered in Lahore, Pakistan</span>
                 </div>
             </div>
         </footer>
