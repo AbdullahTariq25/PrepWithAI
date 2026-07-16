@@ -6,11 +6,11 @@ import { ArrowRight, Menu, ShieldCheck, X } from "lucide-react";
 
 const navLinks = [
   { label: "Product", href: "/#workspace" },
+  { label: "Career OS", href: "/#career-intelligence" },
   { label: "Features", href: "/#features" },
   { label: "How it works", href: "/#how-it-works" },
-  { label: "Tracks", href: "/#tracks" },
   { label: "Pricing", href: "/#pricing" },
-  { label: "Demo", href: "/demo" },
+  { label: "Case study", href: "/case-study" },
 ];
 
 export default function Navbar() {
@@ -48,7 +48,7 @@ export default function Navbar() {
                 Prep<span className="text-indigo-300">WithAI</span>
               </span>
               <span className="hidden items-center gap-1 text-[9px] font-medium uppercase tracking-[0.14em] text-zinc-600 sm:flex">
-                <ShieldCheck className="h-2.5 w-2.5" /> Interview intelligence
+                <ShieldCheck className="h-2.5 w-2.5" /> Career intelligence
               </span>
             </span>
           </Link>

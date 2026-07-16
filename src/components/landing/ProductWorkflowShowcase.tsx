@@ -15,17 +15,17 @@ const stages = [
   {
     number: "01",
     eyebrow: "Prepare",
-    title: "Enter the interview with your setup and target already clear.",
+    title: "Enter the interview with your setup, target role, and strongest evidence already clear.",
     description:
-      "Run device and platform checks, define the role you are targeting, and turn your resume into role-specific preparation signals.",
+      "Run device checks, define the role you are targeting, match your resume, and organize real behavioral stories before practice starts.",
     icon: ShieldCheck,
     accent: "from-cyan-400/20 to-indigo-500/5",
-    items: ["Readiness Center", "Resume-to-job matching", "Personal prep plan"],
+    items: ["Readiness Center", "Resume-to-job matching", "Behavioral Story Bank"],
   },
   {
     number: "02",
     eyebrow: "Practice",
-    title: "Rehearse the pressure, reasoning, and communication—not just answers.",
+    title: "Rehearse the pressure, reasoning, and communication—not just final answers.",
     description:
       "Choose a focused track and practice in text, voice, video, or coding mode with an interviewer that asks one question at a time.",
     icon: Mic2,
@@ -37,20 +37,20 @@ const stages = [
     eyebrow: "Improve",
     title: "Use inspectable evidence to decide exactly what to practice next.",
     description:
-      "Review calibrated scores, candidate-only transcript evidence, confidence, and one highest-leverage practice target.",
+      "Review calibrated scores, candidate-only transcript evidence, confidence, progress trends, and one highest-leverage practice target.",
     icon: Target,
     accent: "from-violet-400/20 to-fuchsia-500/5",
     items: ["Evidence-backed reports", "Persistent spaced repetition", "Progress and ELO trends"],
   },
   {
     number: "04",
-    eyebrow: "Apply",
-    title: "Carry preparation into a real, organized application workflow.",
+    eyebrow: "Apply & decide",
+    title: "Carry preparation into real opportunities, follow-ups, negotiations, and decisions.",
     description:
-      "Save actual opportunities, track next actions, and keep interview preparation connected to the roles you are pursuing.",
+      "Manage actual applications, preserve private context, compare complete offers, and keep every decision connected to the role you prepared for.",
     icon: BriefcaseBusiness,
     accent: "from-fuchsia-400/20 to-rose-500/5",
-    items: ["User-owned job pipeline", "Follow-up dates and notes", "Private data export"],
+    items: ["User-owned job pipeline", "Offer and negotiation lab", "Private export and deletion"],
   },
 ];
 
@@ -66,20 +66,20 @@ export default function ProductWorkflowShowcase() {
               <Sparkles className="h-3.5 w-3.5" /> One connected preparation workspace
             </div>
             <h2 className="mt-5 max-w-xl text-3xl font-semibold tracking-[-0.045em] text-white sm:text-5xl">
-              From target role to interview day—without disconnected tools.
+              From target role to offer decision—without disconnected tools.
             </h2>
           </div>
           <div className="lg:pb-1">
             <p className="max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
-              PrepWithAI connects the full loop: validate your setup, practice the right interview,
-              inspect the evidence, retain weak concepts, and manage the opportunities you are
-              preparing for.
+              PrepWithAI connects the full loop: validate your setup, organize your evidence,
+              practice the right interview, inspect the feedback, retain weak concepts, manage
+              opportunities, and make better career decisions.
             </p>
             <Link
-              href="/demo"
+              href="/#career-intelligence"
               className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-indigo-300 transition hover:text-indigo-200"
             >
-              Explore the product flow <ArrowRight className="h-4 w-4" />
+              Explore the complete career system <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
@@ -128,9 +128,9 @@ export default function ProductWorkflowShowcase() {
 
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
           {[
-            { icon: FileSearch, label: "Truthful analysis", text: "No invented resume history, job listings, or execution results." },
-            { icon: Layers3, label: "Persistent learning", text: "Progress, reviews, applications, and reports survive refreshes." },
-            { icon: ShieldCheck, label: "Production boundaries", text: "Explicit readiness, confidence, and unavailable states." },
+            { icon: FileSearch, label: "Truthful analysis", text: "No invented resume history, job listings, market data, or execution results." },
+            { icon: Layers3, label: "Persistent intelligence", text: "Stories, reviews, applications, offers, progress, and reports survive refreshes." },
+            { icon: ShieldCheck, label: "Production boundaries", text: "Explicit readiness, evidence confidence, privacy controls, and unavailable states." },
           ].map(({ icon: Icon, label, text }) => (
             <div key={label} className="rounded-2xl border border-white/7 bg-white/[0.02] p-4">
               <div className="flex items-center gap-2 text-sm font-medium text-zinc-200">
